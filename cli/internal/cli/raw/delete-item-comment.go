@@ -3,15 +3,18 @@ package raw
 
 import (
 	"github.com/apet97/plaky115-cli/internal/plakydx"
-	"github.com/apet97/plaky115-cli/internal/plakysdk"
 	"github.com/spf13/cobra"
 )
 
-func newDeleteItemCommentCmd(client *plakysdk.Client) *cobra.Command {
+func newDeleteItemCommentCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete-item-comment",
 		Short: "Delete item comment",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
 			ctx := cmd.Context()
 			return plakydx.RunDeleteItemComment(ctx, cmd, client)
 		},

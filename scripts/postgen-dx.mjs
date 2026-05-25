@@ -24,18 +24,18 @@ syncPackageMetadata(join(root, "sdk/package.json"), (pkg) => {
   // Hand-crafted SDK only exports the public client, runtime utilities, and operations.
   pkg.exports = {
     ".": {
-      source: "./src/index.ts",
       types: "./esm/index.d.ts",
+      import: "./esm/index.js",
       default: "./esm/index.js",
     },
     "./operations/*.js": {
-      source: "./src/generated/operations/*.ts",
       types: "./esm/generated/operations/*.d.ts",
+      import: "./esm/generated/operations/*.js",
       default: "./esm/generated/operations/*.js",
     },
     "./runtime/*.js": {
-      source: "./src/runtime/*.ts",
       types: "./esm/runtime/*.d.ts",
+      import: "./esm/runtime/*.js",
       default: "./esm/runtime/*.js",
     },
     "./package.json": "./package.json",
@@ -48,8 +48,8 @@ syncPackageMetadata(join(root, "mcp-server/package.json"), (pkg) => {
   pkg.repository = pkg.repository ?? { type: "git", url: "https://github.com/apet97/plaky115" };
   pkg.exports = {
     ".": {
-      source: "./src/server/index.ts",
       types: "./esm/server/index.d.ts",
+      import: "./esm/server/index.js",
       default: "./esm/server/index.js",
     },
     "./package.json": "./package.json",

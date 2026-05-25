@@ -3,15 +3,18 @@ package raw
 
 import (
 	"github.com/apet97/plaky115-cli/internal/plakydx"
-	"github.com/apet97/plaky115-cli/internal/plakysdk"
 	"github.com/spf13/cobra"
 )
 
-func newListTeamsCmd(client *plakysdk.Client) *cobra.Command {
+func newListTeamsCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list-teams",
 		Short: "List workspace teams",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
 			ctx := cmd.Context()
 			return plakydx.RunListTeams(ctx, cmd, client)
 		},

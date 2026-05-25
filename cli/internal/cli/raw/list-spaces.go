@@ -3,15 +3,18 @@ package raw
 
 import (
 	"github.com/apet97/plaky115-cli/internal/plakydx"
-	"github.com/apet97/plaky115-cli/internal/plakysdk"
 	"github.com/spf13/cobra"
 )
 
-func newListSpacesCmd(client *plakysdk.Client) *cobra.Command {
+func newListSpacesCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list-spaces",
 		Short: "List workspace spaces",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
 			ctx := cmd.Context()
 			return plakydx.RunListSpaces(ctx, cmd, client)
 		},

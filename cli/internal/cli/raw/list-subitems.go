@@ -3,15 +3,18 @@ package raw
 
 import (
 	"github.com/apet97/plaky115-cli/internal/plakydx"
-	"github.com/apet97/plaky115-cli/internal/plakysdk"
 	"github.com/spf13/cobra"
 )
 
-func newListSubitemsCmd(client *plakysdk.Client) *cobra.Command {
+func newListSubitemsCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list-subitems",
 		Short: "List subitems",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
 			ctx := cmd.Context()
 			return plakydx.RunListSubitems(ctx, cmd, client)
 		},

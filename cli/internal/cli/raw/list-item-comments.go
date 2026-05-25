@@ -3,15 +3,18 @@ package raw
 
 import (
 	"github.com/apet97/plaky115-cli/internal/plakydx"
-	"github.com/apet97/plaky115-cli/internal/plakysdk"
 	"github.com/spf13/cobra"
 )
 
-func newListItemCommentsCmd(client *plakysdk.Client) *cobra.Command {
+func newListItemCommentsCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list-item-comments",
 		Short: "List item comments",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
 			ctx := cmd.Context()
 			return plakydx.RunListItemComments(ctx, cmd, client)
 		},

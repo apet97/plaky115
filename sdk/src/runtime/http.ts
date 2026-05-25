@@ -1,4 +1,4 @@
-import { classify } from "./errors.js";
+import { PlakyApiError, PlakyRateLimitError, classify } from "./errors.js";
 import { buildUserAgent } from "./user-agent.js";
 import type { Interceptors } from "./interceptors.js";
 import type { RateLimitSink } from "./rate-limit.js";
@@ -25,13 +25,25 @@ export type RawRequest = {
 };
 
 export async function request<T>(req: RawRequest, opts: PlakyRequestOptions): Promise<T> {
+  const maxRetries = canRetry(req, opts) ? opts.maxRetries ?? 0 : 0;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await requestOnce<T>(req, opts);
+    } catch (err) {
+      if (attempt >= maxRetries || !isRetryable(err)) throw err;
+      await delay(retryDelay(err, attempt));
+    }
+  }
+}
+
+async function requestOnce<T>(req: RawRequest, opts: PlakyRequestOptions): Promise<T> {
   const url = buildUrl(opts.serverURL, req.path, req.query);
   const headers: Record<string, string> = {
     "X-API-Key": opts.apiKey,
     Accept: "application/json",
     "User-Agent": opts.userAgent ?? buildUserAgent(),
-    ...(opts.headers ?? {}),
   };
+  if (opts.headers) Object.assign(headers, opts.headers);
   if (req.body !== undefined) headers["Content-Type"] = "application/json";
   if (opts.idempotencyKey) headers["Idempotency-Key"] = opts.idempotencyKey;
 
@@ -62,6 +74,25 @@ export async function request<T>(req: RawRequest, opts: PlakyRequestOptions): Pr
     throw classify(response.status, message, requestId, body, retryAfter);
   }
   return body as T;
+}
+
+function canRetry(req: RawRequest, opts: PlakyRequestOptions): boolean {
+  return req.method === "GET" || opts.idempotencyKey !== undefined;
+}
+
+function isRetryable(err: unknown): boolean {
+  if (err instanceof PlakyRateLimitError) return true;
+  if (err instanceof PlakyApiError) return err.status >= 500 && err.status < 600;
+  return false;
+}
+
+function retryDelay(err: unknown, attempt: number): number {
+  if (err instanceof PlakyRateLimitError && err.retryAfterMs !== undefined) return err.retryAfterMs;
+  return 250 * 2 ** attempt;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function isMessageBody(body: unknown): body is { message: string } {

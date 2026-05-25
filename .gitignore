@@ -4,6 +4,10 @@
 .env.*.local
 node_modules/
 **/node_modules/
+docs/superpowers/
+.remember/
+**/.remember/
+**/.speakeasy/
 **/.speakeasy/logs/
 **/.speakeasy/temp/
 **/.speakeasy/reports/

@@ -5,10 +5,10 @@ import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 
-function compareEsmToSrc(pkg) {
-  const srcDir = join(root, pkg, "src", "generated", "operations");
-  const esmDir = join(root, pkg, "esm", "funcs"); // legacy
-  const newEsmDir = join(root, pkg, "esm", "generated", "operations");
+function compareEsmToSrc(pkg, srcRel, esmRel, legacyRel) {
+  const srcDir = join(root, pkg, srcRel);
+  const esmDir = join(root, pkg, legacyRel);
+  const newEsmDir = join(root, pkg, esmRel);
   const srcSlugs = existsSync(srcDir)
     ? readdirSync(srcDir).filter((f) => f.endsWith(".ts")).map((f) => f.replace(/\.ts$/, ""))
     : [];
@@ -29,7 +29,10 @@ function compareEsmToSrc(pkg) {
   return { pkg, srcCount: srcSlugs.length, builtCount: builtSlugs.size, legacyCount: legacyBuilt.size, missing, stale };
 }
 
-const reports = [compareEsmToSrc("sdk"), compareEsmToSrc("mcp-server")];
+const reports = [
+  compareEsmToSrc("sdk", "src/generated/operations", "esm/generated/operations", "esm/funcs"),
+  compareEsmToSrc("mcp-server", "src/tools/raw", "esm/tools/raw", "esm/mcp-server"),
+];
 let bad = false;
 for (const r of reports) {
   console.log(`${r.pkg}: src=${r.srcCount} built=${r.builtCount} legacy=${r.legacyCount} missing=${r.missing.length} stale=${r.stale.length}`);

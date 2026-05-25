@@ -11,8 +11,8 @@
   "main": "./esm/server/index.js",
   "exports": {
     ".": {
-      "source": "./src/server/index.ts",
       "types": "./esm/server/index.d.ts",
+      "import": "./esm/server/index.js",
       "default": "./esm/server/index.js"
     },
     "./package.json": "./package.json"
@@ -31,12 +31,15 @@
     "bun": "1.2.17",
     "bun-types": "1.2.17",
     "oxlint": "^1.60.0",
+    "plaky115": "file:../sdk",
     "typescript": "~5.8.3"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
-    "plaky115": "file:../sdk",
     "zod": "^3.25.0 || ^4.0.0"
+  },
+  "peerDependencies": {
+    "plaky115": "0.1.0"
   },
   "repository": {
     "type": "git",

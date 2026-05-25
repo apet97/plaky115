@@ -16,38 +16,43 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newWorkspaceMapCommand(c *plakysdk.Client) *cobra.Command {
+func newWorkspaceMapCommand(getClient clientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "workspace-map",
 		Short: "List spaces with their boards (compact tree).",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			ctx := cmd.Context()
-			spacesRaw, err := c.ListSpaces(ctx, plakysdk.ListSpacesOptions{PageSize: 200})
+			c, err := getClient(cmd)
 			if err != nil {
 				return err
 			}
-			spaces, _ := spacesRaw.(map[string]any)
-			data, _ := spaces["data"].([]any)
+			ctx := cmd.Context()
+			data, err := drainPaged(200, func(page, pageSize int) (any, error) {
+				return c.ListSpaces(ctx, plakysdk.ListSpacesOptions{Page: page, PageSize: pageSize})
+			})
+			if err != nil {
+				return err
+			}
 			out := []map[string]any{}
 			for _, s := range data {
-				m := plakydx.AsRecord(s)
+				m := s
 				idStr, _ := mustID(m["id"])
 				if idStr == "" {
 					continue
 				}
-				boardsRaw, err := c.ListBoards(ctx, plakysdk.ListBoardsOptions{SpaceId: idStr, PageSize: 200})
+				boards, err := drainPaged(200, func(page, pageSize int) (any, error) {
+					return c.ListBoards(ctx, plakysdk.ListBoardsOptions{SpaceId: idStr, Page: page, PageSize: pageSize})
+				})
 				if err != nil {
 					return fmt.Errorf("list boards for space %s: %w", idStr, err)
 				}
-				bdata, _ := plakydx.AsRecord(boardsRaw)["data"].([]any)
-				boards := make([]map[string]any, 0, len(bdata))
-				for _, b := range bdata {
-					boards = append(boards, plakydx.CompactBoard(b))
+				compactBoards := make([]map[string]any, 0, len(boards))
+				for _, b := range boards {
+					compactBoards = append(compactBoards, plakydx.CompactBoard(b))
 				}
 				out = append(out, map[string]any{
 					"id":     m["id"],
 					"title":  m["title"],
-					"boards": boards,
+					"boards": compactBoards,
 				})
 			}
 			return plakydx.EmitJSON(cmd, out)
@@ -56,11 +61,15 @@ func newWorkspaceMapCommand(c *plakysdk.Client) *cobra.Command {
 	return cmd
 }
 
-func newItemsCreateSimpleCommand(c *plakysdk.Client) *cobra.Command {
+func newItemsCreateSimpleCommand(getClient clientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "items-create-simple",
 		Short: "Create an item with just a title (and optional --dry-run).",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			c, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
 			spaceID, _ := cmd.Flags().GetString("space-id")
 			boardID, _ := cmd.Flags().GetString("board-id")
 			title, _ := cmd.Flags().GetString("title")
@@ -71,9 +80,9 @@ func newItemsCreateSimpleCommand(c *plakysdk.Client) *cobra.Command {
 			body := map[string]any{"title": title}
 			if dry {
 				return plakydx.EmitJSON(cmd, map[string]any{
-					"dryRun":   true,
+					"dryRun":    true,
 					"operation": "createItem",
-					"payload":  map[string]any{"spaceId": spaceID, "boardId": boardID, "body": body},
+					"payload":   map[string]any{"spaceId": spaceID, "boardId": boardID, "body": body},
 				})
 			}
 			out, err := c.CreateItem(cmd.Context(), plakysdk.CreateItemOptions{
@@ -94,11 +103,15 @@ func newItemsCreateSimpleCommand(c *plakysdk.Client) *cobra.Command {
 	return cmd
 }
 
-func newCommentsAddCommand(c *plakysdk.Client) *cobra.Command {
+func newCommentsAddCommand(getClient clientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "comments-add",
 		Short: "Add a comment to an item.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			c, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
 			spaceID, _ := cmd.Flags().GetString("space-id")
 			boardID, _ := cmd.Flags().GetString("board-id")
 			itemID, _ := cmd.Flags().GetString("item-id")
@@ -110,9 +123,9 @@ func newCommentsAddCommand(c *plakysdk.Client) *cobra.Command {
 			body := map[string]any{"text": text}
 			if dry {
 				return plakydx.EmitJSON(cmd, map[string]any{
-					"dryRun":   true,
+					"dryRun":    true,
 					"operation": "createItemComment",
-					"payload":  map[string]any{"spaceId": spaceID, "boardId": boardID, "itemId": itemID, "body": body},
+					"payload":   map[string]any{"spaceId": spaceID, "boardId": boardID, "itemId": itemID, "body": body},
 				})
 			}
 			out, err := c.CreateItemComment(cmd.Context(), plakysdk.CreateItemCommentOptions{
@@ -135,11 +148,15 @@ func newCommentsAddCommand(c *plakysdk.Client) *cobra.Command {
 	return cmd
 }
 
-func newItemsBulkUpdateCommand(c *plakysdk.Client) *cobra.Command {
+func newItemsBulkUpdateCommand(getClient clientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "items-bulk-update",
 		Short: "Update many items in one pass from a JSON file (dry-run aware).",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			c, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
 			file, _ := cmd.Flags().GetString("file")
 			dry, _ := cmd.Flags().GetBool("dry-run")
 			if file == "" {
@@ -224,12 +241,16 @@ func mustID(v any) (string, error) {
 	}
 }
 
-func newFindCommand(c *plakysdk.Client) *cobra.Command {
+func newFindCommand(getClient clientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "find",
 		Short: "Find spaces, boards, or items by text fragment.",
 		Long:  "Search Plaky records by case-insensitive text. For type=board pass --space-id; for type=item pass --space-id and --board-id.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			c, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
 			typ, _ := cmd.Flags().GetString("type")
 			query, _ := cmd.Flags().GetString("query")
 			if typ == "" || query == "" {
@@ -239,7 +260,9 @@ func newFindCommand(c *plakysdk.Client) *cobra.Command {
 			ctx := cmd.Context()
 			switch typ {
 			case "space":
-				out, err := c.ListSpaces(ctx, plakysdk.ListSpacesOptions{PageSize: 200})
+				out, err := drainPaged(200, func(page, pageSize int) (any, error) {
+					return c.ListSpaces(ctx, plakysdk.ListSpacesOptions{Page: page, PageSize: pageSize})
+				})
 				if err != nil {
 					return err
 				}
@@ -249,7 +272,9 @@ func newFindCommand(c *plakysdk.Client) *cobra.Command {
 				if spaceID == "" {
 					return fmt.Errorf("--space-id required when --type=board")
 				}
-				out, err := c.ListBoards(ctx, plakysdk.ListBoardsOptions{SpaceId: spaceID, PageSize: 200})
+				out, err := drainPaged(200, func(page, pageSize int) (any, error) {
+					return c.ListBoards(ctx, plakysdk.ListBoardsOptions{SpaceId: spaceID, Page: page, PageSize: pageSize})
+				})
 				if err != nil {
 					return err
 				}
@@ -260,7 +285,9 @@ func newFindCommand(c *plakysdk.Client) *cobra.Command {
 				if spaceID == "" || boardID == "" {
 					return fmt.Errorf("--space-id and --board-id required when --type=item")
 				}
-				out, err := c.ListItems(ctx, plakysdk.ListItemsOptions{SpaceId: spaceID, BoardId: boardID, PageSize: 200})
+				out, err := drainPaged(200, func(page, pageSize int) (any, error) {
+					return c.ListItems(ctx, plakysdk.ListItemsOptions{SpaceId: spaceID, BoardId: boardID, Page: page, PageSize: pageSize})
+				})
 				if err != nil {
 					return err
 				}
@@ -277,11 +304,15 @@ func newFindCommand(c *plakysdk.Client) *cobra.Command {
 	return cmd
 }
 
-func newFieldsListCommand(c *plakysdk.Client) *cobra.Command {
+func newFieldsListCommand(getClient clientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "fields-list",
 		Short: "List field definitions for a board.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			c, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
 			spaceID, _ := cmd.Flags().GetString("space-id")
 			boardID, _ := cmd.Flags().GetString("board-id")
 			showConfig, _ := cmd.Flags().GetBool("show-config")
@@ -326,11 +357,15 @@ func newFieldsListCommand(c *plakysdk.Client) *cobra.Command {
 	return cmd
 }
 
-func newItemsExportCommand(c *plakysdk.Client) *cobra.Command {
+func newItemsExportCommand(getClient clientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "items-export",
 		Short: "Export all items on a board as JSONL or CSV.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			c, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
 			spaceID, _ := cmd.Flags().GetString("space-id")
 			boardID, _ := cmd.Flags().GetString("board-id")
 			format, _ := cmd.Flags().GetString("format")
@@ -368,27 +403,9 @@ func newItemsExportCommand(c *plakysdk.Client) *cobra.Command {
 
 func drainItems(cmd *cobra.Command, c *plakysdk.Client, spaceID, boardID string) ([]map[string]any, error) {
 	ctx := cmd.Context()
-	all := []map[string]any{}
-	page := 1
-	for {
-		raw, err := c.ListItems(ctx, plakysdk.ListItemsOptions{SpaceId: spaceID, BoardId: boardID, Page: page, PageSize: 200})
-		if err != nil {
-			return nil, err
-		}
-		r := plakydx.AsRecord(raw)
-		batch, _ := r["data"].([]any)
-		for _, it := range batch {
-			all = append(all, plakydx.AsRecord(it))
-		}
-		if has, _ := r["hasMore"].(bool); !has {
-			break
-		}
-		page++
-		if page > 1000 {
-			return nil, fmt.Errorf("items-export aborted after 1000 pages — refine the board")
-		}
-	}
-	return all, nil
+	return drainPaged(200, func(page, pageSize int) (any, error) {
+		return c.ListItems(ctx, plakysdk.ListItemsOptions{SpaceId: spaceID, BoardId: boardID, Page: page, PageSize: pageSize})
+	})
 }
 
 func writeCSV(cmd *cobra.Command, items []map[string]any) error {
@@ -449,23 +466,52 @@ func stringify(v any) string {
 	}
 }
 
+func drainPaged(pageSize int, fetch func(page int, pageSize int) (any, error)) ([]map[string]any, error) {
+	all := []map[string]any{}
+	for page := 1; ; page++ {
+		raw, err := fetch(page, pageSize)
+		if err != nil {
+			return nil, err
+		}
+		r := plakydx.AsRecord(raw)
+		batch, _ := r["data"].([]any)
+		for _, item := range batch {
+			all = append(all, plakydx.AsRecord(item))
+		}
+		if hasMore, _ := r["hasMore"].(bool); !hasMore {
+			return all, nil
+		}
+		if page >= 1000 {
+			return nil, fmt.Errorf("pagination aborted after 1000 pages")
+		}
+	}
+}
+
 func filterByTitle(raw any, needle, key string) []map[string]any {
-	r := plakydx.AsRecord(raw)
-	data, _ := r["data"].([]any)
+	var data []map[string]any
+	switch typed := raw.(type) {
+	case []map[string]any:
+		data = typed
+	default:
+		r := plakydx.AsRecord(raw)
+		batch, _ := r["data"].([]any)
+		for _, item := range batch {
+			data = append(data, plakydx.AsRecord(item))
+		}
+	}
 	hits := []map[string]any{}
 	for _, item := range data {
-		m := plakydx.AsRecord(item)
+		m := item
 		title, _ := m[key].(string)
 		if title == "" {
 			title, _ = m["name"].(string)
 		}
 		if strings.Contains(strings.ToLower(title), needle) {
 			hits = append(hits, map[string]any{
-				"id":    m["id"],
-				key:     m[key],
+				"id": m["id"],
+				key:  m[key],
 			})
 		}
 	}
 	return hits
 }
-

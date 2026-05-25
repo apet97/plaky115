@@ -90,3 +90,113 @@ test("idempotency key passed through as header on mutations", async () => {
   );
   assert.equal(captured.headers["Idempotency-Key"], "test-key-123");
 });
+
+test("maxRetries retries a retryable GET once before succeeding", async () => {
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    if (calls === 1) {
+      return new Response(JSON.stringify({ message: "temporary" }), {
+        status: 500,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  const result = await request(
+    { method: "GET", path: "/v1/public/spaces", operationId: "listSpaces" },
+    { apiKey: "plk_test", serverURL: "https://example.test", maxRetries: 1 },
+  );
+
+  assert.deepEqual(result, { ok: true });
+  assert.equal(calls, 2);
+});
+
+test("maxRetries stops after the configured retry budget", async () => {
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    return new Response(JSON.stringify({ message: "temporary" }), {
+      status: 500,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  await assert.rejects(
+    request(
+      { method: "GET", path: "/v1/public/spaces", operationId: "listSpaces" },
+      { apiKey: "plk_test", serverURL: "https://example.test", maxRetries: 2 },
+    ),
+    (err) => err.status === 500,
+  );
+  assert.equal(calls, 3);
+});
+
+test("maxRetries does not retry validation, auth, or not-found responses", async () => {
+  for (const status of [400, 401, 404]) {
+    let calls = 0;
+    globalThis.fetch = async () => {
+      calls++;
+      return new Response(JSON.stringify({ message: "permanent" }), {
+        status,
+        headers: { "content-type": "application/json" },
+      });
+    };
+
+    await assert.rejects(
+      request(
+        { method: "GET", path: "/v1/public/spaces", operationId: "listSpaces" },
+        { apiKey: "plk_test", serverURL: "https://example.test", maxRetries: 2 },
+      ),
+    );
+    assert.equal(calls, 1, `status ${status} should not be retried`);
+  }
+});
+
+test("maxRetries does not retry mutations without an idempotency key", async () => {
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    return new Response(JSON.stringify({ message: "temporary" }), {
+      status: 500,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  await assert.rejects(
+    request(
+      { method: "POST", path: "/v1/public/spaces/1/boards/2/items", body: { title: "x" }, operationId: "createItem" },
+      { apiKey: "plk_test", serverURL: "https://example.test", maxRetries: 2 },
+    ),
+  );
+  assert.equal(calls, 1);
+});
+
+test("maxRetries retries mutations when an idempotency key is present", async () => {
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    if (calls === 1) {
+      return new Response(JSON.stringify({ message: "temporary" }), {
+        status: 500,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ id: 123 }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  const result = await request(
+    { method: "POST", path: "/v1/public/spaces/1/boards/2/items", body: { title: "x" }, operationId: "createItem" },
+    { apiKey: "plk_test", serverURL: "https://example.test", maxRetries: 1, idempotencyKey: "idem-1" },
+  );
+
+  assert.deepEqual(result, { id: 123 });
+  assert.equal(calls, 2);
+});

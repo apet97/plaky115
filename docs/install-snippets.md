@@ -49,5 +49,6 @@ Set `PLAKY115_API_KEY` in the shell or Claude Code environment configuration.
 cd cli
 go build -o plaky115 ./cmd/plaky115
 export PLAKY115_API_KEY=...
-./plaky115 doctor --live -o json
+./plaky115 doctor
+./plaky115 raw list-spaces --page-size 5
 ```

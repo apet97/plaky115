@@ -10,6 +10,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type clientFactory func(*cobra.Command) (*plakysdk.Client, error)
+
 func NewRootCommand() (*cobra.Command, error) {
 	root := &cobra.Command{
 		Use:           "plaky115",
@@ -22,20 +24,19 @@ func NewRootCommand() (*cobra.Command, error) {
 	root.PersistentFlags().String("server-url", "", "Override Plaky API base URL (default: https://api.plaky.com)")
 	root.PersistentFlags().String("api-key", "", "Plaky API key (or set PLAKY115_API_KEY / PLAKY115_API_KEY_AUTH)")
 
-	client, err := buildClient(root)
-	if err != nil {
-		return nil, err
+	getClient := func(cmd *cobra.Command) (*plakysdk.Client, error) {
+		return buildClient(cmd.Root())
 	}
 
-	root.AddCommand(raw.NewRawRoot(client))
-	root.AddCommand(newDoctorCommand(client))
-	root.AddCommand(newWorkspaceMapCommand(client))
-	root.AddCommand(newFindCommand(client))
-	root.AddCommand(newFieldsListCommand(client))
-	root.AddCommand(newItemsCreateSimpleCommand(client))
-	root.AddCommand(newItemsBulkUpdateCommand(client))
-	root.AddCommand(newItemsExportCommand(client))
-	root.AddCommand(newCommentsAddCommand(client))
+	root.AddCommand(raw.NewRawRoot(getClient))
+	root.AddCommand(newDoctorCommand(getClient))
+	root.AddCommand(newWorkspaceMapCommand(getClient))
+	root.AddCommand(newFindCommand(getClient))
+	root.AddCommand(newFieldsListCommand(getClient))
+	root.AddCommand(newItemsCreateSimpleCommand(getClient))
+	root.AddCommand(newItemsBulkUpdateCommand(getClient))
+	root.AddCommand(newItemsExportCommand(getClient))
+	root.AddCommand(newCommentsAddCommand(getClient))
 	root.AddCommand(newCompletionCommand(root))
 
 	return root, nil
@@ -59,16 +60,20 @@ func buildClient(root *cobra.Command) (*plakysdk.Client, error) {
 	return plakysdk.New(plakysdk.ClientOptions{APIKey: apiKey, ServerURL: serverURL})
 }
 
-func newDoctorCommand(c *plakysdk.Client) *cobra.Command {
+func newDoctorCommand(getClient clientFactory) *cobra.Command {
 	return &cobra.Command{
 		Use:   "doctor",
 		Short: "Print CLI configuration and basic status",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			c, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
 			configured := "no"
 			if c.APIKey() != "" && c.APIKey() != "missing" {
 				configured = "yes"
 			}
-			_, err := fmt.Fprintf(cmd.OutOrStdout(), "plaky115 doctor\n  serverURL        : %s\n  apiKeyConfigured : %s\n", c.ServerURL(), configured)
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "plaky115 doctor\n  serverURL        : %s\n  apiKeyConfigured : %s\n", c.ServerURL(), configured)
 			return err
 		},
 	}

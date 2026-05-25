@@ -15,14 +15,10 @@ official Plaky or CAKE.com package.
 
 ## Verification
 
-- `npm run overlay:validate`
-- `npm run overlay:apply`
-- `npm run metadata:test`
-- `npm --prefix sdk test`
-- `go test ./...` from `cli/`
-- `go build ./...` from `cli/`
-- `npm --prefix mcp-server test`
+- `npm run verify`
+- `npm run pack:smoke`
 - `npm run secret:scan`
+- `(cd cli && go test ./... && go build -o /tmp/plaky115 ./cmd/plaky115)`
 - Optional live: `npm run live:sweep`
 
 ## Compatibility Notes

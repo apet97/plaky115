@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync, readdirSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,5 +29,15 @@ writeFileSync(join(outDir, "raw.go"), buildRawRoot(ops));
 const sdkDir = join(root, "cli/internal/plakysdk");
 mkdirSync(sdkDir, { recursive: true });
 writeFileSync(join(sdkDir, "operations.go"), buildGoOperations(ops));
+
+const goFiles = [
+  ...readdirSync(outDir).filter((f) => f.endsWith(".go")).map((f) => join(outDir, f)),
+  join(sdkDir, "operations.go"),
+];
+const gofmt = spawnSync("gofmt", ["-w", ...goFiles], { encoding: "utf8" });
+if (gofmt.status !== 0) {
+  process.stderr.write(gofmt.stderr);
+  process.exit(gofmt.status ?? 1);
+}
 
 console.log(`generate-cli: wrote ${ops.length} raw cobra commands + operations.go`);

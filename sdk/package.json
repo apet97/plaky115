@@ -6,18 +6,18 @@
   "main": "./esm/index.js",
   "exports": {
     ".": {
-      "source": "./src/index.ts",
       "types": "./esm/index.d.ts",
+      "import": "./esm/index.js",
       "default": "./esm/index.js"
     },
     "./operations/*.js": {
-      "source": "./src/generated/operations/*.ts",
       "types": "./esm/generated/operations/*.d.ts",
+      "import": "./esm/generated/operations/*.js",
       "default": "./esm/generated/operations/*.js"
     },
     "./runtime/*.js": {
-      "source": "./src/runtime/*.ts",
       "types": "./esm/runtime/*.d.ts",
+      "import": "./esm/runtime/*.js",
       "default": "./esm/runtime/*.js"
     },
     "./package.json": "./package.json"
