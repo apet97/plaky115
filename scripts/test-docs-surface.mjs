@@ -25,6 +25,8 @@ const banned = [
   ["old funcs import", /from\s+["']plaky115\/funcs\//],
   ["old SDK operation subpath", /from\s+["']plaky115\/operations\//],
   ["old SDK generated operations docs", /\bsdk\/src\/generated\/operations\b/],
+  ["old SDK operation-module regeneration docs", /\btypes,\s+operation modules\b/i],
+  ["old SDK operation diff docs", /\btype and operation diff\b/i],
   ["old plaky wrapper import", /from\s+["']plaky115\/plaky["']/],
   ["old wrapper factory", /\bcreatePlakyClient\b/],
   ["old CLI api-key flag", /--api-key-auth\b/],

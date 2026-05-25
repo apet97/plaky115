@@ -67,6 +67,16 @@ function record(area, name, detail = {}) {
   summary.push({ area, name, detail });
 }
 
+function trackCreatedComment(itemId, commentId) {
+  if (itemId && commentId) createdCommentRefs.push({ itemId: String(itemId), commentId: String(commentId) });
+}
+
+function forgetCreatedCommentsForItem(itemId) {
+  for (let i = createdCommentRefs.length - 1; i >= 0; i--) {
+    if (String(createdCommentRefs[i].itemId) === String(itemId)) createdCommentRefs.splice(i, 1);
+  }
+}
+
 async function api(method, path, body) {
   const url = `${baseURL.replace(/\/$/, "")}${path}`;
   const headers = { "X-API-Key": apiKey, Accept: "application/json" };
@@ -111,7 +121,7 @@ async function directAPISweep() {
     record("api", "getItem");
     const comment = await api("POST", `/v1/public/spaces/${spaceId}/boards/${boardId}/items/${newId}/comments`, { text: "smoke comment" });
     const cId = idOf(comment);
-    if (cId) createdCommentRefs.push({ itemId: newId, commentId: cId });
+    trackCreatedComment(newId, cId);
     record("api", "createItemComment", { commentId: cId });
   }
 
@@ -164,7 +174,7 @@ async function sdkSweep() {
       body: { text: "sdk-smoke" },
     });
     const cId = idOf(comment);
-    if (cId) createdCommentRefs.push({ itemId: newId, commentId: cId });
+    trackCreatedComment(newId, cId);
     record("sdk", "client.comments.create", { commentId: cId });
   }
 
@@ -203,7 +213,124 @@ async function mcpSweep() {
   for (const mode of ["curated", "generated", "all"]) {
     const env = { ...process.env, PLAKY115_API_KEY: apiKey };
     const r = spawnSync("node", [bin, "--mode", mode, "--help"], { encoding: "utf8", env });
-    record("mcp", `--mode ${mode} --help`, { status: r.status, stdoutLines: r.stdout.split("\n").length });
+    record("mcp", `boot --mode ${mode} --help`, { status: r.status, stdoutLines: r.stdout.split("\n").length });
+    if (r.status !== 0) {
+      throw new Error(`mcp boot --mode ${mode} failed: ${redact((r.stderr ?? "").slice(0, 200))}`);
+    }
+  }
+
+  if (!spaceId || !boardId) {
+    record("mcp", "tool execution skipped — needs PLAKY115_SMOKE_SPACE_ID and _BOARD_ID");
+    return;
+  }
+  if (!ensureSDKBuilt()) {
+    record("mcp", "tool execution skipped — sdk build missing (run `npm --prefix sdk run build`)");
+    return;
+  }
+
+  const { tools, ctx } = await createMcpHarness();
+
+  const docs = await invokeMcpTool(tools, ctx, "plaky_search_docs", { query: "items", limit: 3 });
+  record("mcp", "tool plaky_search_docs", { hits: Array.isArray(docs) ? docs.length : undefined });
+
+  const plan = await invokeMcpTool(tools, ctx, "plaky_plan_mutation", {
+    workflowId: "items.create",
+    input: { spaceId, boardId, body: { title: smokeTitle("mcp-plan") } },
+  });
+  record("mcp", "tool plaky_plan_mutation", { dryRun: plan?.dryRun === true });
+
+  const searched = await invokeMcpTool(tools, ctx, "plaky_execute_workflow", {
+    workflowId: "items.search",
+    input: { space: spaceId, board: boardId, query: "smoke", limit: 5 },
+  });
+  record("mcp", "tool plaky_execute_workflow items.search", { count: searched?.data?.length ?? 0 });
+
+  const spaces = await invokeMcpTool(tools, ctx, "plaky_list_spaces", { pageSize: 5 });
+  record("mcp", "tool plaky_list_spaces", { count: spaces?.data?.length ?? 0 });
+  await invokeMcpTool(tools, ctx, "plaky_get_space", { spaceId });
+  record("mcp", "tool plaky_get_space");
+  const boards = await invokeMcpTool(tools, ctx, "plaky_list_boards", { spaceId, pageSize: 5 });
+  record("mcp", "tool plaky_list_boards", { count: boards?.data?.length ?? 0 });
+  await invokeMcpTool(tools, ctx, "plaky_get_board", { spaceId, boardId });
+  record("mcp", "tool plaky_get_board");
+  const items = await invokeMcpTool(tools, ctx, "plaky_list_items", { spaceId, boardId, pageSize: 5 });
+  record("mcp", "tool plaky_list_items", { count: items?.data?.length ?? 0 });
+
+  const created = await invokeMcpTool(tools, ctx, "plaky_create_item", {
+    spaceId,
+    boardId,
+    body: { title: smokeTitle("mcp-raw") },
+  });
+  const itemId = idOf(created);
+  if (itemId) createdItemIds.add(String(itemId));
+  record("mcp", "tool plaky_create_item", { itemId });
+
+  if (itemId) {
+    await invokeMcpTool(tools, ctx, "plaky_get_item", { spaceId, boardId, itemId });
+    record("mcp", "tool plaky_get_item");
+
+    const comment = await invokeMcpTool(tools, ctx, "plaky_create_item_comment", {
+      spaceId,
+      boardId,
+      itemId,
+      body: { text: "mcp-smoke" },
+    });
+    const commentId = idOf(comment);
+    trackCreatedComment(itemId, commentId);
+    record("mcp", "tool plaky_create_item_comment", { commentId });
+
+    const comments = await invokeMcpTool(tools, ctx, "plaky_list_item_comments", { spaceId, boardId, itemId });
+    record("mcp", "tool plaky_list_item_comments", { count: comments?.data?.length ?? 0 });
+
+    await invokeMcpTool(tools, ctx, "plaky_delete_item", { spaceId, boardId, itemId });
+    createdItemIds.delete(String(itemId));
+    forgetCreatedCommentsForItem(itemId);
+    record("mcp", "tool plaky_delete_item", { itemId });
+  }
+}
+
+async function createMcpHarness() {
+  const [{ PlakyClient }, { compactByKind, serializeForMcp }, { curatedTools }, { rawTools }] = await Promise.all([
+    import(`${root}sdk/esm/index.js`),
+    import(`${root}mcp-server/esm/runtime/compaction.js`),
+    import(`${root}mcp-server/esm/tools/curated/index.js`),
+    import(`${root}mcp-server/esm/tools/raw/index.js`),
+  ]);
+  const client = new PlakyClient({ apiKey, serverURL: baseURL });
+  const ctx = {
+    client,
+    requestOptions: client.requestOptions(),
+    respond(value, ro) {
+      const compacted = ro?.compactKind
+        ? compactByKind(value, ro.compactKind, { includeRaw: ro.includeRaw === true })
+        : value;
+      return { content: [{ type: "text", text: serializeForMcp(compacted) }] };
+    },
+    progress: () => {
+      /* no-op for live sweep */
+    },
+  };
+  return { tools: new Map([...curatedTools, ...rawTools].map((tool) => [tool.name, tool])), ctx };
+}
+
+async function invokeMcpTool(tools, ctx, name, input) {
+  const tool = tools.get(name);
+  if (!tool) throw new Error(`MCP tool not found: ${name}`);
+  const result = await tool.handler(input, ctx);
+  const response = isMcpResponse(result) ? result : ctx.respond(result);
+  return parseMcpResponse(response);
+}
+
+function isMcpResponse(value) {
+  return value && typeof value === "object" && Array.isArray(value.content);
+}
+
+function parseMcpResponse(response) {
+  const text = response.content?.[0]?.text ?? "";
+  try {
+    return text ? JSON.parse(text) : undefined;
+  } catch {
+    return text;
   }
 }
 

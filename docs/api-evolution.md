@@ -8,7 +8,7 @@ What to do when the Plaky API changes. Replaces the v1 plan's "wait for Speakeas
 2. Add an action under `overlays/plaky115-dx.overlay.yaml` with `operationId`, `summary`, `x-speakeasy-mcp` annotations (scope, idempotent, destructive), and `x-speakeasy-pagination` if it returns a list.
 3. `npm run overlay:apply && npm run lint:openapi`.
 4. `npm run metadata:generate && npm run metadata:test`.
-5. `npm run generate:all` — types, operation modules, MCP raw tool, CLI raw command, docs index update automatically.
+5. `npm run generate:all` — SDK schema types, MCP raw tool, CLI raw command, and docs index update automatically.
 6. Add a method on the appropriate resource in `sdk/src/client/<resource>.ts`. For list endpoints, expose `iterate()` and `listAll()` via `paginate()`.
 7. If user-facing, add a curated CLI command in `cli/internal/cli/dx.go`. If agent-useful, add a curated MCP workflow in `mcp-server/src/tools/curated/`.
 8. Tests: SDK unit (mock fetch), MCP scope/mode coverage, CLI dry-run. Add a live-sweep entry when wiring opt-in coverage.
@@ -18,7 +18,7 @@ What to do when the Plaky API changes. Replaces the v1 plan's "wait for Speakeas
 
 1. Update upstream or overlay.
 2. `npm run generate:all`.
-3. `git diff sdk/src/generated/` — review the type and operation diff.
+3. `git diff sdk/src/generated/types.ts` — review the generated schema type diff.
 4. If the change breaks a hand-crafted client method, update it.
 5. Add a test for the new behavior.
 

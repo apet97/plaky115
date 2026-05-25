@@ -31,6 +31,15 @@ try {
   run("node", [
     "--input-type=module",
     "-e",
+    "const sdk = await import('plaky115'); if (typeof sdk.PlakyClient !== 'function') throw new Error('missing PlakyClient'); const runtime = await import('plaky115/runtime/http.js'); if (typeof runtime.request !== 'function') throw new Error('missing runtime request');",
+  ], { cwd: consumer });
+
+  assertImportFails(consumer, "plaky115/operations/list-spaces.js");
+  assertImportFails(consumer, "plaky115/generated/operations/list-spaces.js");
+
+  run("node", [
+    "--input-type=module",
+    "-e",
     "import { buildServer } from 'plaky115-mcp'; if (typeof buildServer !== 'function') throw new Error('missing buildServer');",
   ], { cwd: consumer });
 
@@ -61,4 +70,20 @@ function run(cmd, args, options = {}) {
     throw new Error(`${cmd} ${args.join(" ")} failed`);
   }
   return result.stdout ?? "";
+}
+
+function assertImportFails(cwd, specifier) {
+  const result = spawnSync("node", ["--input-type=module", "-e", `await import(${JSON.stringify(specifier)});`], {
+    cwd,
+    encoding: "utf8",
+    stdio: "pipe",
+  });
+  if (result.status === 0) {
+    throw new Error(`${specifier} must not be importable from the published package`);
+  }
+  const output = `${result.stderr ?? ""}\n${result.stdout ?? ""}`;
+  if (!/ERR_PACKAGE_PATH_NOT_EXPORTED|ERR_MODULE_NOT_FOUND|Cannot find package/.test(output)) {
+    process.stderr.write(output);
+    throw new Error(`${specifier} failed for an unexpected reason`);
+  }
 }

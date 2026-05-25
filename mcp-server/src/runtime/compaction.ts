@@ -71,13 +71,13 @@ export function compactList(value: unknown, kind: CompactKind, options: McpRespo
 }
 
 export function compactByKind(value: unknown, kind: CompactKind, options: McpRespondOptions = {}): unknown {
+  if (value !== null && typeof value === "object" && "data" in value && Array.isArray((value as Record_)["data"])) {
+    return compactList(value, kind, options);
+  }
   if (kind === "item") return compactItem(value, options);
   if (kind === "board") return compactBoard(value, options);
   if (kind === "space") return compactSpace(value, options);
   if (kind === "comment") return compactComment(value, options);
-  if (value !== null && typeof value === "object" && "data" in value && Array.isArray((value as Record_)["data"])) {
-    return compactList(value, kind, options);
-  }
   return value;
 }
 

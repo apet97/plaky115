@@ -6,7 +6,7 @@ files, screenshots, or logs.
 ## Automated Sweep
 
 The full opt-in sweep covers raw API operations, SDK wrapper workflows, CLI
-commands, and MCP curated/generated tools:
+commands, MCP boot checks, and real MCP curated/generated tool execution:
 
 ```bash
 export PLAKY115_API_KEY=...
@@ -15,8 +15,8 @@ export PLAKY115_SMOKE_BOARD_ID=...
 npm run live:sweep
 ```
 
-The script creates clearly named `plaky115-live-smoke-*` sacrificial items and
-comments, then cleans them up.
+The script creates clearly named `smoke:` sacrificial items and comments, then
+cleans them up and reports the leftover count.
 
 ## Manual Read Checks
 
