@@ -1,0 +1,48 @@
+{
+  "name": "plaky115",
+  "version": "0.1.0",
+  "author": "Plaky115",
+  "type": "module",
+  "main": "./esm/index.js",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./esm/index.d.ts",
+      "default": "./esm/index.js"
+    },
+    "./operations/*.js": {
+      "source": "./src/generated/operations/*.ts",
+      "types": "./esm/generated/operations/*.d.ts",
+      "default": "./esm/generated/operations/*.js"
+    },
+    "./runtime/*.js": {
+      "source": "./src/runtime/*.ts",
+      "types": "./esm/runtime/*.d.ts",
+      "default": "./esm/runtime/*.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "lint": "oxlint --max-warnings=0 --deny-warnings src/**/*.ts src/**/*.tsx",
+    "build": "node ../scripts/clean-package-builds.mjs sdk && tsgo",
+    "prepublishOnly": "npm run build",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19",
+    "@typescript/native-preview": "7.0.0-dev.20260302.1",
+    "openapi-typescript": "^7.13.0",
+    "oxlint": "^1.60.0",
+    "typescript": "~5.8.3"
+  },
+  "dependencies": {
+    "zod": "^3.25.65 || ^4.0.0"
+  },
+  "description": "Hand-crafted TypeScript SDK for the Plaky public API. Unofficial.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/apet97/plaky115"
+  }
+}

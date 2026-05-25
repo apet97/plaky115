@@ -1,0 +1,662 @@
+{
+  "generatedAt": "deterministic",
+  "source": "openapi/plaky115-dx.openapi.yaml",
+  "operations": [
+    {
+      "operationId": "listSpaces",
+      "method": "GET",
+      "path": "/v1/public/spaces",
+      "summary": "List workspace spaces",
+      "mcpName": "plaky_list_spaces",
+      "mcpTitle": "List spaces",
+      "scopes": [
+        "read"
+      ],
+      "readOnly": true,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": true,
+      "mutation": false,
+      "pagination": {
+        "type": "offsetLimit",
+        "results": "$.data"
+      }
+    },
+    {
+      "operationId": "listTeams",
+      "method": "GET",
+      "path": "/v1/public/teams",
+      "summary": "List workspace teams",
+      "mcpName": "plaky_list_teams",
+      "mcpTitle": "List teams",
+      "scopes": [
+        "read"
+      ],
+      "readOnly": true,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": true,
+      "mutation": false,
+      "pagination": {
+        "type": "offsetLimit",
+        "results": "$.data"
+      }
+    },
+    {
+      "operationId": "listUsers",
+      "method": "GET",
+      "path": "/v1/public/users",
+      "summary": "List workspace users",
+      "mcpName": "plaky_list_users",
+      "mcpTitle": "List users",
+      "scopes": [
+        "read"
+      ],
+      "readOnly": true,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": true,
+      "mutation": false,
+      "pagination": {
+        "type": "offsetLimit",
+        "results": "$.data"
+      }
+    },
+    {
+      "operationId": "listBoards",
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards",
+      "summary": "List space boards",
+      "mcpName": "plaky_list_boards",
+      "mcpTitle": "List boards",
+      "scopes": [
+        "read"
+      ],
+      "readOnly": true,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": true,
+      "mutation": false,
+      "pagination": {
+        "type": "offsetLimit",
+        "results": "$.data"
+      }
+    },
+    {
+      "operationId": "listItems",
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items",
+      "summary": "List board items",
+      "mcpName": "plaky_list_items",
+      "mcpTitle": "List board items",
+      "scopes": [
+        "read"
+      ],
+      "readOnly": true,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": true,
+      "mutation": false,
+      "pagination": {
+        "type": "offsetLimit",
+        "results": "$.data"
+      }
+    },
+    {
+      "operationId": "createItem",
+      "method": "POST",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items",
+      "summary": "Create an item",
+      "mcpName": "plaky_create_item",
+      "mcpTitle": "Create item",
+      "scopes": [
+        "write"
+      ],
+      "readOnly": false,
+      "destructive": false,
+      "idempotent": false,
+      "openWorld": true,
+      "list": false,
+      "mutation": true
+    },
+    {
+      "operationId": "getSpace",
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}",
+      "summary": "Retrieve a space",
+      "mcpName": "plaky_get_space",
+      "mcpTitle": "Get space",
+      "scopes": [
+        "read"
+      ],
+      "readOnly": true,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": null,
+      "mutation": false
+    },
+    {
+      "operationId": "getTeam",
+      "method": "GET",
+      "path": "/v1/public/teams/{teamId}",
+      "summary": "Retrieve a team",
+      "mcpName": "plaky_get_team",
+      "mcpTitle": "Get team",
+      "scopes": [
+        "read"
+      ],
+      "readOnly": true,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": null,
+      "mutation": false
+    },
+    {
+      "operationId": "getCurrentUser",
+      "method": "GET",
+      "path": "/v1/public/users/me",
+      "summary": "Retrieve current user",
+      "mcpName": "plaky_get_current_user",
+      "mcpTitle": "Get current user",
+      "scopes": [
+        "read"
+      ],
+      "readOnly": true,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": null,
+      "mutation": false
+    },
+    {
+      "operationId": "getBoard",
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}",
+      "summary": "Retrieve a board",
+      "mcpName": "plaky_get_board",
+      "mcpTitle": "Get board",
+      "scopes": [
+        "read"
+      ],
+      "readOnly": true,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": null,
+      "mutation": false
+    },
+    {
+      "operationId": "listSubitems",
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/sub-items",
+      "summary": "List subitems",
+      "mcpName": "plaky_list_subitems",
+      "mcpTitle": "List subitems",
+      "scopes": [
+        "read"
+      ],
+      "readOnly": true,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": true,
+      "mutation": false,
+      "pagination": {
+        "type": "offsetLimit",
+        "results": "$.data"
+      }
+    },
+    {
+      "operationId": "getItem",
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}",
+      "summary": "Retrieve an item",
+      "mcpName": "plaky_get_item",
+      "mcpTitle": "Get item",
+      "scopes": [
+        "read"
+      ],
+      "readOnly": true,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": null,
+      "mutation": false
+    },
+    {
+      "operationId": "deleteItem",
+      "method": "DELETE",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}",
+      "summary": "Delete an item",
+      "mcpName": "plaky_delete_item",
+      "mcpTitle": "Delete item",
+      "scopes": [
+        "write",
+        "destructive"
+      ],
+      "readOnly": false,
+      "destructive": true,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": true
+    },
+    {
+      "operationId": "updateItemField",
+      "method": "PATCH",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields/{itemFieldKey}",
+      "summary": "Update one item field",
+      "mcpName": "plaky_update_item_field",
+      "mcpTitle": "Update item field",
+      "scopes": [
+        "write"
+      ],
+      "readOnly": false,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": true
+    },
+    {
+      "operationId": "updateItemFields",
+      "method": "PATCH",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields",
+      "summary": "Update item fields",
+      "mcpName": "plaky_update_item_fields",
+      "mcpTitle": "Update item fields",
+      "scopes": [
+        "write"
+      ],
+      "readOnly": false,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": true
+    },
+    {
+      "operationId": "listItemComments",
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments",
+      "summary": "List item comments",
+      "mcpName": "plaky_list_item_comments",
+      "mcpTitle": "List item comments",
+      "scopes": [
+        "read"
+      ],
+      "readOnly": true,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": null,
+      "mutation": false
+    },
+    {
+      "operationId": "createItemComment",
+      "method": "POST",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments",
+      "summary": "Create item comment",
+      "mcpName": "plaky_create_item_comment",
+      "mcpTitle": "Create item comment",
+      "scopes": [
+        "write"
+      ],
+      "readOnly": false,
+      "destructive": false,
+      "idempotent": false,
+      "openWorld": true,
+      "list": false,
+      "mutation": true
+    },
+    {
+      "operationId": "updateItemComment",
+      "method": "PUT",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}",
+      "summary": "Update item comment",
+      "mcpName": "plaky_update_item_comment",
+      "mcpTitle": "Update item comment",
+      "scopes": [
+        "write"
+      ],
+      "readOnly": false,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": true
+    },
+    {
+      "operationId": "deleteItemComment",
+      "method": "DELETE",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}",
+      "summary": "Delete item comment",
+      "mcpName": "plaky_delete_item_comment",
+      "mcpTitle": "Delete item comment",
+      "scopes": [
+        "write",
+        "destructive"
+      ],
+      "readOnly": false,
+      "destructive": true,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": true
+    },
+    {
+      "operationId": "replaceCommentReactions",
+      "method": "PUT",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}/reactions",
+      "summary": "Replace comment reactions",
+      "mcpName": "plaky_replace_comment_reactions",
+      "mcpTitle": "Replace comment reactions",
+      "scopes": [
+        "write"
+      ],
+      "readOnly": false,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": true
+    }
+  ],
+  "paths": [
+    {
+      "method": "GET",
+      "path": "/v1/public/spaces",
+      "operationId": "listSpaces"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/teams",
+      "operationId": "listTeams"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/users",
+      "operationId": "listUsers"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards",
+      "operationId": "listBoards"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items",
+      "operationId": "listItems"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items",
+      "operationId": "createItem"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}",
+      "operationId": "getSpace"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/teams/{teamId}",
+      "operationId": "getTeam"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/users/me",
+      "operationId": "getCurrentUser"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}",
+      "operationId": "getBoard"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/sub-items",
+      "operationId": "listSubitems"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}",
+      "operationId": "getItem"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}",
+      "operationId": "deleteItem"
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields/{itemFieldKey}",
+      "operationId": "updateItemField"
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields",
+      "operationId": "updateItemFields"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments",
+      "operationId": "listItemComments"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments",
+      "operationId": "createItemComment"
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}",
+      "operationId": "updateItemComment"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}",
+      "operationId": "deleteItemComment"
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}/reactions",
+      "operationId": "replaceCommentReactions"
+    }
+  ],
+  "scopes": {
+    "listSpaces": [
+      "read"
+    ],
+    "listTeams": [
+      "read"
+    ],
+    "listUsers": [
+      "read"
+    ],
+    "listBoards": [
+      "read"
+    ],
+    "listItems": [
+      "read"
+    ],
+    "createItem": [
+      "write"
+    ],
+    "getSpace": [
+      "read"
+    ],
+    "getTeam": [
+      "read"
+    ],
+    "getCurrentUser": [
+      "read"
+    ],
+    "getBoard": [
+      "read"
+    ],
+    "listSubitems": [
+      "read"
+    ],
+    "getItem": [
+      "read"
+    ],
+    "deleteItem": [
+      "write",
+      "destructive"
+    ],
+    "updateItemField": [
+      "write"
+    ],
+    "updateItemFields": [
+      "write"
+    ],
+    "listItemComments": [
+      "read"
+    ],
+    "createItemComment": [
+      "write"
+    ],
+    "updateItemComment": [
+      "write"
+    ],
+    "deleteItemComment": [
+      "write",
+      "destructive"
+    ],
+    "replaceCommentReactions": [
+      "write"
+    ]
+  },
+  "listEndpoints": [
+    "listSpaces",
+    "listTeams",
+    "listUsers",
+    "listBoards",
+    "listItems",
+    "listSubitems"
+  ],
+  "mutations": [
+    "createItem",
+    "deleteItem",
+    "updateItemField",
+    "updateItemFields",
+    "createItemComment",
+    "updateItemComment",
+    "deleteItemComment",
+    "replaceCommentReactions"
+  ],
+  "destructive": [
+    "deleteItem",
+    "deleteItemComment"
+  ],
+  "examples": {
+    "listSpaces": {
+      "title": "List spaces",
+      "description": "Discover spaces before resolving boards or items.",
+      "position": 1
+    },
+    "listTeams": {
+      "title": "List teams",
+      "description": "Resolve teams before assigning person/team fields.",
+      "position": 14
+    },
+    "listUsers": {
+      "title": "List users",
+      "description": "Resolve users before assigning people fields.",
+      "position": 12
+    },
+    "listBoards": {
+      "title": "List boards",
+      "description": "Discover boards in a space before reading or mutating items.",
+      "position": 3
+    },
+    "listItems": {
+      "title": "List board items",
+      "description": "Read board items with fields when preparing searches or exports.",
+      "position": 5
+    },
+    "createItem": {
+      "title": "Create an item",
+      "description": "Create one item after resolving the target space, board, and group.",
+      "position": 6
+    },
+    "getSpace": {
+      "title": "Get a space",
+      "description": "Fetch one space after choosing its ID from listSpaces.",
+      "position": 2
+    },
+    "getTeam": {
+      "title": "Get a team",
+      "description": "Fetch one team after choosing its ID from listTeams.",
+      "position": 15
+    },
+    "getCurrentUser": {
+      "title": "Get current user",
+      "description": "Check which Plaky user owns the current API key.",
+      "position": 13
+    },
+    "getBoard": {
+      "title": "Get a board",
+      "description": "Fetch board schema and groups before building item field values.",
+      "position": 4
+    },
+    "listSubitems": {
+      "title": "List subitems",
+      "description": "Read child items under a parent item.",
+      "position": 9
+    },
+    "getItem": {
+      "title": "Get an item",
+      "description": "Fetch a specific item before reading details or planning a mutation.",
+      "position": 7
+    },
+    "deleteItem": {
+      "title": "Delete an item",
+      "description": "Remove one known item after explicit user confirmation.",
+      "position": 8
+    },
+    "updateItemField": {
+      "title": "Update one item field",
+      "description": "Change one field by field key after resolving the item.",
+      "position": 10
+    },
+    "updateItemFields": {
+      "title": "Update item fields",
+      "description": "Apply a compact field-value object keyed by field title or field key.",
+      "position": 11
+    },
+    "listItemComments": {
+      "title": "List item comments",
+      "description": "Read comment history for one item.",
+      "position": 16
+    },
+    "createItemComment": {
+      "title": "Create item comment",
+      "description": "Add a comment to a known item or reply to an existing comment.",
+      "position": 17
+    },
+    "updateItemComment": {
+      "title": "Update item comment",
+      "description": "Replace a known comment's text.",
+      "position": 18
+    },
+    "deleteItemComment": {
+      "title": "Delete item comment",
+      "description": "Remove one known comment after explicit user confirmation.",
+      "position": 19
+    },
+    "replaceCommentReactions": {
+      "title": "Replace comment reactions",
+      "description": "Set or clear the current user's reactions on one comment.",
+      "position": 20
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "plaky115-toolkit-workspace",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "overlay:validate": "speakeasy overlay validate -o overlays/plaky115-dx.overlay.yaml --logLevel warn",
+    "overlay:apply": "speakeasy overlay apply --strict -s api-1.yaml -o overlays/plaky115-dx.overlay.yaml --out openapi/plaky115-dx.openapi.yaml --logLevel warn",
+    "metadata:generate": "ruby scripts/generate-operation-metadata.rb",
+    "metadata:test": "ruby scripts/test-operation-metadata.rb",
+    "lint:openapi": "speakeasy lint openapi -s api-1.yaml --logLevel warn && speakeasy lint openapi -s openapi/plaky115-dx.openapi.yaml --logLevel warn",
+    "secret:scan": "bash -lc '! rg -n \"plk_[A-Za-z0-9]{16,}\" . -g \"!**/node_modules/**\" -g \"!**/.git/**\" -g \"!**/.speakeasy/logs/**\"'",
+    "goreleaser:check": "cd cli && goreleaser check --config .goreleaser.yaml",
+    "postgen": "node scripts/postgen-dx.mjs",
+    "regenerate": "node scripts/regenerate.mjs",
+    "verify": "node scripts/regenerate.mjs --skip-generate",
+    "live:sweep": "node scripts/live-workspace-sweep.mjs",
+    "status:surfaces": "node scripts/status-surfaces.mjs",
+    "status:surfaces:json": "node scripts/status-surfaces.mjs --json",
+    "status:surfaces:strict": "node scripts/status-surfaces.mjs --strict",
+    "test:surfaces": "node --test scripts/test-surface-audit.mjs",
+    "artifacts:audit": "node scripts/audit-package-artifacts.mjs",
+    "pack:smoke": "node scripts/pack-smoke.mjs",
+    "generate:types": "node scripts/generate-types.mjs",
+    "generate:operations": "node scripts/generate-operations.mjs",
+    "generate:mcp": "node scripts/generate-mcp.mjs",
+    "generate:cli": "node scripts/generate-cli.mjs",
+    "generate:docs-index": "node scripts/generate-docs-index.mjs",
+    "generate:all": "node scripts/generate-all.mjs",
+    "codegen:test": "node --test scripts/test-codegen-determinism.mjs"
+  }
+}

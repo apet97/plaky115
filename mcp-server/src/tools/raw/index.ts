@@ -1,0 +1,45 @@
+// AUTO-GENERATED. Source: openapi/plaky115-operation-metadata.json
+export { listSpacesTool } from "./list-spaces.js";
+export { listTeamsTool } from "./list-teams.js";
+export { listUsersTool } from "./list-users.js";
+export { listBoardsTool } from "./list-boards.js";
+export { listItemsTool } from "./list-items.js";
+export { createItemTool } from "./create-item.js";
+export { getSpaceTool } from "./get-space.js";
+export { getTeamTool } from "./get-team.js";
+export { getCurrentUserTool } from "./get-current-user.js";
+export { getBoardTool } from "./get-board.js";
+export { listSubitemsTool } from "./list-subitems.js";
+export { getItemTool } from "./get-item.js";
+export { deleteItemTool } from "./delete-item.js";
+export { updateItemFieldTool } from "./update-item-field.js";
+export { updateItemFieldsTool } from "./update-item-fields.js";
+export { listItemCommentsTool } from "./list-item-comments.js";
+export { createItemCommentTool } from "./create-item-comment.js";
+export { updateItemCommentTool } from "./update-item-comment.js";
+export { deleteItemCommentTool } from "./delete-item-comment.js";
+export { replaceCommentReactionsTool } from "./replace-comment-reactions.js";
+
+import type { McpToolDefinition } from "../../runtime/types.js";
+import { listSpacesTool } from "./list-spaces.js";
+import { listTeamsTool } from "./list-teams.js";
+import { listUsersTool } from "./list-users.js";
+import { listBoardsTool } from "./list-boards.js";
+import { listItemsTool } from "./list-items.js";
+import { createItemTool } from "./create-item.js";
+import { getSpaceTool } from "./get-space.js";
+import { getTeamTool } from "./get-team.js";
+import { getCurrentUserTool } from "./get-current-user.js";
+import { getBoardTool } from "./get-board.js";
+import { listSubitemsTool } from "./list-subitems.js";
+import { getItemTool } from "./get-item.js";
+import { deleteItemTool } from "./delete-item.js";
+import { updateItemFieldTool } from "./update-item-field.js";
+import { updateItemFieldsTool } from "./update-item-fields.js";
+import { listItemCommentsTool } from "./list-item-comments.js";
+import { createItemCommentTool } from "./create-item-comment.js";
+import { updateItemCommentTool } from "./update-item-comment.js";
+import { deleteItemCommentTool } from "./delete-item-comment.js";
+import { replaceCommentReactionsTool } from "./replace-comment-reactions.js";
+
+export const rawTools: McpToolDefinition[] = [listSpacesTool, listTeamsTool, listUsersTool, listBoardsTool, listItemsTool, createItemTool, getSpaceTool, getTeamTool, getCurrentUserTool, getBoardTool, listSubitemsTool, getItemTool, deleteItemTool, updateItemFieldTool, updateItemFieldsTool, listItemCommentsTool, createItemCommentTool, updateItemCommentTool, deleteItemCommentTool, replaceCommentReactionsTool];

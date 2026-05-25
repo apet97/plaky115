@@ -1,0 +1,774 @@
+lockVersion: 2.0.0
+id: f5cf5449-090d-474a-95d8-8ac62debc4b3
+management:
+  docChecksum: b7f9f55cc11247b7321119bb52a9cbd9
+  docVersion: v1
+  speakeasyVersion: 1.763.6
+  generationVersion: 2.884.13
+  releaseVersion: 0.1.0
+  configChecksum: bd2a62cc39308f6774c7e578e62b18d8
+features:
+  typescript:
+    additionalDependencies: 0.1.0
+    constsAndDefaults: 0.1.14
+    core: 3.26.51
+    defaultEnabledRetries: 0.1.0
+    enumUnions: 0.1.0
+    envVarSecurityUsage: 0.1.2
+    globalSecurity: 2.82.16
+    globalSecurityCallbacks: 0.1.0
+    globalSecurityFlattening: 0.1.1
+    globalServerURLs: 2.83.1
+    mcpServer: 0.9.4
+    methodArguments: 0.1.2
+    responseFormat: 0.3.0
+    retries: 2.83.0
+    sdkHooks: 0.4.0
+    unions: 2.86.4
+trackedFiles:
+  .gitattributes:
+    last_write_checksum: sha1:26d16d8297b104945139da8c25bd38feeaad3e25
+  .npmignore:
+    last_write_checksum: sha1:6572da81f2e7a978ec29c22c2210bf461c5897b2
+  .oxlintrc.json:
+    last_write_checksum: sha1:f14bd09c455fa2de0d94641369b7888d23ee62f2
+  FUNCTIONS.md:
+    last_write_checksum: sha1:2a9c809c02fc8e954f57ee6350c6c273b014b353
+  RUNTIMES.md:
+    last_write_checksum: sha1:e45b854f02c357cbcfdb8c3663000e8339e16505
+  USAGE.md:
+    last_write_checksum: sha1:b915ac171a9f50a7413308039ac716b12af4637d
+  docs/lib/utils/retryconfig.md:
+    last_write_checksum: sha1:bc4454e196fcd219f5a78da690375a884f5ed07b
+  docs/models/alignment.md:
+    last_write_checksum: sha1:16248a65b4cc494531b11e6dd756878944ef85d2
+  docs/models/board-default-values.md:
+    last_write_checksum: sha1:78b6d65e40a8518ad9ad5f5616263d9d9f9597f3
+  docs/models/board-response-kind.md:
+    last_write_checksum: sha1:f5b823090ab14a21eac83d796d0c878c401d3406
+  docs/models/board-response-space.md:
+    last_write_checksum: sha1:32f429a511a16138da7cb11463e75888f0e6845e
+  docs/models/board-response.md:
+    last_write_checksum: sha1:d6f46dfef1f190350ef3b03295546ac10228e8de
+  docs/models/board.md:
+    last_write_checksum: sha1:777322c5b654297180fd8ff0bfb6cf964797e250
+  docs/models/comment-request.md:
+    last_write_checksum: sha1:059e81dbb3b8d35caa73bc7cbff793ffd1508ef3
+  docs/models/comment-response.md:
+    last_write_checksum: sha1:8e77eb1395e27c18f3f034b4dcb8a07f0a1dd4a0
+  docs/models/configuration.md:
+    last_write_checksum: sha1:7c7aeb5424e69dbc94876589d1aee91023171fbe
+  docs/models/created-by.md:
+    last_write_checksum: sha1:42897c7ce61ff9526d482cac282fe3160082a17c
+  docs/models/date-time-configuration.md:
+    last_write_checksum: sha1:9965bc439b74394814e45124d5bb0f9ab93466c0
+  docs/models/edit-permissions-mode.md:
+    last_write_checksum: sha1:0ff81013f78a9451dc7bdfcf1bba5b35500d2123
+  docs/models/field-value-change-request.md:
+    last_write_checksum: sha1:38380a5ced445e764dd4120921cd2883fe924c8f
+  docs/models/folder-response.md:
+    last_write_checksum: sha1:78b0025df930352716b8cd52afc335523cbe34dc
+  docs/models/folder.md:
+    last_write_checksum: sha1:31f62adf99441afcf573747b162ad81036f44468
+  docs/models/group.md:
+    last_write_checksum: sha1:09b50d9271d15f22c55e8ebfb569337f4a39b5f9
+  docs/models/item-attribute-definition-type.md:
+    last_write_checksum: sha1:d233cd23a6b8cbd485149bc9794edbad0122708a
+  docs/models/item-attribute-definition.md:
+    last_write_checksum: sha1:78ff01f07b4f843d6ea7df6ee2dcf4b043f8be47
+  docs/models/item-create-request.md:
+    last_write_checksum: sha1:8e2059f51e28827fdd567c3e2563770254805995
+  docs/models/item-field-response-type.md:
+    last_write_checksum: sha1:2c75584905a1086ca7fad9570b085c94ab0dd4e9
+  docs/models/item-field-response.md:
+    last_write_checksum: sha1:94fdafe22ad8a70b9672789fb87e112d2c132a7d
+  docs/models/item-group-response.md:
+    last_write_checksum: sha1:40ef833ddb5a94c942f4b79c836dc6acf3191166
+  docs/models/item-response-space.md:
+    last_write_checksum: sha1:1e92aba72214689d334b6849312c64a8ea8f1d6a
+  docs/models/item-response.md:
+    last_write_checksum: sha1:23591f0ef5f0045ce0ccf2c4aa23a3b918063350
+  docs/models/limit.md:
+    last_write_checksum: sha1:f3fecf2189f4b701701667ac7c7b129bf2f9e86a
+  docs/models/number-configuration.md:
+    last_write_checksum: sha1:e8eb8def05343e325ddbf2ef4e6042e2ae8666c7
+  docs/models/operations/change-item-attribute-value-request.md:
+    last_write_checksum: sha1:ab362ba64c93668d05cc9b9fac4f1440346de5ec
+  docs/models/operations/change-item-attribute-values-request.md:
+    last_write_checksum: sha1:31169292449dba16f2e928e4c580345737443bc6
+  docs/models/operations/create-item-comment-request.md:
+    last_write_checksum: sha1:8bdcf86006b43f3c792188a4d4127983b334f465
+  docs/models/operations/create-item-request.md:
+    last_write_checksum: sha1:74dd5ea3e7b1ca71be564733dd71f8bedf5f1fdd
+  docs/models/operations/delete-item-comment-request.md:
+    last_write_checksum: sha1:ef5e830acfe9dda986c9316b35434e731c9f6892
+  docs/models/operations/delete-item-request.md:
+    last_write_checksum: sha1:159ee169fd19bbbac62a014f3bf6eb13a0ea930a
+  docs/models/operations/get-board-by-id-request.md:
+    last_write_checksum: sha1:b6446e5963d3df76be8fed9bff8b2f12616fdda6
+  docs/models/operations/get-boards-for-space-request.md:
+    last_write_checksum: sha1:b5bdac683f2175b3531bf53d6bbddf47c2e1fba7
+  docs/models/operations/get-comments-for-item-request.md:
+    last_write_checksum: sha1:a357868bb369128f798e8a3223126fe1dc7db999
+  docs/models/operations/get-item-by-id-expand.md:
+    last_write_checksum: sha1:ba60f0346696574b8d7e912021d2f563ce8fc3f6
+  docs/models/operations/get-item-by-id-request.md:
+    last_write_checksum: sha1:5211fb197d992c929c5465e71fb92b790b1e5856
+  docs/models/operations/get-items-for-board-view-expand.md:
+    last_write_checksum: sha1:14edc945a7233bd3a7a87e77541a4a02aeb617e0
+  docs/models/operations/get-items-for-board-view-request.md:
+    last_write_checksum: sha1:15488f72f5814f9f0486b36451fc7ecacbc5744b
+  docs/models/operations/get-space-by-id-expand.md:
+    last_write_checksum: sha1:f7fc862d44c09fdbf0b0109e2e9d19ecd3961af7
+  docs/models/operations/get-space-by-id-request.md:
+    last_write_checksum: sha1:a0f50cf5712c55062f00c734e906de9bd1338092
+  docs/models/operations/get-spaces-expand.md:
+    last_write_checksum: sha1:4683cba47aef7c3278773d3dfdef491667fff6c7
+  docs/models/operations/get-spaces-request.md:
+    last_write_checksum: sha1:0fc8fe1677be7758ff5563d22041a393b841d377
+  docs/models/operations/get-subitems-for-item-expand.md:
+    last_write_checksum: sha1:aeb04e5ee2ff2c1b2e600c79f79d4b428ed3e249
+  docs/models/operations/get-subitems-for-item-request.md:
+    last_write_checksum: sha1:0401a762df67cb65cceb05a71324f68b8fbcb7ca
+  docs/models/operations/get-team-by-id-request.md:
+    last_write_checksum: sha1:482c516c3f100c45414a7d170d3c89775da3701b
+  docs/models/operations/get-workspace-teams-request.md:
+    last_write_checksum: sha1:da43dd9f7bcd3650e9b4ebd99301a1b295f0623a
+  docs/models/operations/get-workspace-users-request.md:
+    last_write_checksum: sha1:ba96893af63abb860d99ca314e269168a5b6cd31
+  docs/models/operations/status.md:
+    last_write_checksum: sha1:3be8089f7bb7ff853b0e72b1cc429bb19c949b94
+  docs/models/operations/subitems-behaviour.md:
+    last_write_checksum: sha1:c74e3d17ccf2da871099a56e846d2afef9225570
+  docs/models/operations/type.md:
+    last_write_checksum: sha1:7f9b0180e1c406fe227c666564b7cf98fc66ed37
+  docs/models/operations/update-item-comment-request.md:
+    last_write_checksum: sha1:43f839781e994b64bd464fa9df34e2b164f9165b
+  docs/models/operations/update-user-reactions-request.md:
+    last_write_checksum: sha1:590725ca14088498c7a39315e69d1cdb23edcff7
+  docs/models/parent.md:
+    last_write_checksum: sha1:fee93b268b9a8558b80a4f4e745c17fdeb7e5ab7
+  docs/models/person-configuration.md:
+    last_write_checksum: sha1:f52a928a52b761629f04e9ba419a62fcdb08bc3f
+  docs/models/public-paged-response-v1-board-response.md:
+    last_write_checksum: sha1:d99707349befef992b78bddab76c0fb3d4697136
+  docs/models/public-paged-response-v1-item-response.md:
+    last_write_checksum: sha1:8a982f8c7a64a86d9a1c1f48497f426fb57b3ca1
+  docs/models/public-paged-response-v1-space-response.md:
+    last_write_checksum: sha1:96c33f3b667b02293d34e81faba70c954f30dfc9
+  docs/models/public-paged-response-v1-team-response.md:
+    last_write_checksum: sha1:fc7be514229a9aa914a347037684a5d7972d13ee
+  docs/models/public-paged-response-v1-user-response.md:
+    last_write_checksum: sha1:78ab3618a93dfc5bc34bc65a7081db357b09a3dd
+  docs/models/reaction-details.md:
+    last_write_checksum: sha1:740d1110d15098ba2659549df7e023522c989af5
+  docs/models/reaction-put-request.md:
+    last_write_checksum: sha1:bef1513472a6ec93e01f4a34c3027a3253ad9dd9
+  docs/models/reaction-put-response.md:
+    last_write_checksum: sha1:ae4b1b9be2f7d2bb9501d50122a7d7c178b9c7b7
+  docs/models/reaction-response-no-code.md:
+    last_write_checksum: sha1:d43228c6df3b476055d9e6c34f9bfb0e8cee22d5
+  docs/models/reaction-response.md:
+    last_write_checksum: sha1:0b7b658bba8ef0cc414c603333b2a1d08dc76c91
+  docs/models/reaction.md:
+    last_write_checksum: sha1:f50733e22923e0ae9e3c8034ef41780b7a77e626
+  docs/models/security.md:
+    last_write_checksum: sha1:4db9fb4b5f3687b9d6d6e39598414da147c24fca
+  docs/models/short-user-response-type.md:
+    last_write_checksum: sha1:be931eeaf9bc7d350ed6e40e2cf52bd677242121
+  docs/models/short-user-response.md:
+    last_write_checksum: sha1:1c69d1fa438b12e61e33154cecb2ea56d2dd4119
+  docs/models/space-response-kind.md:
+    last_write_checksum: sha1:1867808b9bf68859d5cbc8c20e9b628c5dca06e9
+  docs/models/space-response.md:
+    last_write_checksum: sha1:4d2980ef1dc5d32175696aa24e71b9a7c0fe1a31
+  docs/models/status-configuration.md:
+    last_write_checksum: sha1:0c0c03e758b1d7cd665a2ccff9ad88502a221f7c
+  docs/models/status-label-definition.md:
+    last_write_checksum: sha1:844e6014816a5bba68f68980c5a4c970c1e3e06d
+  docs/models/status.md:
+    last_write_checksum: sha1:75a0e45035fc8515a93e57903fd9579474305a15
+  docs/models/subscribed-team.md:
+    last_write_checksum: sha1:cb23e9255a612e0a147730c51b50c68af575bd46
+  docs/models/subscribed-user.md:
+    last_write_checksum: sha1:87e34728e82c4ccdd82b7ef22eaaec7aa1198cd8
+  docs/models/tag-configuration.md:
+    last_write_checksum: sha1:522911a0076b3033cd33f82d1c9ef263cd1a0d07
+  docs/models/tag-label-definition.md:
+    last_write_checksum: sha1:b34a726594a2a92eba0ff70c560d3119f96ab15b
+  docs/models/team-response.md:
+    last_write_checksum: sha1:36afbb38c53d308190f3b6b8d4991db6f6da6206
+  docs/models/team-short-response.md:
+    last_write_checksum: sha1:478fd2ee8d66b54dccdc76645b3d717d1dec04ae
+  docs/models/timeline-configuration.md:
+    last_write_checksum: sha1:f2f928ec0bcdc4b06c60d349ed130e9d5e3421f5
+  docs/models/unit-alignment.md:
+    last_write_checksum: sha1:92c04b9f01f1766a45cacdbe485472dd4ddeba90
+  docs/models/unit.md:
+    last_write_checksum: sha1:994569885eb11be21437baa4e5137ca48b282ec2
+  docs/models/user-details.md:
+    last_write_checksum: sha1:860706eae7d1728a96f7000da0578aed795d830d
+  docs/models/user-response-type.md:
+    last_write_checksum: sha1:55308a1be477a46a6e90b54f8e07c027562b6c6b
+  docs/models/user-response.md:
+    last_write_checksum: sha1:9e73c75f089f3cecbd0ae8714ecfc6374b1ebf0e
+  docs/sdks/boards/README.md:
+    last_write_checksum: sha1:9b145f35001e791e03c3d93ca7f8d518e1c07c62
+  docs/sdks/itemcommentreactions/README.md:
+    last_write_checksum: sha1:40bddbe7b39f5500bd1f836ce901a14d53a38c4d
+  docs/sdks/itemcomments/README.md:
+    last_write_checksum: sha1:6f5c7824d1e68f8a1993d894a5f8f99b88daed6e
+  docs/sdks/items/README.md:
+    last_write_checksum: sha1:b43eb582a17804eab4e8263df1b384d83713a3f8
+  docs/sdks/spaces/README.md:
+    last_write_checksum: sha1:f24c4de7d5b1f8c96f6d66a1a1acf9d4543ca974
+  docs/sdks/teams/README.md:
+    last_write_checksum: sha1:459c22a45a82bc9fb8d5734e57734eaa173fb8c5
+  docs/sdks/users/README.md:
+    last_write_checksum: sha1:fead5fe5c2885d1257dbd551590c73f6966d83ea
+  docs/types/rfcdate.md:
+    last_write_checksum: sha1:57b4b3cec635cbd12767ed8672f96e257ef88845
+  examples/.env.template:
+    last_write_checksum: sha1:e8263423fc5806441583f28ee0a6f20fd6a2c547
+  examples/README.md:
+    last_write_checksum: sha1:543a0faf2b502f54fde926b1693d1f3837c3b829
+  examples/package.json:
+    last_write_checksum: sha1:a5b25da59185648ab221619d2dd8ec8694ed7a32
+  examples/spacesGetSpaces.example.ts:
+    last_write_checksum: sha1:29d1a7992c306b1067355086a21b32ebbca832e7
+  jsr.json:
+    last_write_checksum: sha1:eadbbe12d7050d6c5b4719deec1de1f2908df628
+  package.json:
+    last_write_checksum: sha1:836450c63ca3e20755affb72a84b7115cc7e2351
+  src/core.ts:
+    last_write_checksum: sha1:9242e63332f344ef0e8117d49e5909e78e8b1662
+  src/funcs/boards-get-board-by-id.ts:
+    last_write_checksum: sha1:181ca5e6fddb1be31d68708cd00806e53494b51c
+  src/funcs/boards-get-boards-for-space.ts:
+    last_write_checksum: sha1:536d16985e7f898ae4342284cb035600ec7e934b
+  src/funcs/item-comment-reactions-update-user-reactions.ts:
+    last_write_checksum: sha1:a0fb5ad5bee23ad1ce797e995ff03b455514af79
+  src/funcs/item-comments-create-item-comment.ts:
+    last_write_checksum: sha1:a7d52fdbfb3beab590756e476506e7f30a93c5a4
+  src/funcs/item-comments-delete-item-comment.ts:
+    last_write_checksum: sha1:33a95ded29e1048ac77248e9fb74a17cb318ad9f
+  src/funcs/item-comments-get-comments-for-item.ts:
+    last_write_checksum: sha1:2c9096491b5766269bae9f7888f54a0e630da2fb
+  src/funcs/item-comments-update-item-comment.ts:
+    last_write_checksum: sha1:b7d58f329781fa1de694f4ee4ffc00785d8da65e
+  src/funcs/items-change-item-attribute-value.ts:
+    last_write_checksum: sha1:7034ac086608f30b86172c442c7379cca415f0c5
+  src/funcs/items-change-item-attribute-values.ts:
+    last_write_checksum: sha1:0550d1d140bc1b208572c097ca58729df5e48f5c
+  src/funcs/items-create-item.ts:
+    last_write_checksum: sha1:ecfbc916d22ea21a5f379f7d271815286356ae29
+  src/funcs/items-delete-item.ts:
+    last_write_checksum: sha1:f2544227022f1bc51fbcb39a5a2e036e5ae3ff79
+  src/funcs/items-get-item-by-id.ts:
+    last_write_checksum: sha1:3172a0e8d7412b42665c21b0d7bb64135accfa1d
+  src/funcs/items-get-items-for-board-view.ts:
+    last_write_checksum: sha1:012011e97fa0a051aee1eb1968254a74455324a8
+  src/funcs/items-get-subitems-for-item.ts:
+    last_write_checksum: sha1:a00cbb783daa94bdfdcb5e60a452164fc363d220
+  src/funcs/spaces-get-space-by-id.ts:
+    last_write_checksum: sha1:be89102630458a90ec4f95aaa51af4db166efed4
+  src/funcs/spaces-get-spaces.ts:
+    last_write_checksum: sha1:1073914e228791d742f7c19308983c650e8f60f9
+  src/funcs/teams-get-team-by-id.ts:
+    last_write_checksum: sha1:88e40b56941dbbf24ed2f0a7f2f2b26c338b5546
+  src/funcs/teams-get-workspace-teams.ts:
+    last_write_checksum: sha1:21a1f2763e28cb9db9d00dfc6bf61c554a421593
+  src/funcs/users-get-workspace-user.ts:
+    last_write_checksum: sha1:ec3d3994f665211e77d971dd8bccef8fab7be9e5
+  src/funcs/users-get-workspace-users.ts:
+    last_write_checksum: sha1:c6bf42928c840a98492623ad3ba46604737ded67
+  src/hooks/hooks.ts:
+    last_write_checksum: sha1:3a90d88b4c6c07247db8e5f6441a79538232394e
+  src/hooks/index.ts:
+    last_write_checksum: sha1:1a11c073a6cd792932218e1d4ed36b8567bad8ef
+  src/hooks/types.ts:
+    last_write_checksum: sha1:27a3444c4839bec58ae89820fd8c2483edafc3f4
+  src/index.ts:
+    last_write_checksum: sha1:35c9cde3ae14b18b3f893a1afe8b6c44f8760f24
+  src/lib/base64.ts:
+    last_write_checksum: sha1:b0b12ddbd8625efb47c0e955a18641aeb10c6532
+  src/lib/config.ts:
+    last_write_checksum: sha1:64d2e774f62f82db49dcbc57f093fedc30082d43
+  src/lib/dlv.ts:
+    last_write_checksum: sha1:1dd3e3fbb4550c4bf31f5ef997faff355d6f3250
+  src/lib/encodings.ts:
+    last_write_checksum: sha1:3e6784ec96431e0d8f98f67b3eae38d7b368264c
+  src/lib/files.ts:
+    last_write_checksum: sha1:795c14026405d547bfc47012f7ad9666e530fa7f
+  src/lib/http.ts:
+    last_write_checksum: sha1:797cbf16d3c7c4d62d3ba0eedb08617524938457
+  src/lib/is-plain-object.ts:
+    last_write_checksum: sha1:df687f25a9590b6fd95d39df41a652ae3fd4e517
+  src/lib/logger.ts:
+    last_write_checksum: sha1:0ec9d3a2a34c362746b767e4f9a746c055d57a7b
+  src/lib/matchers.ts:
+    last_write_checksum: sha1:2fd91fd107b77cbdc569db60e4c973e793083dc9
+  src/lib/primitives.ts:
+    last_write_checksum: sha1:987869fc54790b9c22e9182099103d6aa7c67016
+  src/lib/retries.ts:
+    last_write_checksum: sha1:f3da74dffcbe2756c69393f8600205aa1dc06e68
+  src/lib/schemas.ts:
+    last_write_checksum: sha1:3418c887b8963e8ce5be86cc969ac0e0d0e48095
+  src/lib/sdks.ts:
+    last_write_checksum: sha1:d44b9fa5a6a0a9a5a4ab58b25a6ef151f6c1fe02
+  src/lib/security.ts:
+    last_write_checksum: sha1:e862504b1519aeac0555339be9459412670ad6db
+  src/lib/url.ts:
+    last_write_checksum: sha1:3bceadd74bf0b31adf13eb06b7531077c3e07d65
+  src/mcp-server/build.mts:
+    last_write_checksum: sha1:1a7a5dc9ace5a5d707bd8d2339f76719e525e7eb
+  src/mcp-server/cli.ts:
+    last_write_checksum: sha1:7331efddde881832342fa8779d23be7445d4480c
+  src/mcp-server/cli/start/command.ts:
+    last_write_checksum: sha1:fb96838cf4c024fef4ed5ab8a9d3a504dfa52ce2
+  src/mcp-server/cli/start/impl.ts:
+    last_write_checksum: sha1:da435c09eb024e53b252812662c71ee48b347b99
+  src/mcp-server/console-logger.ts:
+    last_write_checksum: sha1:66e945860c8318f2a6bb9604a7720a979dacce4b
+  src/mcp-server/extensions.ts:
+    last_write_checksum: sha1:e36e4b49b77347db80debccc2e77706b0ac7f4a4
+  src/mcp-server/mcp-server.ts:
+    last_write_checksum: sha1:c60bbca308826546d60250db994bd9b37ebb7f07
+  src/mcp-server/prompts.ts:
+    last_write_checksum: sha1:ef64a922259d82f9978c2708a5d94c2e43bbc8cf
+  src/mcp-server/resources.ts:
+    last_write_checksum: sha1:298361b99effd9eb3d5cf6d3b15658a2cb359c2b
+  src/mcp-server/scopes.ts:
+    last_write_checksum: sha1:c3049445638436e8b00ec1b95753a5f26b538184
+  src/mcp-server/server.ts:
+    last_write_checksum: sha1:87d8c412e1a043246a76f9ad26de65b9e81686f1
+  src/mcp-server/shared.ts:
+    last_write_checksum: sha1:d89576cea2bef3856b7fc3e65b868875528be042
+  src/mcp-server/tools.ts:
+    last_write_checksum: sha1:d22dbcc289c193735f93f7652d231ed6a88e07c5
+  src/mcp-server/tools/boards-get-board-by-id.ts:
+    last_write_checksum: sha1:5d78c656c711d92751fbc5c9a3d78362de47eef5
+  src/mcp-server/tools/boards-get-boards-for-space.ts:
+    last_write_checksum: sha1:339d9570f98a84757f5f4056302aea01d3d82175
+  src/mcp-server/tools/item-comment-reactions-update-user-reactions.ts:
+    last_write_checksum: sha1:351a422c321c04e7cb3b0e66129e171f5f1e5b9c
+  src/mcp-server/tools/item-comments-create-item-comment.ts:
+    last_write_checksum: sha1:ce28bc361da28a97ffbe110df2785ceceff65559
+  src/mcp-server/tools/item-comments-delete-item-comment.ts:
+    last_write_checksum: sha1:35af6515faa33a20ac39b1e979aef85fc8a3e765
+  src/mcp-server/tools/item-comments-get-comments-for-item.ts:
+    last_write_checksum: sha1:09f935eac8d8374609651cabf2d1d83cce432992
+  src/mcp-server/tools/item-comments-update-item-comment.ts:
+    last_write_checksum: sha1:955c269b83652d8562a8d5eb5961d5a7f1ee530e
+  src/mcp-server/tools/items-change-item-attribute-value.ts:
+    last_write_checksum: sha1:ef68a31c8f3437648db91dd8d10b50c456a4f36f
+  src/mcp-server/tools/items-change-item-attribute-values.ts:
+    last_write_checksum: sha1:d6cac0286c20f6e096c31b5a9f0e46030e85474d
+  src/mcp-server/tools/items-create-item.ts:
+    last_write_checksum: sha1:d7d4a48cf85d47d69b48707ff6d0101deadd6838
+  src/mcp-server/tools/items-delete-item.ts:
+    last_write_checksum: sha1:1ff7eb6f696737b3e1804a8490cd5a3e42137f0f
+  src/mcp-server/tools/items-get-item-by-id.ts:
+    last_write_checksum: sha1:37c875453444af0ff9fdbe6c7b60d490bd71c9d0
+  src/mcp-server/tools/items-get-items-for-board-view.ts:
+    last_write_checksum: sha1:4223211328f6dbd742a4304dabdcfcdb8ac3e1d5
+  src/mcp-server/tools/items-get-subitems-for-item.ts:
+    last_write_checksum: sha1:f9f458e3be6053201dd415a3b34bbde920d74d99
+  src/mcp-server/tools/spaces-get-space-by-id.ts:
+    last_write_checksum: sha1:531fc060fd298599f8e5b1ef7ac528519d4f82a9
+  src/mcp-server/tools/spaces-get-spaces.ts:
+    last_write_checksum: sha1:d303d8285e81b20abad3f3b4c4b6a19e917350a6
+  src/mcp-server/tools/teams-get-team-by-id.ts:
+    last_write_checksum: sha1:9f8649474fb550aedca859b7bf138d06801576f8
+  src/mcp-server/tools/teams-get-workspace-teams.ts:
+    last_write_checksum: sha1:fc5b923c4ff9a45889fd3b67bd2afe0e93cb5d88
+  src/mcp-server/tools/users-get-workspace-user.ts:
+    last_write_checksum: sha1:3c3c930d0405c837c97fc33bd6dc04ed689597f8
+  src/mcp-server/tools/users-get-workspace-users.ts:
+    last_write_checksum: sha1:46f682d50613bc9be7ad2b1389bacaed07d6ec21
+  src/models/board-default-values.ts:
+    last_write_checksum: sha1:d16ace734b6792b1cd143d24f4f635d7bccc5ca0
+  src/models/board-response.ts:
+    last_write_checksum: sha1:6036c5c6e16a3e017b87c2d6aecd4fb79768ed9f
+  src/models/comment-request.ts:
+    last_write_checksum: sha1:6a762c19ae66b38520f76eaea9bab9c061b21f4e
+  src/models/comment-response.ts:
+    last_write_checksum: sha1:aff110c0d5134710706faba7df036527d841fba6
+  src/models/date-time-configuration.ts:
+    last_write_checksum: sha1:7e8acc64216f2a68b11e83ccca2b7ed9f03161ed
+  src/models/errors/http-client-errors.ts:
+    last_write_checksum: sha1:994ced121c54fecd0af038ccfb7855fbfd3868ec
+  src/models/errors/index.ts:
+    last_write_checksum: sha1:45487f6e0761693e168f85d5831b80eab0af2624
+  src/models/errors/response-validation-error.ts:
+    last_write_checksum: sha1:59446eed1233068558e250f483341f4cd8b12922
+  src/models/errors/sdk-default-error.ts:
+    last_write_checksum: sha1:8cd1fb6f041b4de96b40b91d74e57a55febd87ae
+  src/models/errors/sdk-error.ts:
+    last_write_checksum: sha1:8699ba62e2be76f2bc78c2822a547a6456e38b74
+  src/models/errors/sdk-validation-error.ts:
+    last_write_checksum: sha1:a69da17627bcc32b820544608f3400423ea53f26
+  src/models/field-value-change-request.ts:
+    last_write_checksum: sha1:050273a4dab3a81b32701b1c67d73c93b0ef0e7f
+  src/models/folder-response.ts:
+    last_write_checksum: sha1:48b648640e57d16e5c9b3b47e242dccc3b129b23
+  src/models/index.ts:
+    last_write_checksum: sha1:2c79a5d4baac865190549fea38bb39f8c3ebde0d
+  src/models/item-attribute-definition.ts:
+    last_write_checksum: sha1:00c5649c93a798e2437718009cbb1c65bb18984b
+  src/models/item-create-request.ts:
+    last_write_checksum: sha1:bd7308a618281247c4ecff01ec943a2ef7491f29
+  src/models/item-field-response.ts:
+    last_write_checksum: sha1:6af00127ba412edfd949de920074fd5a92786c60
+  src/models/item-group-response.ts:
+    last_write_checksum: sha1:c17276a869a89e3cf75b715cb264c54805649e60
+  src/models/item-response.ts:
+    last_write_checksum: sha1:81ae85f376a1133912f13b89f121742c54658695
+  src/models/number-configuration.ts:
+    last_write_checksum: sha1:6c691b9646dbafc19e9e94f179209faff28315e4
+  src/models/operations/change-item-attribute-value.ts:
+    last_write_checksum: sha1:9031bf924a0bc4c79e3490b3f3e85fb3b65d1d9e
+  src/models/operations/change-item-attribute-values.ts:
+    last_write_checksum: sha1:34608b4840cbadf451b63780339e9dc2b2648a0d
+  src/models/operations/create-item-comment.ts:
+    last_write_checksum: sha1:441ad1606691d6695e63924fb73b0a3221849baf
+  src/models/operations/create-item.ts:
+    last_write_checksum: sha1:da1a465524d917a03612fff747c708754bb192bc
+  src/models/operations/delete-item-comment.ts:
+    last_write_checksum: sha1:1068c0d525c98802780f09c8bf605666c2dde573
+  src/models/operations/delete-item.ts:
+    last_write_checksum: sha1:6e4009434aeabd1898104e4563a9edb9491ea6dd
+  src/models/operations/get-board-by-id.ts:
+    last_write_checksum: sha1:2d918622f89970a4ea5e62500ff61cbc50f00b6d
+  src/models/operations/get-boards-for-space.ts:
+    last_write_checksum: sha1:1b125f730c1416cddacc24ee51e6276307e6b74a
+  src/models/operations/get-comments-for-item.ts:
+    last_write_checksum: sha1:9bd03edd16624e52272ef16fe67547715bc8ebea
+  src/models/operations/get-item-by-id.ts:
+    last_write_checksum: sha1:7e34243a6ccb2203f2d1d4cabd2a389fe5ce74fd
+  src/models/operations/get-items-for-board-view.ts:
+    last_write_checksum: sha1:03fea262fa706f53c6571a3f7cbb53d3e81bd068
+  src/models/operations/get-space-by-id.ts:
+    last_write_checksum: sha1:6833aae1ca58d63d40e87004ee7aee55f4f3a347
+  src/models/operations/get-spaces.ts:
+    last_write_checksum: sha1:4b9a43e619641bd20f72a0206ccb2a7cb048e832
+  src/models/operations/get-subitems-for-item.ts:
+    last_write_checksum: sha1:38266ab3042fee987c0d8cc28faba22fa43fc661
+  src/models/operations/get-team-by-id.ts:
+    last_write_checksum: sha1:c8fb8d245466ca38e61573c9e33662281a2d09df
+  src/models/operations/get-workspace-teams.ts:
+    last_write_checksum: sha1:7c36ff859dbf592799c3b24efbbb36794027c86d
+  src/models/operations/get-workspace-users.ts:
+    last_write_checksum: sha1:cc10c6a7dc1faead75164b6db6c4df6c8152cc20
+  src/models/operations/index.ts:
+    last_write_checksum: sha1:c0425a9fcf8d262c0350557b02a836098f40526a
+  src/models/operations/update-item-comment.ts:
+    last_write_checksum: sha1:c027ebff674467e5c92e63474477dbb7ec878c63
+  src/models/operations/update-user-reactions.ts:
+    last_write_checksum: sha1:9c68464a4305eaf06fbecae798d4cacda2e8d45f
+  src/models/person-configuration.ts:
+    last_write_checksum: sha1:dd3f7e97ca2f984da7d4c215fb3c94765a4d3735
+  src/models/public-paged-response-v1-board-response.ts:
+    last_write_checksum: sha1:a37b492197e88ff2ca4bf56f303d39c8e531ad92
+  src/models/public-paged-response-v1-item-response.ts:
+    last_write_checksum: sha1:0255f317374de0563195092406df59df49305c9b
+  src/models/public-paged-response-v1-space-response.ts:
+    last_write_checksum: sha1:5016a581c40d0b1c6bbb26ba2584823a4df05fd8
+  src/models/public-paged-response-v1-team-response.ts:
+    last_write_checksum: sha1:bef9ed0969ab1719dc62f32c7f03125d45accdcd
+  src/models/public-paged-response-v1-user-response.ts:
+    last_write_checksum: sha1:9c5a311694348cb304830be984ea5e54e39ed453
+  src/models/reaction-details.ts:
+    last_write_checksum: sha1:0d7d8d5bb76ed29339d1a0a3df642e8ace9c92b4
+  src/models/reaction-put-request.ts:
+    last_write_checksum: sha1:12fecb334bd4f808795b877d538eea288cebfe04
+  src/models/reaction-put-response.ts:
+    last_write_checksum: sha1:a1472d02ba6e0c982c40ad8aace09032c9124dad
+  src/models/reaction-response-no-code.ts:
+    last_write_checksum: sha1:24c71a568994721f2f001e6462c2bc637b275b7f
+  src/models/reaction-response.ts:
+    last_write_checksum: sha1:cce33677de273eadb525385b15a1c1ae64d1a6c3
+  src/models/reaction.ts:
+    last_write_checksum: sha1:6b887940ba62307d9380570071fd1f1175535f6e
+  src/models/security.ts:
+    last_write_checksum: sha1:c5ab88ed737947379880704c0dbce69f72bc4365
+  src/models/short-user-response.ts:
+    last_write_checksum: sha1:b671c626c99e5cb57809e2d03c79d2ddbecc63cd
+  src/models/space-response.ts:
+    last_write_checksum: sha1:f5d92ca6f6c7d2234c923524d8a73b012195eaf0
+  src/models/status-configuration.ts:
+    last_write_checksum: sha1:e5d87bd7967c3ec587df1a1d86591249f2339a79
+  src/models/status-label-definition.ts:
+    last_write_checksum: sha1:5d26edc91d244b77cdcf097fa46c7aa1b2a5cbc4
+  src/models/tag-configuration.ts:
+    last_write_checksum: sha1:3bbbedb8849f32958dedf7a1561968a6a7a4367c
+  src/models/tag-label-definition.ts:
+    last_write_checksum: sha1:d62b4a3b246d4283d59ee68186acd5ef944f4d8a
+  src/models/team-response.ts:
+    last_write_checksum: sha1:90f161c432bb2dcc9bfce23d377cc73933709f68
+  src/models/team-short-response.ts:
+    last_write_checksum: sha1:a91804ba14cda6c1e5ace6c837d21b8de88f0a6c
+  src/models/timeline-configuration.ts:
+    last_write_checksum: sha1:4a925ae01a6c44e65f9aaab4acda53b419416180
+  src/models/user-details.ts:
+    last_write_checksum: sha1:f1215a3f307a9b57b3770cee0b149c51701c23cd
+  src/models/user-response.ts:
+    last_write_checksum: sha1:50b594e06b5f24633e8552e3e32b2b8ec5375a7b
+  src/sdk/boards.ts:
+    last_write_checksum: sha1:91772c3b418793334d72951267add9c043f36c2c
+  src/sdk/index.ts:
+    last_write_checksum: sha1:ed6d64f2a6135349aa8498b8d8cff9ba85c7fb8f
+  src/sdk/item-comment-reactions.ts:
+    last_write_checksum: sha1:2221789e4ebd790d6a36d464e4614c6395904778
+  src/sdk/item-comments.ts:
+    last_write_checksum: sha1:b1dcaa9989e82de61f22e3fcd07fabdd543de124
+  src/sdk/items.ts:
+    last_write_checksum: sha1:79d60defdb899571167a79a70a2076e23f7ee816
+  src/sdk/sdk.ts:
+    last_write_checksum: sha1:4a9d616305423a1e149936989f84d1c6722dae9a
+  src/sdk/spaces.ts:
+    last_write_checksum: sha1:fae8648f0613e765ff1dcc16139a4e514c8fc033
+  src/sdk/teams.ts:
+    last_write_checksum: sha1:e574c2a19e15a631cfc0095567490da16fe992f1
+  src/sdk/users.ts:
+    last_write_checksum: sha1:016e8c7d897827042a7452c0bf85717b164f0ce3
+  src/types/async.ts:
+    last_write_checksum: sha1:675d04bb4b4081dc3482f18de98674f9b446e7b4
+  src/types/blobs.ts:
+    last_write_checksum: sha1:cf45d78916671cb6345a11c97c633c64402bc27c
+  src/types/const-date-time.ts:
+    last_write_checksum: sha1:dfaaf9adfaf49808bd4c9dea0039f21b7088d9c0
+  src/types/default-to-zero-value.ts:
+    last_write_checksum: sha1:2820c0bc8e71d475e79cc6b6947ca18d93f6310c
+  src/types/enums.ts:
+    last_write_checksum: sha1:ee590453d2c87e33e89c633d37ee46907eca0e58
+  src/types/fp.ts:
+    last_write_checksum: sha1:d24994d58f37a1ca106847fcc6d2e976c6f1c093
+  src/types/index.ts:
+    last_write_checksum: sha1:a591fec0ad2231615101ebb6a95cc4d043733a6c
+  src/types/operations.ts:
+    last_write_checksum: sha1:c49e724cfb1259296381cb57bc0fcdd2eae45865
+  src/types/primitives.ts:
+    last_write_checksum: sha1:6679e96c0ca3bd982b132ab14db6d7eaac31507d
+  src/types/rfcdate.ts:
+    last_write_checksum: sha1:8e5f382e02fe21c2f2e24deb1b7bbf8cddd3dd16
+  src/types/smart-union.ts:
+    last_write_checksum: sha1:46a9ed4f1a5850e894569da8e13bf566dec3cb0b
+  src/types/streams.ts:
+    last_write_checksum: sha1:cc9ced2dd34a76c3a1bd7784ccda1cc3b37ab9a9
+  src/types/unrecognized.ts:
+    last_write_checksum: sha1:d33ac686528492f4cdc0dbf81ed343b4afe020fe
+  tsconfig.json:
+    last_write_checksum: sha1:4f9c4daf3281a9be06591b2814e5bbcf98b5c803
+examples:
+  getSpaces:
+    speakeasy-default-get-spaces:
+      parameters:
+        query:
+          expand: ["board"]
+          page: 1
+          pageSize: 50
+      responses:
+        "200":
+          application/json: {"data": [{"boards": [{"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}]}]}
+  getSpaceById:
+    speakeasy-default-get-space-by-id:
+      parameters:
+        path:
+          spaceId: 1
+        query:
+          expand: ["board"]
+      responses:
+        "200":
+          application/json: {"boards": [{"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}]}
+  getWorkspaceTeams:
+    speakeasy-default-get-workspace-teams:
+      parameters:
+        query:
+          page: 1
+          pageSize: 50
+      responses:
+        "200":
+          application/json: {}
+  getTeamById:
+    speakeasy-default-get-team-by-id:
+      parameters:
+        path:
+          teamId: 1
+      responses:
+        "200":
+          application/json: {}
+  getWorkspaceUsers:
+    speakeasy-default-get-workspace-users:
+      parameters:
+        query:
+          page: 1
+          pageSize: 50
+      responses:
+        "200":
+          application/json: {}
+  getWorkspaceUser:
+    speakeasy-default-get-workspace-user:
+      responses:
+        "200":
+          application/json: {}
+  getBoardsForSpace:
+    speakeasy-default-get-boards-for-space:
+      parameters:
+        path:
+          spaceId: 1
+        query:
+          page: 1
+          pageSize: 50
+      responses:
+        "200":
+          application/json: {"data": [{"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}]}
+  getBoardById:
+    speakeasy-default-get-board-by-id:
+      parameters:
+        path:
+          spaceId: 1
+          boardId: 1
+      responses:
+        "200":
+          application/json: {"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}
+  getItemsForBoardView:
+    speakeasy-default-get-items-for-board-view:
+      parameters:
+        path:
+          spaceId: 758421
+          boardId: 496001
+        query:
+          subitemsBehaviour: "INCLUDE"
+          page: 1
+          pageSize: 50
+          expand: ["board"]
+      responses:
+        "200":
+          application/json: {"data": [{"board": {"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}, "space": 490335, "parent": 485109, "fields": [{"key": "status-1"}], "subitems": [{"board": {"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}, "space": {"boards": [{"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}]}, "parent": {"board": {"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}, "space": {"boards": [{"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}]}, "parent": 444946, "fields": [{"key": "status-1"}]}, "fields": [{"key": "status-1"}]}]}]}
+  createItem:
+    speakeasy-default-create-item:
+      parameters:
+        path:
+          spaceId: 1
+          boardId: 1
+      requestBody:
+        application/json: {"title": "My New Item", "parentId": 1, "groupId": 1, "groupTitle": "Backlog", "fields": {"Status": "To do", "number-1": 50, "Description": "Test description"}}
+      responses:
+        "201":
+          application/json: {"board": 45972, "space": {"boards": [{"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}]}, "parent": 513384, "fields": [{"key": "status-1"}], "subitems": [{"board": 663201, "space": {"boards": [{"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}]}, "parent": {"board": 357257, "space": {"boards": [{"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}]}, "parent": {"board": {"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}, "space": 761961, "fields": [{"key": "status-1"}]}, "fields": [{"key": "status-1"}]}, "fields": [{"key": "status-1"}]}]}
+  getSubitemsForItem:
+    speakeasy-default-get-subitems-for-item:
+      parameters:
+        path:
+          spaceId: 1
+          boardId: 1
+          itemId: 1
+        query:
+          page: 1
+          pageSize: 50
+          expand: ["group"]
+      responses:
+        "200":
+          application/json: {"data": [{"board": 524121, "space": 637804, "parent": {"board": {"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}, "space": 60568, "parent": 263170, "fields": [{"key": "status-1"}], "subitems": [{"board": 670015, "space": 915005, "parent": {"board": {"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}, "space": {"boards": [{"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}]}, "fields": [{"key": "status-1"}]}, "fields": [{"key": "status-1"}]}]}, "fields": [{"key": "status-1"}]}]}
+  getItemById:
+    speakeasy-default-get-item-by-id:
+      parameters:
+        path:
+          spaceId: 1
+          boardId: 1
+          itemId: 1
+        query:
+          expand: ["space"]
+      responses:
+        "200":
+          application/json: {"board": {"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}, "space": {"boards": [{"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}]}, "parent": {"board": 157996, "space": 547793, "parent": {"board": {"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}, "space": 336665, "fields": [{"key": "status-1"}], "subitems": [{"board": {"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}, "space": 649081, "fields": [{"key": "status-1"}]}]}, "fields": [{"key": "status-1"}]}, "fields": [{"key": "status-1"}]}
+  deleteItem:
+    speakeasy-default-delete-item:
+      parameters:
+        path:
+          spaceId: 1
+          boardId: 1
+          itemId: 1
+  changeItemAttributeValue:
+    speakeasy-default-change-item-attribute-value:
+      parameters:
+        path:
+          spaceId: 1
+          boardId: 1
+          itemId: 1
+          itemFieldKey: "<value>"
+      requestBody:
+        application/json: {"value": {"value": "To do"}}
+      responses:
+        "200":
+          application/json: {"board": 141478, "space": 264472, "parent": 79929, "fields": [{"key": "status-1"}], "subitems": [{"board": {"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}, "space": {"boards": [{"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}]}, "parent": {"board": {"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}, "space": {"boards": [{"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}]}, "parent": {"board": 807500, "space": {"boards": [{"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}]}, "fields": [{"key": "status-1"}]}, "fields": [{"key": "status-1"}]}, "fields": [{"key": "status-1"}]}]}
+  changeItemAttributeValues:
+    speakeasy-default-change-item-attribute-values:
+      parameters:
+        path:
+          spaceId: 1
+          boardId: 1
+          itemId: 1
+      requestBody:
+        application/json: "{\"Status\":\"To do\",\"number-1\":50,\"Description\":\"Updated description\"}"
+      responses:
+        "200":
+          application/json: {"board": {"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}, "space": {"boards": [{"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}]}, "parent": 171283, "fields": [{"key": "status-1"}], "subitems": [{"board": 593122, "space": {"boards": [{"defaultValues": {"defaultAttributes": {"status-1": "1", "tag-1": ["1", "2"]}}}]}, "parent": 209715, "fields": [{"key": "status-1"}]}]}
+  getCommentsForItem:
+    speakeasy-default-get-comments-for-item:
+      parameters:
+        path:
+          spaceId: 1
+          boardId: 1
+          itemId: 1
+      responses:
+        "200":
+          application/json: [{}]
+  createItemComment:
+    speakeasy-default-create-item-comment:
+      parameters:
+        path:
+          spaceId: 1
+          boardId: 1
+          itemId: 1
+      requestBody:
+        application/json: {"text": "My comment.", "repliesToId": 1}
+      responses:
+        "200":
+          application/json: {}
+  updateItemComment:
+    speakeasy-default-update-item-comment:
+      parameters:
+        path:
+          spaceId: 1
+          boardId: 1
+          itemId: 1
+          itemCommentId: 1
+      requestBody:
+        application/json: {"text": "My comment.", "repliesToId": 1}
+      responses:
+        "200":
+          application/json: {}
+  deleteItemComment:
+    speakeasy-default-delete-item-comment:
+      parameters:
+        path:
+          spaceId: 1
+          boardId: 1
+          itemId: 1
+          itemCommentId: 1
+  updateUserReactions:
+    speakeasy-default-update-user-reactions:
+      parameters:
+        path:
+          spaceId: 1
+          boardId: 1
+          itemId: 1
+          itemCommentId: 1
+      requestBody:
+        application/json: {"reactions": []}
+      responses:
+        "200":
+          application/json: {}
+examplesVersion: 1.0.2

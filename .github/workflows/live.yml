@@ -1,0 +1,38 @@
+name: Manual Live Sweep
+
+on:
+  workflow_dispatch:
+    inputs:
+      space_id:
+        description: "Sacrificial Plaky space ID"
+        required: true
+      board_id:
+        description: "Sacrificial Plaky board ID"
+        required: true
+      group_title:
+        description: "Writable group title"
+        required: false
+        default: "Backlog"
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+      - name: Install dependencies
+        run: |
+          npm --prefix sdk ci
+          npm --prefix mcp-server ci
+      - name: Run live sweep
+        env:
+          PLAKY115_API_KEY: ${{ secrets.PLAKY115_API_KEY }}
+          PLAKY115_SMOKE_SPACE_ID: ${{ inputs.space_id }}
+          PLAKY115_SMOKE_BOARD_ID: ${{ inputs.board_id }}
+          PLAKY115_SMOKE_GROUP_TITLE: ${{ inputs.group_title }}
+        run: npm run live:sweep

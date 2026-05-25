@@ -1,0 +1,19 @@
+# BoardResponseKind
+
+Represents type of the board.
+
+## Example Usage
+
+```typescript
+import { BoardResponseKind } from "plaky115-mcp/models";
+
+let value: BoardResponseKind = "PRIVATE";
+
+// Open enum: unrecognized values are captured as Unrecognized<string>
+```
+
+## Values
+
+```typescript
+"PUBLIC" | "PRIVATE" | Unrecognized<string>
+```

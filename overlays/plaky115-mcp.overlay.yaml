@@ -1,0 +1,327 @@
+openapi: 3.1.0
+overlay: 1.0.0
+info:
+  title: Plaky115 MCP And DX Metadata
+  version: 0.1.0
+actions:
+  - target: $.info
+    update:
+      title: Plaky115 Public API
+      description: |
+        Unofficial Plaky115 toolkit metadata for generated SDK, CLI, and MCP
+        artifacts. This overlay does not change the upstream API contract; it
+        adds generation hints for better pagination and MCP tool behavior.
+  - target: $.paths.*["get","head"]
+    update:
+      x-speakeasy-mcp:
+        scopes:
+          - read
+        readOnlyHint: true
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+  - target: $.paths.*["post","put","patch"]
+    update:
+      x-speakeasy-mcp:
+        scopes:
+          - write
+        readOnlyHint: false
+        destructiveHint: false
+        idempotentHint: false
+        openWorldHint: true
+  - target: $.paths.*["delete"]
+    update:
+      x-speakeasy-mcp:
+        scopes:
+          - write
+        readOnlyHint: false
+        destructiveHint: true
+        idempotentHint: true
+        openWorldHint: true
+
+  - target: $.paths["/v1/public/spaces"].get
+    update:
+      summary: List spaces
+      x-speakeasy-pagination:
+        type: offsetLimit
+        inputs:
+          - name: page
+            in: parameters
+            type: page
+          - name: pageSize
+            in: parameters
+            type: limit
+        outputs:
+          results: $.data
+      x-speakeasy-mcp:
+        title: List spaces
+        description: List workspace spaces with optional embedded boards.
+        scopes: [read]
+        readOnlyHint: true
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+  - target: $.paths["/v1/public/teams"].get
+    update:
+      summary: List workspace teams
+      x-speakeasy-pagination:
+        type: offsetLimit
+        inputs:
+          - name: page
+            in: parameters
+            type: page
+          - name: pageSize
+            in: parameters
+            type: limit
+        outputs:
+          results: $.data
+      x-speakeasy-mcp:
+        title: List workspace teams
+        description: List Plaky teams visible to the API key.
+        scopes: [read]
+        readOnlyHint: true
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+  - target: $.paths["/v1/public/users"].get
+    update:
+      summary: List workspace users
+      x-speakeasy-pagination:
+        type: offsetLimit
+        inputs:
+          - name: page
+            in: parameters
+            type: page
+          - name: pageSize
+            in: parameters
+            type: limit
+        outputs:
+          results: $.data
+      x-speakeasy-mcp:
+        title: List workspace users
+        description: List Plaky users, optionally filtered by email, status, or role.
+        scopes: [read]
+        readOnlyHint: true
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards"].get
+    update:
+      summary: List boards in a space
+      x-speakeasy-pagination:
+        type: offsetLimit
+        inputs:
+          - name: page
+            in: parameters
+            type: page
+          - name: pageSize
+            in: parameters
+            type: limit
+        outputs:
+          results: $.data
+      x-speakeasy-mcp:
+        title: List boards
+        description: List boards in a Plaky space.
+        scopes: [read]
+        readOnlyHint: true
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items"].get
+    update:
+      summary: List board items
+      x-speakeasy-pagination:
+        type: offsetLimit
+        inputs:
+          - name: page
+            in: parameters
+            type: page
+          - name: pageSize
+            in: parameters
+            type: limit
+        outputs:
+          results: $.data
+      x-speakeasy-mcp:
+        title: List board items
+        description: List items on a board, with optional filters and expansions.
+        scopes: [read]
+        readOnlyHint: true
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items"].post
+    update:
+      summary: Create an item
+      x-speakeasy-mcp:
+        title: Create item
+        description: Create a new Plaky item using a title, group, parent, and optional field values.
+        scopes: [write]
+        readOnlyHint: false
+        destructiveHint: false
+        idempotentHint: false
+        openWorldHint: true
+  - target: $.paths["/v1/public/spaces/{spaceId}"].get
+    update:
+      summary: Get space by ID
+      x-speakeasy-mcp:
+        title: Get space
+        description: Retrieve one Plaky space by ID.
+        scopes: [read]
+        readOnlyHint: true
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+  - target: $.paths["/v1/public/teams/{teamId}"].get
+    update:
+      summary: Get team by ID
+      x-speakeasy-mcp:
+        title: Get team
+        description: Retrieve one Plaky team by ID.
+        scopes: [read]
+        readOnlyHint: true
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+  - target: $.paths["/v1/public/users/me"].get
+    update:
+      summary: Get current user
+      x-speakeasy-mcp:
+        title: Get current user
+        description: Retrieve the user associated with the provided API key.
+        scopes: [read]
+        readOnlyHint: true
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}"].get
+    update:
+      summary: Get board by ID
+      x-speakeasy-mcp:
+        title: Get board
+        description: Retrieve one Plaky board by space ID and board ID.
+        scopes: [read]
+        readOnlyHint: true
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/sub-items"].get
+    update:
+      summary: List subitems
+      x-speakeasy-pagination:
+        type: offsetLimit
+        inputs:
+          - name: page
+            in: parameters
+            type: page
+          - name: pageSize
+            in: parameters
+            type: limit
+        outputs:
+          results: $.data
+      x-speakeasy-mcp:
+        title: List subitems
+        description: List subitems under one item.
+        scopes: [read]
+        readOnlyHint: true
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}"].get
+    update:
+      summary: Get item by ID
+      x-speakeasy-mcp:
+        title: Get item
+        description: Retrieve one Plaky item by ID.
+        scopes: [read]
+        readOnlyHint: true
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}"].delete
+    update:
+      summary: Delete an item
+      x-speakeasy-mcp:
+        title: Delete item
+        description: Delete one Plaky item by ID.
+        scopes: [write]
+        readOnlyHint: false
+        destructiveHint: true
+        idempotentHint: true
+        openWorldHint: true
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields/{itemFieldKey}"].patch
+    update:
+      summary: Update one item field
+      x-speakeasy-mcp:
+        title: Update item field
+        description: Update a single field value on one Plaky item.
+        scopes: [write]
+        readOnlyHint: false
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields"].patch
+    update:
+      summary: Update item fields
+      x-speakeasy-mcp:
+        title: Update item fields
+        description: Update multiple field values on one Plaky item.
+        scopes: [write]
+        readOnlyHint: false
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments"].get
+    update:
+      summary: List item comments
+      x-speakeasy-mcp:
+        title: List item comments
+        description: List comments on one Plaky item.
+        scopes: [read]
+        readOnlyHint: true
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments"].post
+    update:
+      summary: Create item comment
+      x-speakeasy-mcp:
+        title: Create item comment
+        description: Add a comment or reply to one Plaky item.
+        scopes: [write]
+        readOnlyHint: false
+        destructiveHint: false
+        idempotentHint: false
+        openWorldHint: true
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}"].put
+    update:
+      summary: Update item comment
+      x-speakeasy-mcp:
+        title: Update item comment
+        description: Replace the text of one Plaky item comment.
+        scopes: [write]
+        readOnlyHint: false
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}"].delete
+    update:
+      summary: Delete item comment
+      x-speakeasy-mcp:
+        title: Delete item comment
+        description: Delete one Plaky item comment by ID.
+        scopes: [write]
+        readOnlyHint: false
+        destructiveHint: true
+        idempotentHint: true
+        openWorldHint: true
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}/reactions"].put
+    update:
+      summary: Replace item comment reactions
+      x-speakeasy-mcp:
+        title: Replace comment reactions
+        description: Replace the current user's reactions on one Plaky item comment.
+        scopes: [write]
+        readOnlyHint: false
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true

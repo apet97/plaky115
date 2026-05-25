@@ -1,0 +1,45 @@
+{
+  "name": "plaky115-mcp",
+  "version": "0.1.0",
+  "description": "Hand-crafted MCP server for the Plaky public API. Unofficial.",
+  "license": "MIT",
+  "author": "Plaky115",
+  "type": "module",
+  "bin": {
+    "mcp": "bin/mcp-server.js"
+  },
+  "main": "./esm/server/index.js",
+  "exports": {
+    ".": {
+      "source": "./src/server/index.ts",
+      "types": "./esm/server/index.d.ts",
+      "default": "./esm/server/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "lint": "oxlint --max-warnings=0 --deny-warnings src/**/*.ts",
+    "build:bin": "bun src/server/build.mts",
+    "build": "node ../scripts/clean-package-builds.mjs mcp-server && tsgo && npm run build:bin",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19",
+    "@typescript/native-preview": "7.0.0-dev.20260302.1",
+    "bun": "1.2.17",
+    "bun-types": "1.2.17",
+    "oxlint": "^1.60.0",
+    "typescript": "~5.8.3"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "plaky115": "file:../sdk",
+    "zod": "^3.25.0 || ^4.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/apet97/plaky115"
+  }
+}
