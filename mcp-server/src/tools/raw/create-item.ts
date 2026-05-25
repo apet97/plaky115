@@ -1,6 +1,6 @@
 // AUTO-GENERATED. Source: openapi/plaky115-operation-metadata.json operationId=createItem
 import { z } from "zod/v3";
-import { createItem } from "plaky115/operations/create-item.js";
+import { request } from "plaky115/runtime/http.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
@@ -22,7 +22,13 @@ export const createItemTool: McpToolDefinition = {
   },
   inputSchema: args,
   async handler(input, ctx) {
-    const result = await createItem(input as Parameters<typeof createItem>[0], ctx.requestOptions);
+    const parsed = args.parse(input);
+    const result = await request({
+      method: "POST",
+      path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items`,
+      body: parsed.body,
+      operationId: "createItem",
+    }, ctx.requestOptions);
     return ctx.respond(result, { compactKind: "item" });
   },
 };

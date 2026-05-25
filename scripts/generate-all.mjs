@@ -7,7 +7,6 @@ const steps = [
   ["npm", "run", "metadata:generate"],
   ["npm", "run", "metadata:test"],
   ["npm", "run", "generate:types"],
-  ["npm", "run", "generate:operations"],
   ["npm", "run", "generate:mcp"],
   ["npm", "run", "generate:cli"],
   ["npm", "run", "generate:docs-index"],

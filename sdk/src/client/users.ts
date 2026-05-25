@@ -1,18 +1,32 @@
 import type { PlakyClient } from "./client.js";
-import { listUsers } from "../generated/operations/list-users.js";
-import { getCurrentUser } from "../generated/operations/get-current-user.js";
 import { paginate, type PaginatedIterator } from "../runtime/pagination.js";
+import type { PlakyRequestOverrides } from "../runtime/types.js";
 import type { PagedResult, UserShape, ShortUserShape } from "./shapes.js";
 
 export class UsersResource {
   constructor(private readonly client: PlakyClient) {}
 
-  list(query?: { page?: number; pageSize?: number }): Promise<PagedResult<ShortUserShape>> {
-    return listUsers({ query: query as never }, this.client.requestOptions()) as unknown as Promise<PagedResult<ShortUserShape>>;
+  list(query?: { page?: number; pageSize?: number }, options?: PlakyRequestOverrides): Promise<PagedResult<ShortUserShape>> {
+    return this.client.request<PagedResult<ShortUserShape>>(
+      {
+        method: "GET",
+        path: "/v1/public/users",
+        query,
+        operationId: "listUsers",
+      },
+      options,
+    );
   }
 
-  me(): Promise<UserShape> {
-    return getCurrentUser({}, this.client.requestOptions()) as unknown as Promise<UserShape>;
+  me(options?: PlakyRequestOverrides): Promise<UserShape> {
+    return this.client.request<UserShape>(
+      {
+        method: "GET",
+        path: "/v1/public/users/me",
+        operationId: "getCurrentUser",
+      },
+      options,
+    );
   }
 
   iterate(opts: { pageSize?: number; limit?: number } = {}): PaginatedIterator<ShortUserShape> {

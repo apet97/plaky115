@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, beforeEach } from "node:test";
-import { PlakyClient } from "../esm/index.js";
+import { PlakyClient, PlakyTimeoutError, SpaceId } from "../esm/index.js";
 
 beforeEach(() => {
   globalThis.fetch = async (url) => {
@@ -45,6 +45,55 @@ test("client.items.list flows path params into URL", async () => {
   const client = new PlakyClient({ apiKey: "plk_test", serverURL: "https://example.test" });
   await client.items.list({ spaceId: 123, boardId: 456 });
   assert.match(captured, /\/spaces\/123\/boards\/456\/items/);
+});
+
+test("resource methods encode path ID segments", async () => {
+  let captured;
+  globalThis.fetch = async (url) => {
+    captured = url.toString();
+    return new Response(JSON.stringify({ id: "space/with slash" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+  const client = new PlakyClient({ apiKey: "plk_test", serverURL: "https://example.test" });
+  await client.spaces.get(SpaceId("space/with slash"));
+  assert.match(captured, /\/spaces\/space%2Fwith%20slash$/);
+});
+
+test("read methods apply per-request header overrides", async () => {
+  let headers;
+  globalThis.fetch = async (_url, init) => {
+    headers = new Headers(init.headers);
+    return new Response(JSON.stringify({ id: 1 }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  const client = new PlakyClient({
+    apiKey: "plk_test",
+    serverURL: "https://example.test",
+    headers: { "X-Trace": "client" },
+  });
+  await client.spaces.get(1, { headers: { "X-Trace": "request", "X-Once": "1" } });
+
+  assert.equal(headers.get("x-trace"), "request");
+  assert.equal(headers.get("x-once"), "1");
+});
+
+test("read methods apply per-request timeout overrides", async () => {
+  const client = new PlakyClient({
+    apiKey: "plk_test",
+    serverURL: "https://example.test",
+    timeoutMs: 30_000,
+    fetch: async (_url, init) =>
+      new Promise((_resolve, reject) => {
+        init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+      }),
+  });
+
+  await assert.rejects(client.spaces.get(1, { timeoutMs: 1 }), (err) => err instanceof PlakyTimeoutError);
 });
 
 test("client.users.me hits /users/me", async () => {

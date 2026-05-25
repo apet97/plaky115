@@ -19,7 +19,7 @@ function asId(ref: EntityRef): { id?: number | string; needle?: string } {
 function pick<T extends WithId>(items: T[], match: { id?: number | string; needle?: string }, label: string): T {
   if (match.id !== undefined) {
     const found = items.find((it) => it.id === match.id || String(it.id) === String(match.id));
-    if (!found) throw new PlakyNotFoundError(`${label} not found: id=${match.id}`, 404);
+    if (!found) throw localNotFound(`${label} not found: id=${match.id}`);
     return found;
   }
   if (match.needle) {
@@ -28,11 +28,20 @@ function pick<T extends WithId>(items: T[], match: { id?: number | string; needl
       const text = `${it.title ?? it.name ?? it.email ?? ""}`.toLowerCase();
       return text.includes(needle);
     });
-    if (candidates.length === 0) throw new PlakyNotFoundError(`${label} not found: ${needle}`, 404);
+    if (candidates.length === 0) throw localNotFound(`${label} not found: ${needle}`);
     if (candidates.length > 1) throw new PlakyAmbiguousMatchError(`${label} ambiguous: ${needle}`, candidates);
     return candidates[0]!;
   }
-  throw new PlakyNotFoundError(`${label}: empty ref`, 404);
+  throw localNotFound(`${label}: empty ref`);
+}
+
+function localNotFound(message: string): PlakyNotFoundError {
+  return new PlakyNotFoundError(message, {
+    status: 404,
+    method: "LOCAL",
+    url: "plaky115://resolver",
+    headers: new Headers(),
+  });
 }
 
 export async function resolveSpace(client: PlakyClient, ref: EntityRef): Promise<WithId> {

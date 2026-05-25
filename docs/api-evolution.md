@@ -32,7 +32,7 @@ What to do when the Plaky API changes. Replaces the v1 plan's "wait for Speakeas
 
 If Plaky introduces cursor-based pagination on top of `page/pageSize`, update:
 - `openapi/plaky115-operation-metadata.json` `pagination` block (via overlay).
-- `scripts/lib/codegen-operations.mjs` to emit cursor params.
+- `scripts/lib/codegen-common.mjs`, `scripts/lib/codegen-mcp.mjs`, and `scripts/lib/codegen-cli.mjs` to emit cursor params for raw MCP and CLI surfaces.
 - `sdk/src/runtime/pagination.ts` `paginate()` to thread cursors.
 
 ## Speakeasy CLI unavailable

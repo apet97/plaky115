@@ -19,13 +19,30 @@ export { UsersResource } from "./client/users.js";
 export { TeamsResource } from "./client/teams.js";
 
 export {
+  PlakyError,
+  PlakyConnectionError,
+  PlakyTimeoutError,
+  PlakyAbortError,
   PlakyApiError,
-  PlakyValidationError,
-  PlakyNotFoundError,
-  PlakyRateLimitError,
   PlakyAuthError,
+  PlakyPermissionError,
+  PlakyNotFoundError,
+  PlakyConflictError,
+  PlakyValidationError,
+  PlakyUnprocessableEntityError,
+  PlakyRateLimitError,
+  PlakyServerError,
   PlakyAmbiguousMatchError,
 } from "./runtime/errors.js";
+export type {
+  ApiKeyProvider,
+  FetchLike,
+  HeaderProvider,
+  PlakyApiResponse,
+  PlakyRequestOverrides,
+  QueryParams,
+  ResponseType,
+} from "./runtime/types.js";
 
 export { newIdempotencyKey } from "./runtime/idempotency.js";
 export { verifyWebhookSignature } from "./runtime/webhooks.js";
@@ -65,9 +82,6 @@ export type {
   TeamId as TeamIdType,
   Branded,
 } from "./runtime/ids.js";
-
-export { operationTable } from "./generated/operation-table.js";
-export type { OperationId } from "./generated/operation-table.js";
 
 export type {
   PagedResult,

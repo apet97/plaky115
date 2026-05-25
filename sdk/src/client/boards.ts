@@ -1,20 +1,35 @@
 import type { PlakyClient } from "./client.js";
-import { listBoards } from "../generated/operations/list-boards.js";
-import { getBoard } from "../generated/operations/get-board.js";
+import { pathSegment } from "./path.js";
 import { paginate, type PaginatedIterator } from "../runtime/pagination.js";
+import type { PlakyRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId } from "../runtime/ids.js";
 import type { PagedResult, BoardShape } from "./shapes.js";
 
 export class BoardsResource {
   constructor(private readonly client: PlakyClient) {}
 
-  list(params: { spaceId: SpaceId; page?: number; pageSize?: number }): Promise<PagedResult<BoardShape>> {
+  list(params: { spaceId: SpaceId | string | number; page?: number; pageSize?: number }, options?: PlakyRequestOverrides): Promise<PagedResult<BoardShape>> {
     const { spaceId, ...query } = params;
-    return listBoards({ spaceId, query: query as never }, this.client.requestOptions()) as unknown as Promise<PagedResult<BoardShape>>;
+    return this.client.request<PagedResult<BoardShape>>(
+      {
+        method: "GET",
+        path: `/v1/public/spaces/${pathSegment(spaceId)}/boards`,
+        query,
+        operationId: "listBoards",
+      },
+      options,
+    );
   }
 
-  get(params: { spaceId: SpaceId; boardId: BoardId }): Promise<BoardShape> {
-    return getBoard(params, this.client.requestOptions()) as unknown as Promise<BoardShape>;
+  get(params: { spaceId: SpaceId | string | number; boardId: BoardId | string | number }, options?: PlakyRequestOverrides): Promise<BoardShape> {
+    return this.client.request<BoardShape>(
+      {
+        method: "GET",
+        path: `/v1/public/spaces/${pathSegment(params.spaceId)}/boards/${pathSegment(params.boardId)}`,
+        operationId: "getBoard",
+      },
+      options,
+    );
   }
 
   iterate(params: { spaceId: SpaceId; pageSize?: number; limit?: number }): PaginatedIterator<BoardShape> {

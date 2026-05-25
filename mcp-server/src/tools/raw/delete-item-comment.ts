@@ -1,6 +1,6 @@
 // AUTO-GENERATED. Source: openapi/plaky115-operation-metadata.json operationId=deleteItemComment
 import { z } from "zod/v3";
-import { deleteItemComment } from "plaky115/operations/delete-item-comment.js";
+import { request } from "plaky115/runtime/http.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
@@ -23,7 +23,13 @@ export const deleteItemCommentTool: McpToolDefinition = {
   },
   inputSchema: args,
   async handler(input, ctx) {
-    const result = await deleteItemComment(input as Parameters<typeof deleteItemComment>[0], ctx.requestOptions);
+    const parsed = args.parse(input);
+    const result = await request({
+      method: "DELETE",
+      path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/comments/${encodeURIComponent(String(parsed.itemCommentId))}`,
+      responseType: "void",
+      operationId: "deleteItemComment",
+    }, ctx.requestOptions);
     return ctx.respond(result, { compactKind: "board" });
   },
 };

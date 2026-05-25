@@ -27,20 +27,6 @@ test("generate-types is deterministic", () => {
   assert.equal(a, b, "running generate-types twice must produce identical output");
 });
 
-test("generate-operations is deterministic", () => {
-  run("node", ["scripts/generate-operations.mjs"]);
-  const targets = [
-    join(root, "sdk/src/generated/operations/list-spaces.ts"),
-    join(root, "sdk/src/generated/operations/create-item.ts"),
-    join(root, "sdk/src/generated/operations/replace-comment-reactions.ts"),
-    join(root, "sdk/src/generated/operation-table.ts"),
-  ];
-  const a = snapshot(targets);
-  run("node", ["scripts/generate-operations.mjs"]);
-  const b = snapshot(targets);
-  assert.equal(a, b);
-});
-
 test("generate-mcp is deterministic", () => {
   run("node", ["scripts/generate-mcp.mjs"]);
   const targets = [

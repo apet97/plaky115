@@ -10,9 +10,9 @@ Unofficial, hand-crafted SDK / CLI / MCP server for the Plaky public API. Not af
 
 ## Architecture
 
-1. Generated types: `sdk/src/generated/types.ts` from `openapi-typescript`.
-2. Generated low-level operations: one module per OpenAPI operation, scaffolded by local Node scripts from `openapi/plaky115-operation-metadata.json`.
-3. Hand-crafted surfaces: `PlakyClient`, curated Go commands, and curated MCP tools. This layer owns pagination helpers, retries, idempotency keys, normalized errors, rate-limit snapshots, interceptors, webhook helpers, mutation planning, and workflow composition.
+1. Generated schema types: `sdk/src/generated/types.ts` from `openapi-typescript`.
+2. Generated raw surfaces: CLI raw commands, Go raw helpers, MCP raw tools, and the MCP docs index are scaffolded by local Node scripts from `openapi/plaky115-operation-metadata.json`.
+3. Hand-crafted surfaces: `PlakyClient`, curated Go commands, and curated MCP tools. This layer owns pagination helpers, retries, timeouts, cancellation, idempotency keys, typed errors, rate-limit snapshots, interceptors, webhook helpers, mutation planning, and workflow composition.
 
 See `docs/surfaces.md`, `docs/codegen.md`, `docs/api-evolution.md`, and `docs/release-checklist.md`.
 
@@ -25,7 +25,7 @@ See `docs/surfaces.md`, `docs/codegen.md`, `docs/api-evolution.md`, and `docs/re
 ## TypeScript SDK
 
 ```ts
-import { BoardId, PlakyClient, SpaceId, statusField, fieldValues } from "plaky115";
+import { PlakyClient, fieldValues, statusField } from "plaky115";
 
 const plaky = new PlakyClient({ apiKey: process.env.PLAKY115_API_KEY! });
 
@@ -33,8 +33,8 @@ for await (const space of plaky.spaces.iterate({ pageSize: 100 })) {
   console.log(space);
 }
 
-const spaceId = SpaceId(123);
-const boardId = BoardId(456);
+const spaceId = 123;
+const boardId = 456;
 const items = await plaky.items.listAll({ spaceId, boardId });
 
 await plaky.items.create({
@@ -50,6 +50,16 @@ const plan = await plaky.items.create({ spaceId, boardId, body: { title: "x" }, 
 Mutations attach idempotency keys by default. Retries are conservative: `GET`
 requests can retry, and write requests retry only when an idempotency key is
 present.
+
+The low-level TypeScript escape hatch is still the SDK transport, not generated
+operation modules:
+
+```ts
+const response = await plaky.requestWithResponse({
+  method: "GET",
+  path: "/v1/public/spaces",
+});
+```
 
 ## CLI
 
@@ -105,7 +115,7 @@ npm run secret:scan
 
 ## Regenerate
 
-`npm run generate:all` rebuilds types, operation wrappers, MCP raw tools, CLI raw
+`npm run generate:all` rebuilds SDK schema types, MCP raw tools, CLI raw
 commands, and the MCP docs index. `npm run status:surfaces:strict` fails if any
 generated surface is stale or legacy.
 

@@ -2,7 +2,7 @@
 import { mkdirSync, writeFileSync, readdirSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadMetadata, slug } from "./lib/codegen-operations.mjs";
+import { loadMetadata, slug } from "./lib/codegen-common.mjs";
 import { buildRawToolModule, buildRawToolIndex } from "./lib/codegen-mcp.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));

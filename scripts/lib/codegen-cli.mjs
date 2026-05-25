@@ -1,4 +1,4 @@
-import { pathParams } from "./codegen-operations.mjs";
+import { pathParams } from "./codegen-common.mjs";
 
 export function buildCobraCommand(op) {
   const params = pathParams(op.path);

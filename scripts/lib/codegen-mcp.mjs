@@ -1,4 +1,4 @@
-import { slug, pathParams } from "./codegen-operations.mjs";
+import { slug, pathParams } from "./codegen-common.mjs";
 
 export function buildRawToolModule(op) {
   const params = pathParams(op.path);
@@ -7,7 +7,7 @@ export function buildRawToolModule(op) {
   const lines = [];
   lines.push(`// AUTO-GENERATED. Source: openapi/plaky115-operation-metadata.json operationId=${camelOp}`);
   lines.push(`import { z } from "zod/v3";`);
-  lines.push(`import { ${camelOp} } from "plaky115/operations/${slug(camelOp)}.js";`);
+  lines.push(`import { request } from "plaky115/runtime/http.js";`);
   lines.push(`import type { McpToolDefinition } from "../../runtime/types.js";`);
   lines.push(``);
   lines.push(`const args = z.object({`);
@@ -31,13 +31,36 @@ export function buildRawToolModule(op) {
   lines.push(`    openWorldHint: ${op.openWorld === true},`);
   lines.push(`  },`);
   lines.push(`  inputSchema: args,`);
-  lines.push(`  async handler(input, ctx) {`);
-  lines.push(`    const result = await ${camelOp}(input as Parameters<typeof ${camelOp}>[0], ctx.requestOptions);`);
+  const usesInput = params.length > 0 || op.pagination || hasBody;
+  lines.push(`  async handler(${usesInput ? "input" : "_input"}, ctx) {`);
+  if (usesInput) lines.push(`    const parsed = args.parse(input);`);
+  if (op.pagination) {
+    lines.push(`    const query = {`);
+    lines.push(`      ...(parsed.page !== undefined ? { page: parsed.page } : {}),`);
+    lines.push(`      ...(parsed.pageSize !== undefined ? { pageSize: parsed.pageSize } : {}),`);
+    lines.push(`    };`);
+  }
+  lines.push(`    const result = await request({`);
+  lines.push(`      method: "${op.method}",`);
+  lines.push(`      path: ${formatTsPath(op.path, params)},`);
+  if (op.pagination) lines.push(`      query,`);
+  if (hasBody) lines.push(`      body: parsed.body,`);
+  if (op.method === "DELETE") lines.push(`      responseType: "void",`);
+  lines.push(`      operationId: "${camelOp}",`);
+  lines.push(`    }, ctx.requestOptions);`);
   lines.push(`    return ctx.respond(result, { compactKind: ${pickCompact(op)} });`);
   lines.push(`  },`);
   lines.push(`};`);
   lines.push(``);
   return lines.join("\n");
+}
+
+function formatTsPath(path, params) {
+  if (params.length === 0) return JSON.stringify(path);
+  const escaped = path
+    .replace(/`/g, "\\`")
+    .replace(/\{([^}]+)\}/g, (_, key) => `\${encodeURIComponent(String(parsed.${key}))}`);
+  return `\`${escaped}\``;
 }
 
 function pickCompact(op) {

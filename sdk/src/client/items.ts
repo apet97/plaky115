@@ -1,53 +1,48 @@
 import type { PlakyClient } from "./client.js";
-import { listItems } from "../generated/operations/list-items.js";
-import { listSubitems } from "../generated/operations/list-subitems.js";
-import { getItem } from "../generated/operations/get-item.js";
-import { createItem } from "../generated/operations/create-item.js";
-import { deleteItem } from "../generated/operations/delete-item.js";
-import { updateItemField } from "../generated/operations/update-item-field.js";
-import { updateItemFields } from "../generated/operations/update-item-fields.js";
+import { pathSegment } from "./path.js";
 import { paginate, type PaginatedIterator } from "../runtime/pagination.js";
 import { newIdempotencyKey } from "../runtime/idempotency.js";
+import type { PlakyRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId, ItemId, FieldKey } from "../runtime/ids.js";
 import type { PagedResult, ItemShape } from "./shapes.js";
 
 export type ItemListParams = {
-  spaceId: SpaceId;
-  boardId: BoardId;
+  spaceId: SpaceId | string | number;
+  boardId: BoardId | string | number;
   page?: number;
   pageSize?: number;
 };
 
 export type ItemCreateParams = {
-  spaceId: SpaceId;
-  boardId: BoardId;
+  spaceId: SpaceId | string | number;
+  boardId: BoardId | string | number;
   body: Record<string, unknown>;
   idempotencyKey?: string;
   dryRun?: boolean;
 };
 
 export type ItemUpdateFieldParams = {
-  spaceId: SpaceId;
-  boardId: BoardId;
-  itemId: ItemId;
-  itemFieldKey: FieldKey;
+  spaceId: SpaceId | string | number;
+  boardId: BoardId | string | number;
+  itemId: ItemId | string | number;
+  itemFieldKey: FieldKey | string;
   body: Record<string, unknown>;
   idempotencyKey?: string;
 };
 
 export type ItemUpdateFieldsParams = {
-  spaceId: SpaceId;
-  boardId: BoardId;
-  itemId: ItemId;
+  spaceId: SpaceId | string | number;
+  boardId: BoardId | string | number;
+  itemId: ItemId | string | number;
   body: Record<string, unknown>;
   idempotencyKey?: string;
   dryRun?: boolean;
 };
 
 export type ItemDeleteParams = {
-  spaceId: SpaceId;
-  boardId: BoardId;
-  itemId: ItemId;
+  spaceId: SpaceId | string | number;
+  boardId: BoardId | string | number;
+  itemId: ItemId | string | number;
   idempotencyKey?: string;
 };
 
@@ -60,70 +55,108 @@ export type DryRunPlan = {
 export class ItemsResource {
   constructor(private readonly client: PlakyClient) {}
 
-  list(params: ItemListParams): Promise<PagedResult<ItemShape>> {
+  list(params: ItemListParams, options?: PlakyRequestOverrides): Promise<PagedResult<ItemShape>> {
     const { spaceId, boardId, ...query } = params;
-    return listItems({ spaceId, boardId, query: query as never }, this.client.requestOptions()) as unknown as Promise<PagedResult<ItemShape>>;
-  }
-
-  get(params: { spaceId: SpaceId; boardId: BoardId; itemId: ItemId }): Promise<ItemShape> {
-    return getItem(params, this.client.requestOptions()) as unknown as Promise<ItemShape>;
-  }
-
-  listSubitems(params: { spaceId: SpaceId; boardId: BoardId; itemId: ItemId; page?: number; pageSize?: number }): Promise<PagedResult<ItemShape>> {
-    const { spaceId, boardId, itemId, ...query } = params;
-    return listSubitems({ spaceId, boardId, itemId, query: query as never }, this.client.requestOptions()) as unknown as Promise<PagedResult<ItemShape>>;
-  }
-
-  async create(params: ItemCreateParams): Promise<ItemShape | DryRunPlan> {
-    if (params.dryRun === true) {
-      return planMutation("createItem", { spaceId: params.spaceId, boardId: params.boardId, body: params.body });
-    }
-    const idempotencyKey = params.idempotencyKey ?? newIdempotencyKey("item");
-    return createItem(
-      { spaceId: params.spaceId, boardId: params.boardId, body: params.body as never },
-      this.client.requestOptions({ idempotencyKey }),
-    ) as unknown as Promise<ItemShape>;
-  }
-
-  async delete(params: ItemDeleteParams): Promise<void> {
-    const idempotencyKey = params.idempotencyKey ?? newIdempotencyKey("item-del");
-    await deleteItem(
-      { spaceId: params.spaceId, boardId: params.boardId, itemId: params.itemId },
-      this.client.requestOptions({ idempotencyKey }),
+    return this.client.request<PagedResult<ItemShape>>(
+      {
+        method: "GET",
+        path: `/v1/public/spaces/${pathSegment(spaceId)}/boards/${pathSegment(boardId)}/items`,
+        query,
+        operationId: "listItems",
+      },
+      options,
     );
   }
 
-  async updateField(params: ItemUpdateFieldParams): Promise<ItemShape> {
-    const idempotencyKey = params.idempotencyKey ?? newIdempotencyKey("item-field");
-    return updateItemField(
+  get(
+    params: { spaceId: SpaceId | string | number; boardId: BoardId | string | number; itemId: ItemId | string | number },
+    options?: PlakyRequestOverrides,
+  ): Promise<ItemShape> {
+    return this.client.request<ItemShape>(
       {
-        spaceId: params.spaceId,
-        boardId: params.boardId,
-        itemId: params.itemId,
-        itemFieldKey: params.itemFieldKey,
-        body: params.body as never,
+        method: "GET",
+        path: `/v1/public/spaces/${pathSegment(params.spaceId)}/boards/${pathSegment(params.boardId)}/items/${pathSegment(params.itemId)}`,
+        operationId: "getItem",
       },
-      this.client.requestOptions({ idempotencyKey }),
-    ) as unknown as Promise<ItemShape>;
+      options,
+    );
   }
 
-  async updateFields(params: ItemUpdateFieldsParams): Promise<ItemShape | DryRunPlan> {
+  listSubitems(
+    params: { spaceId: SpaceId | string | number; boardId: BoardId | string | number; itemId: ItemId | string | number; page?: number; pageSize?: number },
+    options?: PlakyRequestOverrides,
+  ): Promise<PagedResult<ItemShape>> {
+    const { spaceId, boardId, itemId, ...query } = params;
+    return this.client.request<PagedResult<ItemShape>>(
+      {
+        method: "GET",
+        path: `/v1/public/spaces/${pathSegment(spaceId)}/boards/${pathSegment(boardId)}/items/${pathSegment(itemId)}/sub-items`,
+        query,
+        operationId: "listSubitems",
+      },
+      options,
+    );
+  }
+
+  async create(params: ItemCreateParams, options?: PlakyRequestOverrides): Promise<ItemShape | DryRunPlan> {
+    if (params.dryRun === true) {
+      return planMutation("createItem", { spaceId: params.spaceId, boardId: params.boardId, body: params.body });
+    }
+    const idempotencyKey = params.idempotencyKey ?? options?.idempotencyKey ?? newIdempotencyKey("item");
+    return this.client.request<ItemShape>(
+      {
+        method: "POST",
+        path: `/v1/public/spaces/${pathSegment(params.spaceId)}/boards/${pathSegment(params.boardId)}/items`,
+        body: params.body,
+        operationId: "createItem",
+      },
+      { ...options, idempotencyKey },
+    );
+  }
+
+  async delete(params: ItemDeleteParams, options?: PlakyRequestOverrides): Promise<void> {
+    const idempotencyKey = params.idempotencyKey ?? options?.idempotencyKey ?? newIdempotencyKey("item-del");
+    await this.client.request<void>(
+      {
+        method: "DELETE",
+        path: `/v1/public/spaces/${pathSegment(params.spaceId)}/boards/${pathSegment(params.boardId)}/items/${pathSegment(params.itemId)}`,
+        operationId: "deleteItem",
+        responseType: "void",
+      },
+      { ...options, idempotencyKey },
+    );
+  }
+
+  async updateField(params: ItemUpdateFieldParams, options?: PlakyRequestOverrides): Promise<ItemShape> {
+    const idempotencyKey = params.idempotencyKey ?? options?.idempotencyKey ?? newIdempotencyKey("item-field");
+    return this.client.request<ItemShape>(
+      {
+        method: "PATCH",
+        path: `/v1/public/spaces/${pathSegment(params.spaceId)}/boards/${pathSegment(params.boardId)}/items/${pathSegment(params.itemId)}/fields/${pathSegment(params.itemFieldKey)}`,
+        body: params.body,
+        operationId: "updateItemField",
+      },
+      { ...options, idempotencyKey },
+    );
+  }
+
+  async updateFields(params: ItemUpdateFieldsParams, options?: PlakyRequestOverrides): Promise<ItemShape | DryRunPlan> {
     if (params.dryRun === true) {
       return planMutation("updateItemFields", { spaceId: params.spaceId, boardId: params.boardId, itemId: params.itemId, body: params.body });
     }
-    const idempotencyKey = params.idempotencyKey ?? newIdempotencyKey("item-fields");
-    return updateItemFields(
+    const idempotencyKey = params.idempotencyKey ?? options?.idempotencyKey ?? newIdempotencyKey("item-fields");
+    return this.client.request<ItemShape>(
       {
-        spaceId: params.spaceId,
-        boardId: params.boardId,
-        itemId: params.itemId,
-        body: params.body as never,
+        method: "PATCH",
+        path: `/v1/public/spaces/${pathSegment(params.spaceId)}/boards/${pathSegment(params.boardId)}/items/${pathSegment(params.itemId)}/fields`,
+        body: params.body,
+        operationId: "updateItemFields",
       },
-      this.client.requestOptions({ idempotencyKey }),
-    ) as unknown as Promise<ItemShape>;
+      { ...options, idempotencyKey },
+    );
   }
 
-  iterate(params: { spaceId: SpaceId; boardId: BoardId; pageSize?: number; limit?: number }): PaginatedIterator<ItemShape> {
+  iterate(params: { spaceId: SpaceId | string | number; boardId: BoardId | string | number; pageSize?: number; limit?: number }): PaginatedIterator<ItemShape> {
     return paginate<ItemShape>(
       async ({ page, pageSize }) => {
         const res = await this.list({ spaceId: params.spaceId, boardId: params.boardId, page, pageSize });
@@ -133,7 +166,7 @@ export class ItemsResource {
     );
   }
 
-  async listAll(params: { spaceId: SpaceId; boardId: BoardId; pageSize?: number; limit?: number }): Promise<ItemShape[]> {
+  async listAll(params: { spaceId: SpaceId | string | number; boardId: BoardId | string | number; pageSize?: number; limit?: number }): Promise<ItemShape[]> {
     const out: ItemShape[] = [];
     for await (const i of this.iterate(params)) out.push(i);
     return out;

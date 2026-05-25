@@ -1,6 +1,6 @@
 // AUTO-GENERATED. Source: openapi/plaky115-operation-metadata.json operationId=listItemComments
 import { z } from "zod/v3";
-import { listItemComments } from "plaky115/operations/list-item-comments.js";
+import { request } from "plaky115/runtime/http.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
@@ -22,7 +22,12 @@ export const listItemCommentsTool: McpToolDefinition = {
   },
   inputSchema: args,
   async handler(input, ctx) {
-    const result = await listItemComments(input as Parameters<typeof listItemComments>[0], ctx.requestOptions);
+    const parsed = args.parse(input);
+    const result = await request({
+      method: "GET",
+      path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/comments`,
+      operationId: "listItemComments",
+    }, ctx.requestOptions);
     return ctx.respond(result, { compactKind: "board" });
   },
 };

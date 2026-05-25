@@ -1,6 +1,6 @@
 // AUTO-GENERATED. Source: openapi/plaky115-operation-metadata.json operationId=listSubitems
 import { z } from "zod/v3";
-import { listSubitems } from "plaky115/operations/list-subitems.js";
+import { request } from "plaky115/runtime/http.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
@@ -24,7 +24,17 @@ export const listSubitemsTool: McpToolDefinition = {
   },
   inputSchema: args,
   async handler(input, ctx) {
-    const result = await listSubitems(input as Parameters<typeof listSubitems>[0], ctx.requestOptions);
+    const parsed = args.parse(input);
+    const query = {
+      ...(parsed.page !== undefined ? { page: parsed.page } : {}),
+      ...(parsed.pageSize !== undefined ? { pageSize: parsed.pageSize } : {}),
+    };
+    const result = await request({
+      method: "GET",
+      path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/sub-items`,
+      query,
+      operationId: "listSubitems",
+    }, ctx.requestOptions);
     return ctx.respond(result, { compactKind: "item" });
   },
 };

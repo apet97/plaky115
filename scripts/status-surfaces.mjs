@@ -16,7 +16,7 @@ if (json) {
 const driftStatuses = ["stale", "missing", "incomplete"];
 const surfaces = [
   ["sdk.generatedTypes", report.sdk.generatedTypes.status],
-  ["sdk.generatedOperations", report.sdk.generatedOperations.status],
+  ["sdk.legacyGeneratedOperations", report.sdk.legacy.generatedOperations ? "legacy" : "fresh"],
   ["sdk.handcraftedClient", report.sdk.handcraftedClient.status],
   ["sdk.build", report.sdk.build.status],
   ["cli.generatedCommands", report.cli.generatedCommands.status],
@@ -35,7 +35,7 @@ if (bad.length > 0) {
 function print(report) {
   console.log(`Spec: ${report.spec.operationCount} operations`);
   console.log(`SDK types        : ${report.sdk.generatedTypes.status}`);
-  console.log(`SDK operations   : ${report.sdk.generatedOperations.status}`);
+  console.log(`SDK operations   : ${report.sdk.legacy.generatedOperations ? "legacy" : "schema-types-only"}`);
   console.log(`SDK client       : ${report.sdk.handcraftedClient.status}`);
   console.log(`SDK build        : ${report.sdk.build.status} (${report.sdk.build.staleFiles.length} stale)`);
   console.log(`CLI raw cmds     : ${report.cli.generatedCommands.status}`);

@@ -5,16 +5,19 @@
   "type": "module",
   "main": "./esm/index.js",
   "types": "./esm/index.d.ts",
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "README.md",
+    "esm",
+    "package.json"
+  ],
   "exports": {
     ".": {
       "types": "./esm/index.d.ts",
       "import": "./esm/index.js",
       "default": "./esm/index.js"
-    },
-    "./operations/*.js": {
-      "types": "./esm/generated/operations/*.d.ts",
-      "import": "./esm/generated/operations/*.js",
-      "default": "./esm/generated/operations/*.js"
     },
     "./runtime/*.js": {
       "types": "./esm/runtime/*.d.ts",

@@ -23,6 +23,8 @@ const banned = [
   ["old core export", /\bPlaky115(Core|McpCore)\b/],
   ["old core import", /from\s+["']plaky115\/core\.js["']/],
   ["old funcs import", /from\s+["']plaky115\/funcs\//],
+  ["old SDK operation subpath", /from\s+["']plaky115\/operations\//],
+  ["old SDK generated operations docs", /\bsdk\/src\/generated\/operations\b/],
   ["old plaky wrapper import", /from\s+["']plaky115\/plaky["']/],
   ["old wrapper factory", /\bcreatePlakyClient\b/],
   ["old CLI api-key flag", /--api-key-auth\b/],
@@ -85,6 +87,7 @@ function walkMarkdown(rel, files) {
   const abs = join(root, rel);
   for (const entry of readdirSync(abs, { withFileTypes: true })) {
     const child = `${rel}/${entry.name}`;
+    if (child === "docs/superpowers") continue;
     if (entry.isDirectory()) {
       walkMarkdown(child, files);
     } else if (entry.isFile() && entry.name.endsWith(".md")) {

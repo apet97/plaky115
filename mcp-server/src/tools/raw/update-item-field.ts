@@ -1,6 +1,6 @@
 // AUTO-GENERATED. Source: openapi/plaky115-operation-metadata.json operationId=updateItemField
 import { z } from "zod/v3";
-import { updateItemField } from "plaky115/operations/update-item-field.js";
+import { request } from "plaky115/runtime/http.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
@@ -24,7 +24,13 @@ export const updateItemFieldTool: McpToolDefinition = {
   },
   inputSchema: args,
   async handler(input, ctx) {
-    const result = await updateItemField(input as Parameters<typeof updateItemField>[0], ctx.requestOptions);
+    const parsed = args.parse(input);
+    const result = await request({
+      method: "PATCH",
+      path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/fields/${encodeURIComponent(String(parsed.itemFieldKey))}`,
+      body: parsed.body,
+      operationId: "updateItemField",
+    }, ctx.requestOptions);
     return ctx.respond(result, { compactKind: "item" });
   },
 };

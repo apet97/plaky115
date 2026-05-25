@@ -21,17 +21,12 @@ syncPackageMetadata(join(root, "sdk/package.json"), (pkg) => {
   pkg.description = "Hand-crafted TypeScript SDK for the Plaky public API. Unofficial.";
   pkg.license = "MIT";
   pkg.repository = pkg.repository ?? { type: "git", url: "https://github.com/apet97/plaky115" };
-  // Hand-crafted SDK only exports the public client, runtime utilities, and operations.
+  // Hand-crafted SDK only exports the public client and runtime utilities.
   pkg.exports = {
     ".": {
       types: "./esm/index.d.ts",
       import: "./esm/index.js",
       default: "./esm/index.js",
-    },
-    "./operations/*.js": {
-      types: "./esm/generated/operations/*.d.ts",
-      import: "./esm/generated/operations/*.js",
-      default: "./esm/generated/operations/*.js",
     },
     "./runtime/*.js": {
       types: "./esm/runtime/*.d.ts",

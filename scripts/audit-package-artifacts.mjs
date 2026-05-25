@@ -30,10 +30,14 @@ function compareEsmToSrc(pkg, srcRel, esmRel, legacyRel) {
 }
 
 const reports = [
-  compareEsmToSrc("sdk", "src/generated/operations", "esm/generated/operations", "esm/funcs"),
   compareEsmToSrc("mcp-server", "src/tools/raw", "esm/tools/raw", "esm/mcp-server"),
 ];
 let bad = false;
+const sdkGeneratedOps = join(root, "sdk", "esm", "generated", "operations");
+if (existsSync(sdkGeneratedOps)) {
+  console.log("sdk: generated operation artifacts present");
+  bad = true;
+}
 for (const r of reports) {
   console.log(`${r.pkg}: src=${r.srcCount} built=${r.builtCount} legacy=${r.legacyCount} missing=${r.missing.length} stale=${r.stale.length}`);
   if (r.missing.length > 0) console.log(`  missing: ${r.missing.join(", ")}`);

@@ -1,13 +1,14 @@
 import type { PlakyClient } from "./client.js";
-import { replaceCommentReactions } from "../generated/operations/replace-comment-reactions.js";
+import { pathSegment } from "./path.js";
 import { newIdempotencyKey } from "../runtime/idempotency.js";
+import type { PlakyRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId, ItemId, CommentId } from "../runtime/ids.js";
 
 export type ReplaceReactionsParams = {
-  spaceId: SpaceId;
-  boardId: BoardId;
-  itemId: ItemId;
-  itemCommentId: CommentId;
+  spaceId: SpaceId | string | number;
+  boardId: BoardId | string | number;
+  itemId: ItemId | string | number;
+  itemCommentId: CommentId | string | number;
   body: Record<string, unknown>;
   idempotencyKey?: string;
 };
@@ -15,17 +16,16 @@ export type ReplaceReactionsParams = {
 export class ReactionsResource {
   constructor(private readonly client: PlakyClient) {}
 
-  async replace(params: ReplaceReactionsParams): Promise<unknown> {
-    const idempotencyKey = params.idempotencyKey ?? newIdempotencyKey("reactions");
-    return replaceCommentReactions(
+  async replace(params: ReplaceReactionsParams, options?: PlakyRequestOverrides): Promise<unknown> {
+    const idempotencyKey = params.idempotencyKey ?? options?.idempotencyKey ?? newIdempotencyKey("reactions");
+    return this.client.request<unknown>(
       {
-        spaceId: params.spaceId,
-        boardId: params.boardId,
-        itemId: params.itemId,
-        itemCommentId: params.itemCommentId,
-        body: params.body as never,
+        method: "PUT",
+        path: `/v1/public/spaces/${pathSegment(params.spaceId)}/boards/${pathSegment(params.boardId)}/items/${pathSegment(params.itemId)}/comments/${pathSegment(params.itemCommentId)}/reactions`,
+        body: params.body,
+        operationId: "replaceCommentReactions",
       },
-      this.client.requestOptions({ idempotencyKey }),
+      { ...options, idempotencyKey },
     );
   }
 }

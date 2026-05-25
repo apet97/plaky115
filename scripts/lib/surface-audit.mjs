@@ -56,21 +56,6 @@ function buildSdkReport(root, spec) {
     ? { status: "fresh", path: relative(root, generatedTypesPath) }
     : { status: "missing", path: relative(root, generatedTypesPath) };
 
-  const generatedOperations = (() => {
-    if (!existsSync(generatedOpsDir)) {
-      return existsSync(legacySrcFuncs)
-        ? { status: "legacy", path: relative(root, legacySrcFuncs), expectedCount: spec.operationCount }
-        : { status: "missing", expectedCount: spec.operationCount };
-    }
-    const files = readdirSync(generatedOpsDir).filter((f) => f.endsWith(".ts"));
-    const slugs = files.map((f) => f.replace(/\.ts$/, ""));
-    const expected = spec.operationIds.map(kebab);
-    const missing = expected.filter((s) => !slugs.includes(s));
-    const extra = slugs.filter((s) => !expected.includes(s));
-    const status = missing.length === 0 && extra.length === 0 ? "fresh" : "stale";
-    return { status, expectedCount: spec.operationCount, missing, extra };
-  })();
-
   const handcraftedClient = (() => {
     if (!existsSync(handcraftedClientDir)) {
       return { status: "missing" };
@@ -100,10 +85,10 @@ function buildSdkReport(root, spec) {
 
   return {
     generatedTypes,
-    generatedOperations,
     handcraftedClient,
     build,
     legacy: {
+      generatedOperations: existsSync(generatedOpsDir),
       srcSdk: existsSync(legacySrcSdk),
       srcFuncs: existsSync(legacySrcFuncs),
     },

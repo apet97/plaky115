@@ -1,6 +1,6 @@
 // AUTO-GENERATED. Source: openapi/plaky115-operation-metadata.json operationId=listTeams
 import { z } from "zod/v3";
-import { listTeams } from "plaky115/operations/list-teams.js";
+import { request } from "plaky115/runtime/http.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
@@ -21,7 +21,17 @@ export const listTeamsTool: McpToolDefinition = {
   },
   inputSchema: args,
   async handler(input, ctx) {
-    const result = await listTeams(input as Parameters<typeof listTeams>[0], ctx.requestOptions);
+    const parsed = args.parse(input);
+    const query = {
+      ...(parsed.page !== undefined ? { page: parsed.page } : {}),
+      ...(parsed.pageSize !== undefined ? { pageSize: parsed.pageSize } : {}),
+    };
+    const result = await request({
+      method: "GET",
+      path: "/v1/public/teams",
+      query,
+      operationId: "listTeams",
+    }, ctx.requestOptions);
     return ctx.respond(result, { compactKind: "raw" });
   },
 };

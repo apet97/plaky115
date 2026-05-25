@@ -13,9 +13,8 @@ test("surface report classifies each surface", async () => {
   // Generated types
   assert.match(report.sdk.generatedTypes.status, /^(fresh|missing)$/);
 
-  // Generated operations (TS)
-  assert.match(report.sdk.generatedOperations.status, /^(fresh|stale|missing|legacy)$/);
-  assert.equal(typeof report.sdk.generatedOperations.expectedCount, "number");
+  // Generated operations are no longer part of the TypeScript SDK surface.
+  assert.equal(report.sdk.legacy.generatedOperations, false);
 
   // Hand-crafted SDK client
   assert.match(report.sdk.handcraftedClient.status, /^(fresh|missing|incomplete)$/);

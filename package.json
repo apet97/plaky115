@@ -26,7 +26,6 @@
     "pack:smoke": "node scripts/pack-smoke.mjs",
     "package:consumer-smoke": "node scripts/package-consumer-smoke.mjs",
     "generate:types": "node scripts/generate-types.mjs",
-    "generate:operations": "node scripts/generate-operations.mjs",
     "generate:mcp": "node scripts/generate-mcp.mjs",
     "generate:cli": "node scripts/generate-cli.mjs",
     "generate:docs-index": "node scripts/generate-docs-index.mjs",
