@@ -43,14 +43,18 @@ jobs:
         run: |
           node scripts/postgen-dx.mjs
           git diff --exit-code -- sdk/package.json mcp-server/package.json
+      - name: Build SDK + MCP
+        run: |
+          npm --prefix sdk run build
+          npm --prefix mcp-server run build
       - name: Surface + artifact audits
         run: |
           npm run test:surfaces
           npm run status:surfaces
           npm run artifacts:audit
-      - name: SDK
+      - name: SDK tests
         run: npm --prefix sdk test
-      - name: MCP
+      - name: MCP tests
         run: npm --prefix mcp-server test
       - name: CLI
         run: |
