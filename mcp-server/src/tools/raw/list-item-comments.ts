@@ -8,6 +8,7 @@ const args = z.object({
   boardId: z.union([z.string(), z.number()]).describe("boardId"),
   itemId: z.union([z.string(), z.number()]).describe("itemId"),
 });
+const output = z.object({}).passthrough();
 
 export const listItemCommentsTool: McpToolDefinition = {
   name: "plaky_list_item_comments",
@@ -21,6 +22,7 @@ export const listItemCommentsTool: McpToolDefinition = {
     openWorldHint: true,
   },
   inputSchema: args,
+  outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
     const result = await request({

@@ -1,8 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { PlakyClient } from "plaky115";
+import { PlakyApiError, PlakyClient, PlakyError } from "plaky115";
 import { selectTools, type Mode } from "./modes.js";
 import { filterByScopes } from "./scopes.js";
-import { compactByKind, serializeForMcp } from "../runtime/compaction.js";
+import { compactByKind, serializeForMcp, structuredForMcp } from "../runtime/compaction.js";
 import type { McpScope, McpToolContext, McpToolDefinition, McpToolResponse } from "../runtime/types.js";
 
 export type ServerOptions = {
@@ -29,15 +29,24 @@ export function buildServer(opts: ServerOptions): { server: McpServer; tools: Mc
           const compacted = ro?.compactKind
             ? compactByKind(value, ro.compactKind, { includeRaw: ro.includeRaw === true })
             : value;
-          return { content: [{ type: "text", text: serializeForMcp(compacted) }] };
+          const structuredContent = structuredForMcp(compacted);
+          return {
+            content: [{ type: "text", text: serializeForMcp(structuredContent) }],
+            structuredContent,
+          };
         },
         progress: () => {
           /* no-op for now */
         },
       };
-      const result = await tool.handler(input, ctx);
-      if (isMcpResponse(result)) return result;
-      return ctx.respond(result);
+      try {
+        const result = await tool.handler(input, ctx);
+        if (isMcpResponse(result)) return result;
+        return ctx.respond(result);
+      } catch (error) {
+        if (isKnownToolError(error)) return errorResponse(error);
+        throw error;
+      }
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (server as any).registerTool(
@@ -46,6 +55,7 @@ export function buildServer(opts: ServerOptions): { server: McpServer; tools: Mc
         title: tool.title,
         description: tool.description,
         inputSchema: tool.inputSchema,
+        outputSchema: tool.outputSchema,
         annotations: tool.annotations,
       },
       handler,
@@ -57,6 +67,33 @@ export function buildServer(opts: ServerOptions): { server: McpServer; tools: Mc
 
 function isMcpResponse(value: unknown): value is McpToolResponse {
   return typeof value === "object" && value !== null && "content" in value && Array.isArray((value as McpToolResponse).content);
+}
+
+function isKnownToolError(error: unknown): error is PlakyError {
+  return error instanceof PlakyError;
+}
+
+function errorResponse(error: PlakyError): McpToolResponse {
+  const payload: Record<string, unknown> = {
+    error: {
+      name: error.name,
+      message: error.message,
+      ...(error instanceof PlakyApiError
+        ? {
+            status: error.status,
+            requestId: error.requestId,
+            code: error.code,
+            retryAfterMs: error.retryAfterMs,
+          }
+        : {}),
+    },
+  };
+  const structuredContent = structuredForMcp(payload);
+  return {
+    content: [{ type: "text", text: serializeForMcp(structuredContent) }],
+    structuredContent,
+    isError: true,
+  };
 }
 
 export type { Mode, McpScope, McpToolDefinition };

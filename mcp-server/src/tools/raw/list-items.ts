@@ -9,6 +9,7 @@ const args = z.object({
   page: z.number().int().min(1).optional(),
   pageSize: z.number().int().min(1).max(200).optional(),
 });
+const output = z.object({}).passthrough();
 
 export const listItemsTool: McpToolDefinition = {
   name: "plaky_list_items",
@@ -22,6 +23,7 @@ export const listItemsTool: McpToolDefinition = {
     openWorldHint: true,
   },
   inputSchema: args,
+  outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
     const query = {

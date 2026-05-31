@@ -14,6 +14,85 @@ test("buildServer creates an MCP server with at least one tool", () => {
   assert.ok(tools.length >= 5, `expected at least 5 tools, got ${tools.length}`);
 });
 
+test("buildServer registers tools with output schemas", () => {
+  const { server } = buildServer({
+    apiKey: "plk_test",
+    mode: "all",
+    scopes: ["read", "write", "destructive"],
+  });
+  const registered = server._registeredTools;
+  assert.ok(Object.keys(registered).length >= 25);
+  for (const [name, tool] of Object.entries(registered)) {
+    assert.ok(tool.outputSchema, `${name} missing outputSchema`);
+  }
+});
+
+test("curated tool response includes text and structuredContent", async () => {
+  const { server } = buildServer({
+    apiKey: "plk_test",
+    mode: "curated",
+    scopes: ["read", "write"],
+  });
+  const tool = server._registeredTools.plaky_search_docs;
+  const response = await tool.handler({ query: "spaces", limit: 1 });
+
+  assert.equal(response.content[0].type, "text");
+  assert.ok(response.content[0].text.includes("hits"));
+  assert.ok(response.structuredContent);
+  assert.ok(Array.isArray(response.structuredContent.hits));
+});
+
+test("Plaky API errors are returned as tool errors", async () => {
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ message: "space not found" }), {
+      status: 404,
+      headers: {
+        "content-type": "application/json",
+        "x-request-id": "req_123",
+      },
+    });
+  try {
+    const { server } = buildServer({
+      apiKey: "plk_test",
+      serverURL: "https://example.test",
+      mode: "generated",
+      scopes: ["read"],
+    });
+    const tool = server._registeredTools.plaky_list_spaces;
+    const response = await tool.handler({ page: 1 });
+
+    assert.equal(response.isError, true);
+    assert.equal(response.structuredContent.error.name, "PlakyNotFoundError");
+    assert.equal(response.structuredContent.error.status, 404);
+    assert.equal(response.structuredContent.error.requestId, "req_123");
+    assert.ok(response.content[0].text.includes("space not found"));
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("raw delete tools return structured ok receipts", async () => {
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(null, { status: 204 });
+  try {
+    const { server } = buildServer({
+      apiKey: "plk_test",
+      serverURL: "https://example.test",
+      mode: "generated",
+      scopes: ["read", "write", "destructive"],
+    });
+    const tool = server._registeredTools.plaky_delete_item;
+    const response = await tool.handler({ spaceId: 1, boardId: 2, itemId: 3 });
+
+    assert.equal(response.content[0].type, "text");
+    assert.deepEqual(response.structuredContent, { ok: true });
+    assert.equal(JSON.parse(response.content[0].text).ok, true);
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
 test("--mode generated returns 20 raw tools", () => {
   assert.equal(selectTools("generated").length, 20);
 });

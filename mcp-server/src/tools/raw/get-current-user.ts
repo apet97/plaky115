@@ -5,6 +5,7 @@ import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
 });
+const output = z.object({}).passthrough();
 
 export const getCurrentUserTool: McpToolDefinition = {
   name: "plaky_get_current_user",
@@ -18,6 +19,7 @@ export const getCurrentUserTool: McpToolDefinition = {
     openWorldHint: true,
   },
   inputSchema: args,
+  outputSchema: output,
   async handler(_input, ctx) {
     const result = await request({
       method: "GET",

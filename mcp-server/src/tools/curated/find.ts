@@ -20,20 +20,24 @@ export const findTool: McpToolDefinition = {
     boardId: z.union([z.number().int(), z.string()]).optional(),
     includeRaw: z.boolean().optional(),
   }),
+  outputSchema: z.object({
+    data: z.array(z.unknown()),
+    hasMore: z.boolean().optional(),
+  }).passthrough(),
   async handler(input, ctx) {
     const args = input as { type: "space" | "board" | "item"; query: string; spaceId?: EntityRef; boardId?: EntityRef; includeRaw?: boolean };
     if (args.type === "space") {
       const spaces = await ctx.client.spaces.listAll();
       const needle = args.query.toLowerCase();
       const matched = spaces.filter((s) => String(s.title ?? "").toLowerCase().includes(needle));
-      return ctx.respond(matched, { compactKind: "space", includeRaw: args.includeRaw === true });
+      return ctx.respond({ data: matched, hasMore: false }, { compactKind: "space", includeRaw: args.includeRaw === true });
     }
     if (args.type === "board") {
       if (args.spaceId === undefined) throw new Error("plaky_find: spaceId required when type=board");
       const boards = await ctx.client.boards.listAll({ spaceId: asSpaceId(args.spaceId as string | number) });
       const needle = args.query.toLowerCase();
       const matched = boards.filter((b) => String(b.title ?? "").toLowerCase().includes(needle));
-      return ctx.respond(matched, { compactKind: "board", includeRaw: args.includeRaw === true });
+      return ctx.respond({ data: matched, hasMore: false }, { compactKind: "board", includeRaw: args.includeRaw === true });
     }
     if (args.type === "item") {
       if (args.spaceId === undefined || args.boardId === undefined) {

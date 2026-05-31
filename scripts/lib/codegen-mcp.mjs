@@ -18,6 +18,7 @@ export function buildRawToolModule(op) {
   }
   if (hasBody) lines.push(`  body: z.record(z.unknown()).optional(),`);
   lines.push(`});`);
+  lines.push(`const output = ${op.method === "DELETE" ? `z.object({ ok: z.boolean() })` : `z.object({}).passthrough()`};`);
   lines.push(``);
   lines.push(`export const ${camelOp}Tool: McpToolDefinition = {`);
   lines.push(`  name: "${op.mcpName}",`);
@@ -31,6 +32,7 @@ export function buildRawToolModule(op) {
   lines.push(`    openWorldHint: ${op.openWorld === true},`);
   lines.push(`  },`);
   lines.push(`  inputSchema: args,`);
+  lines.push(`  outputSchema: output,`);
   const usesInput = params.length > 0 || op.pagination || hasBody;
   lines.push(`  async handler(${usesInput ? "input" : "_input"}, ctx) {`);
   if (usesInput) lines.push(`    const parsed = args.parse(input);`);
@@ -40,7 +42,11 @@ export function buildRawToolModule(op) {
     lines.push(`      ...(parsed.pageSize !== undefined ? { pageSize: parsed.pageSize } : {}),`);
     lines.push(`    };`);
   }
-  lines.push(`    const result = await request({`);
+  if (op.method === "DELETE") {
+    lines.push(`    await request({`);
+  } else {
+    lines.push(`    const result = await request({`);
+  }
   lines.push(`      method: "${op.method}",`);
   lines.push(`      path: ${formatTsPath(op.path, params)},`);
   if (op.pagination) lines.push(`      query,`);
@@ -48,7 +54,11 @@ export function buildRawToolModule(op) {
   if (op.method === "DELETE") lines.push(`      responseType: "void",`);
   lines.push(`      operationId: "${camelOp}",`);
   lines.push(`    }, ctx.requestOptions);`);
-  lines.push(`    return ctx.respond(result, { compactKind: ${pickCompact(op)} });`);
+  if (op.method === "DELETE") {
+    lines.push(`    return ctx.respond({ ok: true }, { compactKind: "raw" });`);
+  } else {
+    lines.push(`    return ctx.respond(result, { compactKind: ${pickCompact(op)} });`);
+  }
   lines.push(`  },`);
   lines.push(`};`);
   lines.push(``);

@@ -28,3 +28,8 @@ test("live sweep fails when CLI probes fail and always rebuilds the CLI", () => 
   assert.match(liveSweep, /record\("cli", "comments-thread", runCLI/);
   assert.match(liveSweep, /record\("cli", "reactions-replace --dry-run", runCLI/);
 });
+
+test("live sweep reads structured MCP responses before text JSON fallback", () => {
+  assert.match(liveSweep, /if \(response\.structuredContent\) return response\.structuredContent;/);
+  assert.match(liveSweep, /Array\.isArray\(docs\?\.hits\) \? docs\.hits\.length : undefined/);
+});

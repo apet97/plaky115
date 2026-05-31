@@ -28,9 +28,16 @@ scope is supplied, all scopes are enabled.
 Curated responses are compact by default. Pass `includeRaw: true` when a client
 needs the original Plaky API payload.
 
+Tool results include both redacted JSON text in `content[0].text` and the same
+machine-readable object in `structuredContent`. Known Plaky API failures are
+returned as tool errors with `isError: true` and structured error details, so
+clients can recover from 404s, rate limits, and validation errors without
+treating them as MCP protocol failures.
+
 ## Raw Tools
 
 Raw tools are available in `generated` and `all` modes. They are named from the
 operation metadata and keep the API-shaped request payloads. Prefer curated
 tools for discovery, planning, and agent workflows; use raw tools for exact API
-coverage.
+coverage. Raw tools also register conservative `outputSchema` definitions; void
+delete operations return `{ "ok": true }` receipts.

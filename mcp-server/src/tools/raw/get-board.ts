@@ -7,6 +7,7 @@ const args = z.object({
   spaceId: z.union([z.string(), z.number()]).describe("spaceId"),
   boardId: z.union([z.string(), z.number()]).describe("boardId"),
 });
+const output = z.object({}).passthrough();
 
 export const getBoardTool: McpToolDefinition = {
   name: "plaky_get_board",
@@ -20,6 +21,7 @@ export const getBoardTool: McpToolDefinition = {
     openWorldHint: true,
   },
   inputSchema: args,
+  outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
     const result = await request({

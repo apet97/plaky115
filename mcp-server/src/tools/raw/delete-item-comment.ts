@@ -9,6 +9,7 @@ const args = z.object({
   itemId: z.union([z.string(), z.number()]).describe("itemId"),
   itemCommentId: z.union([z.string(), z.number()]).describe("itemCommentId"),
 });
+const output = z.object({ ok: z.boolean() });
 
 export const deleteItemCommentTool: McpToolDefinition = {
   name: "plaky_delete_item_comment",
@@ -22,14 +23,15 @@ export const deleteItemCommentTool: McpToolDefinition = {
     openWorldHint: true,
   },
   inputSchema: args,
+  outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
-    const result = await request({
+    await request({
       method: "DELETE",
       path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/comments/${encodeURIComponent(String(parsed.itemCommentId))}`,
       responseType: "void",
       operationId: "deleteItemComment",
     }, ctx.requestOptions);
-    return ctx.respond(result, { compactKind: "board" });
+    return ctx.respond({ ok: true }, { compactKind: "raw" });
   },
 };

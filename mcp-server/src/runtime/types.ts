@@ -11,6 +11,8 @@ export type McpRespondOptions = {
 
 export type McpToolResponse = {
   content: Array<{ type: "text"; text: string }>;
+  structuredContent?: Record<string, unknown>;
+  isError?: boolean;
 };
 
 export type McpToolContext = {
@@ -34,5 +36,6 @@ export type McpToolDefinition = {
   scopes: McpScope[];
   annotations: McpToolAnnotations;
   inputSchema: ZodTypeAny;
+  outputSchema?: ZodTypeAny;
   handler: (input: unknown, ctx: McpToolContext) => Promise<unknown> | unknown;
 };

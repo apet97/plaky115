@@ -1,4 +1,4 @@
-const SECRET = /(plk_[A-Za-z0-9]{12,})/g;
+const SECRET = /plk_[A-Za-z0-9_-]+/g;
 
 export function redact(value: string): string {
   return value.replace(SECRET, "plk_***");

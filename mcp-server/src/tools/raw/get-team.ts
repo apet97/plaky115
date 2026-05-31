@@ -6,6 +6,7 @@ import type { McpToolDefinition } from "../../runtime/types.js";
 const args = z.object({
   teamId: z.union([z.string(), z.number()]).describe("teamId"),
 });
+const output = z.object({}).passthrough();
 
 export const getTeamTool: McpToolDefinition = {
   name: "plaky_get_team",
@@ -19,6 +20,7 @@ export const getTeamTool: McpToolDefinition = {
     openWorldHint: true,
   },
   inputSchema: args,
+  outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
     const result = await request({

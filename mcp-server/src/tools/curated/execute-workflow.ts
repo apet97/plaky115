@@ -39,6 +39,7 @@ export const executeWorkflowTool: McpToolDefinition = {
     input: z.record(z.unknown()).optional(),
     dryRun: z.boolean().optional(),
   }),
+  outputSchema: z.object({}).passthrough(),
   async handler(input, ctx) {
     const { workflowId, input: payload, dryRun } = input as {
       workflowId: WorkflowId;

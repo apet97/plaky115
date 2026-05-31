@@ -4,6 +4,14 @@ import type { McpToolDefinition } from "../../runtime/types.js";
 
 export type SearchHit = { id: string; title: string; kind: string; score: number; text?: string };
 
+const searchHitSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  kind: z.string(),
+  score: z.number(),
+  text: z.string().optional(),
+});
+
 export function searchDocs(query: string, limit = 5, opts: { includeRaw?: boolean } = {}): SearchHit[] {
   const terms = query.toLowerCase().split(/[^a-z0-9_.]+/).filter(Boolean);
   if (terms.length === 0) return [];
@@ -45,9 +53,12 @@ export const searchDocsTool: McpToolDefinition = {
     limit: z.number().int().min(1).max(20).optional(),
     includeRaw: z.boolean().optional(),
   }),
+  outputSchema: z.object({
+    hits: z.array(searchHitSchema),
+  }),
   handler(input, ctx) {
     const { query, limit, includeRaw } = input as { query: string; limit?: number; includeRaw?: boolean };
     const hits = searchDocs(query, limit ?? 5, { includeRaw: includeRaw === true });
-    return ctx.respond(hits);
+    return ctx.respond({ hits });
   },
 };

@@ -254,7 +254,7 @@ async function mcpSweep() {
   const { tools, ctx } = await createMcpHarness();
 
   const docs = await invokeMcpTool(tools, ctx, "plaky_search_docs", { query: "items", limit: 3 });
-  record("mcp", "tool plaky_search_docs", { hits: Array.isArray(docs) ? docs.length : undefined });
+  record("mcp", "tool plaky_search_docs", { hits: Array.isArray(docs?.hits) ? docs.hits.length : undefined });
 
   const plan = await invokeMcpTool(tools, ctx, "plaky_plan_mutation", {
     workflowId: "items.create",
@@ -313,7 +313,7 @@ async function mcpSweep() {
 }
 
 async function createMcpHarness() {
-  const [{ PlakyClient }, { compactByKind, serializeForMcp }, { curatedTools }, { rawTools }] = await Promise.all([
+  const [{ PlakyClient }, { compactByKind, serializeForMcp, structuredForMcp }, { curatedTools }, { rawTools }] = await Promise.all([
     import(`${root}sdk/esm/index.js`),
     import(`${root}mcp-server/esm/runtime/compaction.js`),
     import(`${root}mcp-server/esm/tools/curated/index.js`),
@@ -327,7 +327,11 @@ async function createMcpHarness() {
       const compacted = ro?.compactKind
         ? compactByKind(value, ro.compactKind, { includeRaw: ro.includeRaw === true })
         : value;
-      return { content: [{ type: "text", text: serializeForMcp(compacted) }] };
+      const structuredContent = structuredForMcp(compacted);
+      return {
+        content: [{ type: "text", text: serializeForMcp(structuredContent) }],
+        structuredContent,
+      };
     },
     progress: () => {
       /* no-op for live sweep */
@@ -349,6 +353,7 @@ function isMcpResponse(value) {
 }
 
 function parseMcpResponse(response) {
+  if (response.structuredContent) return response.structuredContent;
   const text = response.content?.[0]?.text ?? "";
   try {
     return text ? JSON.parse(text) : undefined;

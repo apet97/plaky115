@@ -82,5 +82,12 @@ export function compactByKind(value: unknown, kind: CompactKind, options: McpRes
 }
 
 export function serializeForMcp(value: unknown): string {
-  return redact(JSON.stringify(value));
+  return redact(JSON.stringify(value ?? null));
+}
+
+export function structuredForMcp(value: unknown): Record<string, unknown> {
+  const structured = value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : { value };
+  return JSON.parse(serializeForMcp(structured)) as Record<string, unknown>;
 }

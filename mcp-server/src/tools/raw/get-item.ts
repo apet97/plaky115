@@ -8,6 +8,7 @@ const args = z.object({
   boardId: z.union([z.string(), z.number()]).describe("boardId"),
   itemId: z.union([z.string(), z.number()]).describe("itemId"),
 });
+const output = z.object({}).passthrough();
 
 export const getItemTool: McpToolDefinition = {
   name: "plaky_get_item",
@@ -21,6 +22,7 @@ export const getItemTool: McpToolDefinition = {
     openWorldHint: true,
   },
   inputSchema: args,
+  outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
     const result = await request({

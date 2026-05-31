@@ -9,6 +9,7 @@ const args = z.object({
   itemId: z.union([z.string(), z.number()]).describe("itemId"),
   body: z.record(z.unknown()).optional(),
 });
+const output = z.object({}).passthrough();
 
 export const updateItemFieldsTool: McpToolDefinition = {
   name: "plaky_update_item_fields",
@@ -22,6 +23,7 @@ export const updateItemFieldsTool: McpToolDefinition = {
     openWorldHint: true,
   },
   inputSchema: args,
+  outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
     const result = await request({

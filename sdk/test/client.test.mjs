@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, beforeEach } from "node:test";
-import { PlakyClient, PlakyTimeoutError, SpaceId } from "../esm/index.js";
+import { PlakyClient, PlakyTimeoutError, SpaceId, redact } from "../esm/index.js";
 
 beforeEach(() => {
   globalThis.fetch = async (url) => {
@@ -173,6 +173,11 @@ test("withOptions returns new instance preserving apiKey by default", () => {
 
 test("constructor throws without apiKey", () => {
   assert.throws(() => new PlakyClient({ apiKey: "" }), /apiKey is required/);
+});
+
+test("redact handles API-key-shaped tokens with separators", () => {
+  const token = "plk_" + "TEST_SECRET-ABC123";
+  assert.equal(redact(`echo ${token}`), "echo plk_***");
 });
 
 test("client.items.create returns dry-run plan when dryRun:true", async () => {

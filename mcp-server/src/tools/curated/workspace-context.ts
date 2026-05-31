@@ -16,6 +16,9 @@ export const workspaceContextTool: McpToolDefinition = {
   inputSchema: z.object({
     includeRaw: z.boolean().optional(),
   }),
+  outputSchema: z.object({
+    value: z.unknown(),
+  }).passthrough(),
   async handler(input, ctx) {
     const { includeRaw } = input as { includeRaw?: boolean };
     const map = await workspaceMap(ctx.client);

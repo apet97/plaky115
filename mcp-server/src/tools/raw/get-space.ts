@@ -6,6 +6,7 @@ import type { McpToolDefinition } from "../../runtime/types.js";
 const args = z.object({
   spaceId: z.union([z.string(), z.number()]).describe("spaceId"),
 });
+const output = z.object({}).passthrough();
 
 export const getSpaceTool: McpToolDefinition = {
   name: "plaky_get_space",
@@ -19,6 +20,7 @@ export const getSpaceTool: McpToolDefinition = {
     openWorldHint: true,
   },
   inputSchema: args,
+  outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
     const result = await request({

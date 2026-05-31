@@ -28,6 +28,12 @@ export const planMutationTool: McpToolDefinition = {
     workflowId: z.enum(WORKFLOW_IDS),
     input: z.record(z.unknown()).optional(),
   }),
+  outputSchema: z.object({
+    workflowId: z.enum(WORKFLOW_IDS),
+    dryRun: z.literal(true),
+    input: z.record(z.unknown()),
+    note: z.string(),
+  }),
   handler(input, ctx) {
     const { workflowId, input: payload } = input as { workflowId: WorkflowId; input?: Record<string, unknown> };
     return ctx.respond({
