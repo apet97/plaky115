@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
 import { PlakyApiError, PlakyClient, PlakyError } from "plaky115";
 import { selectTools, type Mode } from "./modes.js";
 import { filterByScopes } from "./scopes.js";
@@ -61,8 +62,26 @@ export function buildServer(opts: ServerOptions): { server: McpServer; tools: Mc
       handler,
     );
   }
+  installStrictCallToolHandler(server);
 
   return { server, tools };
+}
+
+function installStrictCallToolHandler(server: McpServer): void {
+  const rawServer = (server as any).server;
+  const handlers = rawServer._requestHandlers as Map<string, (request: unknown, extra: unknown) => Promise<unknown>>;
+  const original = handlers.get("tools/call");
+  if (original === undefined) throw new Error("MCP tools/call handler was not initialized");
+  handlers.set("tools/call", (request: any, extra: unknown) => {
+    const tool = (server as any)._registeredTools[request.params.name];
+    if (!tool) {
+      throw new McpError(ErrorCode.InvalidParams, `Tool ${request.params.name} not found`);
+    }
+    if (!tool.enabled) {
+      throw new McpError(ErrorCode.InvalidParams, `Tool ${request.params.name} disabled`);
+    }
+    return original(request, extra);
+  });
 }
 
 function isMcpResponse(value: unknown): value is McpToolResponse {

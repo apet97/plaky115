@@ -19,6 +19,6 @@ func newGetSpaceCmd(getClient ClientFactory) *cobra.Command {
 			return plakydx.RunGetSpace(ctx, cmd, client)
 		},
 	}
-	cmd.Flags().String("space-id", "", "spaceId (required)")
+	cmd.Flags().String("space-id", "", "Plaky space ID for the target workspace area (required)")
 	return cmd
 }

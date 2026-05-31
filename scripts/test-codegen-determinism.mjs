@@ -65,6 +65,14 @@ test("generate-cli is deterministic", () => {
   const createItem = readFileSync(join(root, "cli/internal/cli/raw/create-item.go"), "utf8");
   assert.match(createItem, /"idempotency-key"/);
   assert.match(createItem, /@- for stdin/);
+  assert.match(createItem, /Plaky space ID/);
+  assert.match(createItem, /Plaky board ID/);
+  assert.match(createItem, /Request body JSON, @file\.json, or @- for stdin \(required\)/);
+  assert.doesNotMatch(createItem, /"spaceId \(required\)"/);
+  assert.doesNotMatch(createItem, /"boardId \(required\)"/);
+  const deleteItem = readFileSync(join(root, "cli/internal/cli/raw/delete-item.go"), "utf8");
+  assert.match(deleteItem, /cmd\.Flags\(\)\.Bool\("confirm"/);
+  assert.match(deleteItem, /required for destructive raw DELETE operations/);
 });
 
 test("generate-docs-index is deterministic", () => {

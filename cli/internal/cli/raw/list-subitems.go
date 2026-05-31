@@ -19,9 +19,9 @@ func newListSubitemsCmd(getClient ClientFactory) *cobra.Command {
 			return plakydx.RunListSubitems(ctx, cmd, client)
 		},
 	}
-	cmd.Flags().String("space-id", "", "spaceId (required)")
-	cmd.Flags().String("board-id", "", "boardId (required)")
-	cmd.Flags().String("item-id", "", "itemId (required)")
+	cmd.Flags().String("space-id", "", "Plaky space ID for the target workspace area (required)")
+	cmd.Flags().String("board-id", "", "Plaky board ID within the selected space (required)")
+	cmd.Flags().String("item-id", "", "Plaky item ID within the selected board (required)")
 	cmd.Flags().Int("page", 0, "Page number (1-based)")
 	cmd.Flags().Int("page-size", 0, "Page size")
 	return cmd

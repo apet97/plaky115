@@ -14,7 +14,7 @@ export const workspaceContextTool: McpToolDefinition = {
     openWorldHint: false,
   },
   inputSchema: z.object({
-    includeRaw: z.boolean().optional(),
+    includeRaw: z.boolean().describe("Include uncompressed workspace, space, and board payloads.").optional(),
   }),
   outputSchema: z.object({
     value: z.unknown(),

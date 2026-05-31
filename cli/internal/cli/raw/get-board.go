@@ -19,7 +19,7 @@ func newGetBoardCmd(getClient ClientFactory) *cobra.Command {
 			return plakydx.RunGetBoard(ctx, cmd, client)
 		},
 	}
-	cmd.Flags().String("space-id", "", "spaceId (required)")
-	cmd.Flags().String("board-id", "", "boardId (required)")
+	cmd.Flags().String("space-id", "", "Plaky space ID for the target workspace area (required)")
+	cmd.Flags().String("board-id", "", "Plaky board ID within the selected space (required)")
 	return cmd
 }

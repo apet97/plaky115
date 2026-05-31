@@ -4,7 +4,7 @@ import { request } from "plaky115/runtime/http.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
-  teamId: z.union([z.string(), z.number()]).describe("teamId"),
+  teamId: z.union([z.string(), z.number()]).describe("Plaky team ID to retrieve."),
 });
 const output = z.object({}).passthrough();
 

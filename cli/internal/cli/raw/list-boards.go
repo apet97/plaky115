@@ -19,7 +19,7 @@ func newListBoardsCmd(getClient ClientFactory) *cobra.Command {
 			return plakydx.RunListBoards(ctx, cmd, client)
 		},
 	}
-	cmd.Flags().String("space-id", "", "spaceId (required)")
+	cmd.Flags().String("space-id", "", "Plaky space ID for the target workspace area (required)")
 	cmd.Flags().Int("page", 0, "Page number (1-based)")
 	cmd.Flags().Int("page-size", 0, "Page size")
 	return cmd

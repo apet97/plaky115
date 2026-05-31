@@ -1,6 +1,11 @@
 package plakysdk
 
-import "fmt"
+import (
+	"fmt"
+	"regexp"
+)
+
+var secretPattern = regexp.MustCompile(`plk_[A-Za-z0-9_-]{8,}`)
 
 type APIError struct {
 	Status    int
@@ -17,5 +22,6 @@ func (e *APIError) Error() string {
 }
 
 func decodeError(status int, body []byte, reqID string) error {
-	return &APIError{Status: status, Message: string(body), RequestID: reqID, Body: body}
+	redacted := secretPattern.ReplaceAllString(string(body), "plk_[REDACTED]")
+	return &APIError{Status: status, Message: redacted, RequestID: reqID, Body: []byte(redacted)}
 }

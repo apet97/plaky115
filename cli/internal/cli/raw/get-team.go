@@ -19,6 +19,6 @@ func newGetTeamCmd(getClient ClientFactory) *cobra.Command {
 			return plakydx.RunGetTeam(ctx, cmd, client)
 		},
 	}
-	cmd.Flags().String("team-id", "", "teamId (required)")
+	cmd.Flags().String("team-id", "", "Plaky team ID to retrieve (required)")
 	return cmd
 }

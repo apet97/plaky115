@@ -4,9 +4,9 @@ import { request } from "plaky115/runtime/http.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
-  spaceId: z.union([z.string(), z.number()]).describe("spaceId"),
-  boardId: z.union([z.string(), z.number()]).describe("boardId"),
-  itemId: z.union([z.string(), z.number()]).describe("itemId"),
+  spaceId: z.union([z.string(), z.number()]).describe("Plaky space ID for the target workspace area."),
+  boardId: z.union([z.string(), z.number()]).describe("Plaky board ID within the selected space."),
+  itemId: z.union([z.string(), z.number()]).describe("Plaky item ID within the selected board."),
 });
 const output = z.object({}).passthrough();
 

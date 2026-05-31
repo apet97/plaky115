@@ -168,6 +168,97 @@ func TestRawCreatePassesIdempotencyKeyAndInlineBody(t *testing.T) {
 	}
 }
 
+func TestRawWriteRequiresBody(t *testing.T) {
+	t.Setenv("PLAKY115_API_KEY", "")
+	t.Setenv("PLAKY115_API_KEY_AUTH", "")
+
+	called := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		t.Fatalf("raw write without --body should not call API")
+	}))
+	defer server.Close()
+
+	out, err := executeRoot(t,
+		"--api-key", "from-flag",
+		"--server-url", server.URL,
+		"raw", "create-item",
+		"--space-id", "1",
+		"--board-id", "2",
+	)
+	if err == nil {
+		t.Fatalf("raw create-item without --body succeeded, output:\n%s", out)
+	}
+	if called {
+		t.Fatal("raw create-item without --body called API")
+	}
+	if !strings.Contains(err.Error(), "--body is required") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestRawDeleteRequiresConfirm(t *testing.T) {
+	t.Setenv("PLAKY115_API_KEY", "")
+	t.Setenv("PLAKY115_API_KEY_AUTH", "")
+
+	called := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		t.Fatalf("raw delete without --confirm should not call API")
+	}))
+	defer server.Close()
+
+	out, err := executeRoot(t,
+		"--api-key", "from-flag",
+		"--server-url", server.URL,
+		"raw", "delete-item",
+		"--space-id", "1",
+		"--board-id", "2",
+		"--item-id", "3",
+	)
+	if err == nil {
+		t.Fatalf("raw delete-item without --confirm succeeded, output:\n%s", out)
+	}
+	if called {
+		t.Fatal("raw delete-item without --confirm called API")
+	}
+	if !strings.Contains(err.Error(), "--confirm is required") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestRawDeleteWithConfirmCallsAPI(t *testing.T) {
+	t.Setenv("PLAKY115_API_KEY", "")
+	t.Setenv("PLAKY115_API_KEY_AUTH", "")
+
+	var gotPath string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		if r.Method != http.MethodDelete {
+			t.Fatalf("method = %s", r.Method)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"deleted":true}`))
+	}))
+	defer server.Close()
+
+	_, err := executeRoot(t,
+		"--api-key", "from-flag",
+		"--server-url", server.URL,
+		"raw", "delete-item",
+		"--space-id", "1",
+		"--board-id", "2",
+		"--item-id", "3",
+		"--confirm",
+	)
+	if err != nil {
+		t.Fatalf("raw delete-item --confirm returned error: %v", err)
+	}
+	if gotPath != "/v1/public/spaces/1/boards/2/items/3" {
+		t.Fatalf("path = %s", gotPath)
+	}
+}
+
 func TestRawBodyReadsJSONFile(t *testing.T) {
 	t.Setenv("PLAKY115_API_KEY", "")
 	t.Setenv("PLAKY115_API_KEY_AUTH", "")
@@ -299,6 +390,35 @@ func TestItemsBulkUpdateRedactsEmbeddedErrorDetails(t *testing.T) {
 	}
 	if !strings.Contains(out, "plk_[REDACTED]") {
 		t.Fatalf("bulk update output missing redaction marker: %s", out)
+	}
+}
+
+func TestGoSDKErrorBodyIsRedacted(t *testing.T) {
+	key := "plk_" + strings.Repeat("B", 16) + "_SECRET-ABC123"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"message":"echoed ` + key + `"}`))
+	}))
+	defer server.Close()
+
+	client, err := plakysdk.New(plakysdk.ClientOptions{APIKey: "test", ServerURL: server.URL})
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+	var out any
+	err = client.Do(t.Context(), plakysdk.Request{Method: http.MethodGet, Path: "/boom"}, &out)
+	if err == nil {
+		t.Fatal("expected API error")
+	}
+	var apiErr *plakysdk.APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("error type = %T", err)
+	}
+	if strings.Contains(apiErr.Message, key) || strings.Contains(string(apiErr.Body), key) {
+		t.Fatalf("APIError leaked key: message=%q body=%q", apiErr.Message, string(apiErr.Body))
+	}
+	if !strings.Contains(apiErr.Message, "plk_[REDACTED]") || !strings.Contains(string(apiErr.Body), "plk_[REDACTED]") {
+		t.Fatalf("APIError missing redaction marker: message=%q body=%q", apiErr.Message, string(apiErr.Body))
 	}
 }
 

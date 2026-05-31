@@ -150,7 +150,11 @@ plaky115 raw get-item --space-id 123 --board-id 456 --item-id 789
 plaky115 raw create-item --space-id 123 --board-id 456 --idempotency-key import-123 --body '{"title":"hi"}'
 plaky115 raw update-item-fields --space-id 123 --board-id 456 --item-id 789 --body @payload.json
 printf '{"title":"stdin"}' | plaky115 raw create-item --space-id 123 --board-id 456 --body @-
+plaky115 raw delete-item --space-id 123 --board-id 456 --item-id 789 --confirm
 ```
+
+Raw write commands require `--body`; they do not send implicit empty JSON. Raw
+DELETE commands require `--confirm`.
 
 ## MCP Server
 
@@ -230,7 +234,7 @@ npm run live:sweep
 
 The sweep exercises API, SDK, CLI, and MCP paths, creates clearly named
 `smoke:` items/comments, cleans them up, and requires a successful leftover scan
-with count `0`.
+across all item pages with count `0`.
 
 ## Regenerate
 

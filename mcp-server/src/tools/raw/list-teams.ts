@@ -4,8 +4,8 @@ import { request } from "plaky115/runtime/http.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
-  page: z.number().int().min(1).optional(),
-  pageSize: z.number().int().min(1).max(200).optional(),
+  page: z.number().int().min(1).describe("One-based result page to request.").optional(),
+  pageSize: z.number().int().min(1).max(200).describe("Maximum number of records to return for this page.").optional(),
 });
 const output = z.object({}).passthrough();
 

@@ -38,10 +38,10 @@ func pageOpts(cmd *cobra.Command) (page int, pageSize int) {
 	return
 }
 
-func bodyOrEmpty(cmd *cobra.Command) (any, error) {
+func bodyRequired(cmd *cobra.Command) (any, error) {
 	raw, _ := cmd.Flags().GetString("body")
 	if raw == "" {
-		return map[string]any{}, nil
+		return nil, fmt.Errorf("--body is required")
 	}
 	if raw == "@-" {
 		b, err := io.ReadAll(cmd.InOrStdin())
@@ -66,6 +66,14 @@ func bodyOrEmpty(cmd *cobra.Command) (any, error) {
 func idempotencyKey(cmd *cobra.Command) string {
 	key, _ := cmd.Flags().GetString("idempotency-key")
 	return key
+}
+
+func confirmDestructive(cmd *cobra.Command) error {
+	confirmed, _ := cmd.Flags().GetBool("confirm")
+	if !confirmed {
+		return fmt.Errorf("--confirm is required for destructive raw DELETE operations")
+	}
+	return nil
 }
 
 // ---- generated mapping (one per operation) ----
@@ -136,7 +144,7 @@ func RunCreateItem(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) 
 	if err != nil {
 		return err
 	}
-	body, err := bodyOrEmpty(cmd)
+	body, err := bodyRequired(cmd)
 	if err != nil {
 		return err
 	}
@@ -237,6 +245,9 @@ func RunGetItem(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) err
 }
 
 func RunDeleteItem(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
+	if err := confirmDestructive(cmd); err != nil {
+		return err
+	}
 	spaceID, err := mustString(cmd, "space-id")
 	if err != nil {
 		return err
@@ -273,7 +284,7 @@ func RunUpdateItemField(ctx context.Context, cmd *cobra.Command, c *plakysdk.Cli
 	if err != nil {
 		return err
 	}
-	body, err := bodyOrEmpty(cmd)
+	body, err := bodyRequired(cmd)
 	if err != nil {
 		return err
 	}
@@ -297,7 +308,7 @@ func RunUpdateItemFields(ctx context.Context, cmd *cobra.Command, c *plakysdk.Cl
 	if err != nil {
 		return err
 	}
-	body, err := bodyOrEmpty(cmd)
+	body, err := bodyRequired(cmd)
 	if err != nil {
 		return err
 	}
@@ -341,7 +352,7 @@ func RunCreateItemComment(ctx context.Context, cmd *cobra.Command, c *plakysdk.C
 	if err != nil {
 		return err
 	}
-	body, err := bodyOrEmpty(cmd)
+	body, err := bodyRequired(cmd)
 	if err != nil {
 		return err
 	}
@@ -369,7 +380,7 @@ func RunUpdateItemComment(ctx context.Context, cmd *cobra.Command, c *plakysdk.C
 	if err != nil {
 		return err
 	}
-	body, err := bodyOrEmpty(cmd)
+	body, err := bodyRequired(cmd)
 	if err != nil {
 		return err
 	}
@@ -381,6 +392,9 @@ func RunUpdateItemComment(ctx context.Context, cmd *cobra.Command, c *plakysdk.C
 }
 
 func RunDeleteItemComment(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
+	if err := confirmDestructive(cmd); err != nil {
+		return err
+	}
 	spaceID, err := mustString(cmd, "space-id")
 	if err != nil {
 		return err
@@ -421,7 +435,7 @@ func RunReplaceCommentReactions(ctx context.Context, cmd *cobra.Command, c *plak
 	if err != nil {
 		return err
 	}
-	body, err := bodyOrEmpty(cmd)
+	body, err := bodyRequired(cmd)
 	if err != nil {
 		return err
 	}

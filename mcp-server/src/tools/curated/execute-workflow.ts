@@ -35,9 +35,9 @@ export const executeWorkflowTool: McpToolDefinition = {
     openWorldHint: false,
   },
   inputSchema: z.object({
-    workflowId: z.enum(WORKFLOW_IDS),
-    input: z.record(z.unknown()).optional(),
-    dryRun: z.boolean().optional(),
+    workflowId: z.enum(WORKFLOW_IDS).describe("Curated workflow to run."),
+    input: z.record(z.unknown()).describe("Workflow-specific arguments such as space, board, item, body, or query.").optional(),
+    dryRun: z.boolean().describe("Keep mutation workflows in preview mode unless explicitly false.").optional(),
   }),
   outputSchema: z.object({}).passthrough(),
   async handler(input, ctx) {

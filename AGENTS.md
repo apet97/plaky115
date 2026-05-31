@@ -59,7 +59,7 @@ npm run live:sweep
 ```
 
 Acceptance for live proof requires API, SDK, CLI, and MCP sections to run, and
-cleanup to complete with leftover count `0`.
+cleanup to scan all item pages and complete with leftover count `0`.
 
 Before any direct push to `main`, verify the worktree is clean, run
 `npm run verify`, run `npm run secret:scan`, and run `npm run live:sweep` when
@@ -71,6 +71,8 @@ the user explicitly asked for live proof.
   commands, Go raw helpers, and the MCP docs index.
 - Do not hand-edit generated outputs except to inspect drift. Change the
   generator under `scripts/lib/` or the operation metadata instead.
+- Raw CLI write commands require an explicit `--body`; raw CLI DELETE commands
+  require `--confirm`.
 - `scripts/postgen-dx.mjs` owns SDK/MCP package metadata invariants, including
   the explicit SDK runtime export allowlist.
 - `npm run generated:drift`, `npm run codegen:test`, and

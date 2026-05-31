@@ -26,14 +26,17 @@ export function buildCobraCommand(op) {
   lines.push(`\t\t\treturn plakydx.Run${cap(op.operationId)}(ctx, cmd, client)`);
   lines.push(`\t\t},`);
   lines.push(`\t}`);
-  for (const p of params) lines.push(`\tcmd.Flags().String(${JSON.stringify(flagFor(p))}, "", ${JSON.stringify(p + " (required)")})`);
+  for (const p of params) lines.push(`\tcmd.Flags().String(${JSON.stringify(flagFor(p))}, "", ${JSON.stringify(paramDescription(p) + " (required)")})`);
   if (op.pagination) {
     lines.push(`\tcmd.Flags().Int("page", 0, "Page number (1-based)")`);
     lines.push(`\tcmd.Flags().Int("page-size", 0, "Page size")`);
   }
   if (op.method !== "GET" && op.method !== "DELETE") {
-    lines.push(`\tcmd.Flags().String("body", "", "Request body JSON, @file.json, or @- for stdin")`);
+    lines.push(`\tcmd.Flags().String("body", "", "Request body JSON, @file.json, or @- for stdin (required)")`);
     lines.push(`\tcmd.Flags().String("idempotency-key", "", "Idempotency-Key header for safe write retries")`);
+  }
+  if (op.method === "DELETE") {
+    lines.push(`\tcmd.Flags().Bool("confirm", false, "Confirm execution; required for destructive raw DELETE operations")`);
   }
   lines.push(`\treturn cmd`);
   lines.push(`}`);
@@ -133,3 +136,14 @@ function formatGoPath(path, params) {
 function cap(s) { return s[0].toUpperCase() + s.slice(1); }
 function flagFor(p) { return p.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase(); }
 function goSlug(operationId) { return operationId.replace(/([A-Z])/g, "-$1").toLowerCase().replace(/^-/, ""); }
+function paramDescription(param) {
+  const descriptions = {
+    spaceId: "Plaky space ID for the target workspace area",
+    boardId: "Plaky board ID within the selected space",
+    itemId: "Plaky item ID within the selected board",
+    itemFieldKey: "Field key to update, such as status-1 or string-2",
+    itemCommentId: "Plaky comment ID on the selected item",
+    teamId: "Plaky team ID to retrieve",
+  };
+  return descriptions[param] ?? `${param} path parameter for this Plaky operation`;
+}

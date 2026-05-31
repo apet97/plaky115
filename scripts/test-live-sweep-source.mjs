@@ -18,6 +18,9 @@ test("live sweep cleanup fails when smoke leftovers remain", () => {
   assert.match(liveSweep, /if \(leftoverCount > 0\)/);
   assert.match(liveSweep, /throw new Error\(`live sweep cleanup left \$\{leftoverCount\} smoke item/);
   assert.match(liveSweep, /throw new Error\(`live sweep cleanup leftover scan failed:/);
+  assert.match(liveSweep, /for \(let page = 1; ; page\+\+\)/);
+  assert.match(liveSweep, /page=\$\{page\}&pageSize=200/);
+  assert.match(liveSweep, /if \(!items\?\.hasMore\) break;/);
   assert.doesNotMatch(liveSweep, /leftover scan failed"[\s\S]*return 0;/);
 });
 

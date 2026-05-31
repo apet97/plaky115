@@ -11,12 +11,12 @@ export function buildRawToolModule(op) {
   lines.push(`import type { McpToolDefinition } from "../../runtime/types.js";`);
   lines.push(``);
   lines.push(`const args = z.object({`);
-  for (const p of params) lines.push(`  ${p}: z.union([z.string(), z.number()]).describe("${p}"),`);
+  for (const p of params) lines.push(`  ${p}: z.union([z.string(), z.number()]).describe(${JSON.stringify(paramDescription(p))}),`);
   if (op.pagination) {
-    lines.push(`  page: z.number().int().min(1).optional(),`);
-    lines.push(`  pageSize: z.number().int().min(1).max(200).optional(),`);
+    lines.push(`  page: z.number().int().min(1).describe("One-based result page to request.").optional(),`);
+    lines.push(`  pageSize: z.number().int().min(1).max(200).describe("Maximum number of records to return for this page.").optional(),`);
   }
-  if (hasBody) lines.push(`  body: z.record(z.unknown()).optional(),`);
+  if (hasBody) lines.push(`  body: z.record(z.unknown()).describe("JSON request body for ${op.summary ?? op.operationId}.").optional(),`);
   lines.push(`});`);
   lines.push(`const output = ${op.method === "DELETE" ? `z.object({ ok: z.boolean() })` : `z.object({}).passthrough()`};`);
   lines.push(``);
@@ -79,6 +79,18 @@ function pickCompact(op) {
   if (op.path.includes("/spaces")) return `"space"`;
   if (op.path.includes("/comments")) return `"comment"`;
   return `"raw"`;
+}
+
+function paramDescription(param) {
+  const descriptions = {
+    spaceId: "Plaky space ID for the target workspace area.",
+    boardId: "Plaky board ID within the selected space.",
+    itemId: "Plaky item ID within the selected board.",
+    itemFieldKey: "Field key to update, such as status-1 or string-2.",
+    itemCommentId: "Plaky comment ID on the selected item.",
+    teamId: "Plaky team ID to retrieve.",
+  };
+  return descriptions[param] ?? `${param} path parameter for this Plaky operation.`;
 }
 
 export function buildRawToolIndex(ops) {

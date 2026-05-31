@@ -14,11 +14,11 @@ export const findTool: McpToolDefinition = {
     openWorldHint: false,
   },
   inputSchema: z.object({
-    type: z.enum(["space", "board", "item"]),
-    query: z.string().min(1),
-    spaceId: z.union([z.number().int(), z.string()]).optional(),
-    boardId: z.union([z.number().int(), z.string()]).optional(),
-    includeRaw: z.boolean().optional(),
+    type: z.enum(["space", "board", "item"]).describe("Record type to search."),
+    query: z.string().min(1).describe("Case-insensitive text to match against names or titles."),
+    spaceId: z.union([z.number().int(), z.string()]).describe("Space ID or title, required for board and item searches.").optional(),
+    boardId: z.union([z.number().int(), z.string()]).describe("Board ID or title, required for item searches.").optional(),
+    includeRaw: z.boolean().describe("Include full API payloads instead of compact records.").optional(),
   }),
   outputSchema: z.object({
     data: z.array(z.unknown()),

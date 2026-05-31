@@ -49,9 +49,9 @@ export const searchDocsTool: McpToolDefinition = {
     openWorldHint: false,
   },
   inputSchema: z.object({
-    query: z.string().min(1),
-    limit: z.number().int().min(1).max(20).optional(),
-    includeRaw: z.boolean().optional(),
+    query: z.string().min(1).describe("Search text for docs, workflows, or operation names."),
+    limit: z.number().int().min(1).max(20).describe("Maximum number of matching entries to return.").optional(),
+    includeRaw: z.boolean().describe("Include full source text for each matched entry.").optional(),
   }),
   outputSchema: z.object({
     hits: z.array(searchHitSchema),

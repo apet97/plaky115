@@ -25,8 +25,8 @@ export const planMutationTool: McpToolDefinition = {
     openWorldHint: false,
   },
   inputSchema: z.object({
-    workflowId: z.enum(WORKFLOW_IDS),
-    input: z.record(z.unknown()).optional(),
+    workflowId: z.enum(WORKFLOW_IDS).describe("Curated workflow to plan without writing."),
+    input: z.record(z.unknown()).describe("Workflow-specific arguments to validate and echo in the plan.").optional(),
   }),
   outputSchema: z.object({
     workflowId: z.enum(WORKFLOW_IDS),

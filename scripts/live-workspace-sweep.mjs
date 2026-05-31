@@ -392,8 +392,12 @@ async function cleanup() {
 
 async function scanLeftovers() {
   try {
-    const items = await api("GET", `/v1/public/spaces/${spaceId}/boards/${boardId}/items?page=1&pageSize=200`);
-    const leftovers = (items?.data ?? []).filter((it) => typeof it?.title === "string" && it.title.startsWith("smoke:"));
+    const leftovers = [];
+    for (let page = 1; ; page++) {
+      const items = await api("GET", `/v1/public/spaces/${spaceId}/boards/${boardId}/items?page=${page}&pageSize=200`);
+      leftovers.push(...(items?.data ?? []).filter((it) => typeof it?.title === "string" && it.title.startsWith("smoke:")));
+      if (!items?.hasMore) break;
+    }
     record("cleanup", "leftover scan", { count: leftovers.length, ids: leftovers.map((it) => it.id) });
     return leftovers.length;
   } catch (err) {

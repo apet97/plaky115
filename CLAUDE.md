@@ -64,6 +64,9 @@ After CLI changes:
 (cd cli && go test ./... && go build -o /tmp/plaky115 ./cmd/plaky115)
 ```
 
+Raw generated write commands fail without `--body`; raw generated DELETE
+commands fail without `--confirm`.
+
 Before release or direct push:
 
 ```bash
@@ -89,7 +92,7 @@ allowed sacrificial Plaky data. The live gate expects these environment variable
 - `PLAKY115_SMOKE_BOARD_ID`
 
 Do not echo their values. A successful live sweep must run API, SDK, CLI, and MCP
-sections and finish with cleanup leftover count `0`.
+sections and finish with cleanup scanning all item pages and leftover count `0`.
 
 ## Documentation Style
 
