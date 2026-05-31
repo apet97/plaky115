@@ -3,6 +3,8 @@
 Plaky115 is an unofficial toolkit for the Plaky public API. It is not an
 official Plaky or CAKE.com package.
 
+The SDK and MCP packages require Node.js `>=22.12`.
+
 ## Claude Desktop
 
 ```json

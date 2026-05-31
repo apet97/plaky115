@@ -16,7 +16,9 @@ npm run live:sweep
 ```
 
 The script creates clearly named `smoke:` sacrificial items and comments, then
-cleans them up and reports the leftover count.
+cleans them up and reports the leftover count. When SDK, CLI, or MCP sweeps are
+enabled, missing builds are hard failures rather than skipped sections. A
+successful sweep must complete the cleanup scan and end with leftover count `0`.
 
 ## Manual Read Checks
 

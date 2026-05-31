@@ -18,6 +18,7 @@ See `docs/surfaces.md`, `docs/codegen.md`, `docs/api-evolution.md`, and `docs/re
 
 ## Environment
 
+- SDK and MCP packages require Node.js `>=22.12`.
 - `PLAKY115_API_KEY` is preferred.
 - `PLAKY115_API_KEY_AUTH` remains a compatibility fallback.
 - Never commit a `plk_` value. `npm run secret:scan` enforces this.

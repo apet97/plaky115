@@ -124,7 +124,7 @@ function formatGoPath(path, params) {
   if (params.length === 0) return JSON.stringify(path);
   let expr = JSON.stringify(path);
   for (const p of params) {
-    expr = `strings.ReplaceAll(${expr}, "{${p}}", opts.${cap(p)})`;
+    expr = `strings.ReplaceAll(${expr}, "{${p}}", url.PathEscape(opts.${cap(p)}))`;
   }
   return expr;
 }

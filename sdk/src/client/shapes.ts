@@ -103,6 +103,7 @@ export type ReactionShape = {
 
 export type CommentShape = {
   id?: CommentId | undefined;
+  content?: string | undefined;
   text?: string | undefined;
   itemId?: ItemId | undefined;
   createdAt?: string | undefined;

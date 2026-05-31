@@ -8,11 +8,15 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ["22.12.0", "24", "26"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: ${{ matrix.node-version }}
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26.x"
@@ -26,50 +30,12 @@ jobs:
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
+      - uses: goreleaser/goreleaser-action@v7
+        with:
+          install-only: true
       - name: Install package deps
         run: |
           npm --prefix sdk ci
           npm --prefix mcp-server ci
-      - name: Overlay + metadata + codegen
-        run: |
-          npm run overlay:validate
-          npm run overlay:apply
-          npm run lint:openapi
-          npm run metadata:generate
-          npm run metadata:test
-          npm run generate:all
-          git diff --exit-code -- sdk/src/generated mcp-server/src/tools/raw mcp-server/src/runtime/docs-index.ts cli/internal/cli/raw cli/internal/plakysdk/operations.go
-      - name: Postgen
-        run: |
-          node scripts/postgen-dx.mjs
-          git diff --exit-code -- sdk/package.json mcp-server/package.json
-      - name: Build SDK + MCP
-        run: |
-          npm --prefix sdk run build
-          npm --prefix mcp-server run build
-      - name: Surface + artifact audits
-        run: |
-          npm run test:surfaces
-          npm run status:surfaces
-          npm run artifacts:audit
-      - name: SDK tests
-        run: npm --prefix sdk test
-      - name: MCP tests
-        run: npm --prefix mcp-server test
-      - name: CLI
-        run: |
-          cd cli
-          go test ./...
-          go build -o /tmp/plaky115 ./cmd/plaky115
-          /tmp/plaky115 --help
-          /tmp/plaky115 raw --help
-          PLAKY115_API_KEY=ci-stub /tmp/plaky115 doctor
-      - name: Pack smoke
-        run: npm run pack:smoke
-      - name: Determinism
-        run: |
-          node --test scripts/test-surface-audit.mjs
-          node --test scripts/test-codegen-determinism.mjs
-          node --test scripts/test-postgen-determinism.mjs
-      - name: Secret scan
-        run: npm run secret:scan
+      - name: Verify
+        run: npm run verify

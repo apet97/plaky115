@@ -5,6 +5,9 @@
   "license": "MIT",
   "author": "Plaky115",
   "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
   "bin": {
     "mcp": "bin/mcp-server.js"
   },

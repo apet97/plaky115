@@ -93,6 +93,34 @@ func TestRawCommandUsesPersistentFlagClient(t *testing.T) {
 	}
 }
 
+func TestRawCommandEscapesPathParams(t *testing.T) {
+	t.Setenv("PLAKY115_API_KEY", "")
+	t.Setenv("PLAKY115_API_KEY_AUTH", "")
+
+	var gotPath string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.EscapedPath()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"space/with slash"}`))
+	}))
+	defer server.Close()
+
+	_, err := executeRoot(t,
+		"--api-key", "from-flag",
+		"--server-url", server.URL,
+		"raw", "get-space",
+		"--space-id", "space/with slash",
+	)
+	if err != nil {
+		t.Fatalf("raw get-space returned error: %v", err)
+	}
+
+	want := "/v1/public/spaces/space%2Fwith%20slash"
+	if gotPath != want {
+		t.Fatalf("raw path params must be URL-escaped, got %q want %q", gotPath, want)
+	}
+}
+
 func TestWorkspaceMapDrainsPaginatedSpacesAndBoards(t *testing.T) {
 	server := pagedWorkspaceServer(t)
 	defer server.Close()

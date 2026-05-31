@@ -10,6 +10,8 @@ export PLAKY115_API_KEY=...
 npx --yes --package . -- mcp start
 ```
 
+Requires Node.js `>=22.12`.
+
 Use `--mode curated`, `--mode generated`, or `--mode all` to choose the tool
 surface. Use repeated `--scope read`, `--scope write`, or `--scope destructive`
 flags when a client should mount only part of the behavior surface. When no

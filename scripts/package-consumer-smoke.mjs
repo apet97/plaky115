@@ -36,6 +36,7 @@ try {
 
   assertImportFails(consumer, "plaky115/operations/list-spaces.js");
   assertImportFails(consumer, "plaky115/generated/operations/list-spaces.js");
+  assertImportFails(consumer, "plaky115/runtime/internal/request-builders.js");
 
   run("node", [
     "--input-type=module",

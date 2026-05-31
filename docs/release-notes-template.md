@@ -16,13 +16,14 @@ official Plaky or CAKE.com package.
 ## Verification
 
 - `npm run verify`
-- `npm run pack:smoke`
 - `npm run secret:scan`
-- `(cd cli && go test ./... && go build -o /tmp/plaky115 ./cmd/plaky115)`
+- `npm run pack:smoke`
+- `npm run package:consumer-smoke`
 - Optional live: `npm run live:sweep`
 
 ## Compatibility Notes
 
-- Generated SDK/CLI/MCP operation tools remain available.
+- Generated raw CLI/MCP operation tools remain available.
+- The SDK remains schema-types-only with hand-written resource methods.
 - Curated MCP tools can be selected with `mcp start --mode curated`.
 - Use `includeRaw: true` only when raw Plaky API payloads are needed.

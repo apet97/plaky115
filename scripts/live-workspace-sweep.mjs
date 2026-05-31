@@ -37,8 +37,21 @@ const createdItemIds = new Set();
 const createdCommentRefs = []; // { itemId, commentId }
 const summary = [];
 
-process.on("SIGINT", async () => { await cleanup(); process.exit(130); });
-process.on("SIGTERM", async () => { await cleanup(); process.exit(143); });
+process.on("SIGINT", () => {
+  void shutdown(130);
+});
+process.on("SIGTERM", () => {
+  void shutdown(143);
+});
+
+async function shutdown(code) {
+  try {
+    await cleanup();
+  } catch (err) {
+    console.error("live sweep cleanup failed:", redact(String(err && err.stack ? err.stack : err)));
+  }
+  process.exit(code);
+}
 
 try {
   await directAPISweep();
@@ -48,8 +61,16 @@ try {
   await cleanup();
   printSummary();
 } catch (err) {
-  await cleanup();
+  let cleanupErr;
+  try {
+    await cleanup();
+  } catch (err) {
+    cleanupErr = err;
+  }
   console.error("live sweep failed:", redact(String(err && err.stack ? err.stack : err)));
+  if (cleanupErr) {
+    console.error("live sweep cleanup failed:", redact(String(cleanupErr && cleanupErr.stack ? cleanupErr.stack : cleanupErr)));
+  }
   process.exit(1);
 }
 
@@ -139,8 +160,7 @@ async function sdkSweep() {
   }
   const built = ensureSDKBuilt();
   if (!built) {
-    record("sdk", "skipped — sdk build missing (run `npm --prefix sdk run build`)");
-    return;
+    throw new Error("SDK build missing. Run `npm --prefix sdk run build` before live sweep.");
   }
   const { PlakyClient, SpaceId, BoardId, ItemId } = await import(`${root}sdk/esm/index.js`);
   const client = new PlakyClient({ apiKey, serverURL: baseURL });
@@ -186,8 +206,7 @@ async function sdkSweep() {
 async function cliSweep() {
   const bin = ensureCLIBuilt();
   if (!bin) {
-    record("cli", "skipped — could not build CLI (need `go build`)");
-    return;
+    throw new Error("CLI build failed. Run `cd cli && go build ./cmd/plaky115` before live sweep.");
   }
   if (!spaceId || !boardId) {
     record("cli", "skipped — needs PLAKY115_SMOKE_SPACE_ID and _BOARD_ID");
@@ -207,8 +226,7 @@ async function cliSweep() {
 async function mcpSweep() {
   const bin = `${root}mcp-server/bin/mcp-server.js`;
   if (!existsSync(bin)) {
-    record("mcp", "skipped — bin/mcp-server.js missing (run `npm --prefix mcp-server run build`)");
-    return;
+    throw new Error("MCP server bin missing. Run `npm --prefix mcp-server run build` before live sweep.");
   }
   for (const mode of ["curated", "generated", "all"]) {
     const env = { ...process.env, PLAKY115_API_KEY: apiKey };
@@ -224,8 +242,7 @@ async function mcpSweep() {
     return;
   }
   if (!ensureSDKBuilt()) {
-    record("mcp", "tool execution skipped — sdk build missing (run `npm --prefix sdk run build`)");
-    return;
+    throw new Error("SDK build missing for MCP tool execution. Run `npm --prefix sdk run build` before live sweep.");
   }
 
   const { tools, ctx } = await createMcpHarness();
@@ -338,21 +355,28 @@ function parseMcpResponse(response) {
 
 async function cleanup() {
   if (!spaceId || !boardId) return;
-  for (const ref of createdCommentRefs) {
+  for (let i = createdCommentRefs.length - 1; i >= 0; i--) {
+    const ref = createdCommentRefs[i];
     try {
       await api("DELETE", `/v1/public/spaces/${spaceId}/boards/${boardId}/items/${ref.itemId}/comments/${ref.commentId}`);
+      createdCommentRefs.splice(i, 1);
     } catch (err) {
       record("cleanup", `comment ${ref.commentId} failed`, { error: redact(String(err.message ?? err)) });
     }
   }
-  for (const itemId of createdItemIds) {
+  for (const itemId of [...createdItemIds]) {
     try {
       await api("DELETE", `/v1/public/spaces/${spaceId}/boards/${boardId}/items/${itemId}`);
+      createdItemIds.delete(String(itemId));
+      forgetCreatedCommentsForItem(itemId);
     } catch (err) {
       record("cleanup", `item ${itemId} failed`, { error: redact(String(err.message ?? err)) });
     }
   }
-  await scanLeftovers();
+  const leftoverCount = await scanLeftovers();
+  if (leftoverCount > 0) {
+    throw new Error(`live sweep cleanup left ${leftoverCount} smoke item(s) in the sacrificial board`);
+  }
 }
 
 async function scanLeftovers() {
@@ -360,8 +384,10 @@ async function scanLeftovers() {
     const items = await api("GET", `/v1/public/spaces/${spaceId}/boards/${boardId}/items?page=1&pageSize=200`);
     const leftovers = (items?.data ?? []).filter((it) => typeof it?.title === "string" && it.title.startsWith("smoke:"));
     record("cleanup", "leftover scan", { count: leftovers.length, ids: leftovers.map((it) => it.id) });
+    return leftovers.length;
   } catch (err) {
     record("cleanup", "leftover scan failed", { error: redact(String(err.message ?? err)) });
+    throw new Error(`live sweep cleanup leftover scan failed: ${redact(String(err.message ?? err))}`);
   }
 }
 

@@ -6,7 +6,7 @@
   "main": "./esm/index.js",
   "types": "./esm/index.d.ts",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.12"
   },
   "files": [
     "README.md",
@@ -19,10 +19,65 @@
       "import": "./esm/index.js",
       "default": "./esm/index.js"
     },
-    "./runtime/*.js": {
-      "types": "./esm/runtime/*.d.ts",
-      "import": "./esm/runtime/*.js",
-      "default": "./esm/runtime/*.js"
+    "./runtime/errors.js": {
+      "types": "./esm/runtime/errors.d.ts",
+      "import": "./esm/runtime/errors.js",
+      "default": "./esm/runtime/errors.js"
+    },
+    "./runtime/http.js": {
+      "types": "./esm/runtime/http.d.ts",
+      "import": "./esm/runtime/http.js",
+      "default": "./esm/runtime/http.js"
+    },
+    "./runtime/idempotency.js": {
+      "types": "./esm/runtime/idempotency.d.ts",
+      "import": "./esm/runtime/idempotency.js",
+      "default": "./esm/runtime/idempotency.js"
+    },
+    "./runtime/ids.js": {
+      "types": "./esm/runtime/ids.d.ts",
+      "import": "./esm/runtime/ids.js",
+      "default": "./esm/runtime/ids.js"
+    },
+    "./runtime/interceptors.js": {
+      "types": "./esm/runtime/interceptors.d.ts",
+      "import": "./esm/runtime/interceptors.js",
+      "default": "./esm/runtime/interceptors.js"
+    },
+    "./runtime/pagination.js": {
+      "types": "./esm/runtime/pagination.d.ts",
+      "import": "./esm/runtime/pagination.js",
+      "default": "./esm/runtime/pagination.js"
+    },
+    "./runtime/rate-limit.js": {
+      "types": "./esm/runtime/rate-limit.d.ts",
+      "import": "./esm/runtime/rate-limit.js",
+      "default": "./esm/runtime/rate-limit.js"
+    },
+    "./runtime/redact.js": {
+      "types": "./esm/runtime/redact.d.ts",
+      "import": "./esm/runtime/redact.js",
+      "default": "./esm/runtime/redact.js"
+    },
+    "./runtime/retries.js": {
+      "types": "./esm/runtime/retries.d.ts",
+      "import": "./esm/runtime/retries.js",
+      "default": "./esm/runtime/retries.js"
+    },
+    "./runtime/types.js": {
+      "types": "./esm/runtime/types.d.ts",
+      "import": "./esm/runtime/types.js",
+      "default": "./esm/runtime/types.js"
+    },
+    "./runtime/user-agent.js": {
+      "types": "./esm/runtime/user-agent.d.ts",
+      "import": "./esm/runtime/user-agent.js",
+      "default": "./esm/runtime/user-agent.js"
+    },
+    "./runtime/webhooks.js": {
+      "types": "./esm/runtime/webhooks.d.ts",
+      "import": "./esm/runtime/webhooks.js",
+      "default": "./esm/runtime/webhooks.js"
     },
     "./package.json": "./package.json"
   },

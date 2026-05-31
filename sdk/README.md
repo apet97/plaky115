@@ -9,6 +9,9 @@ the hand-written `PlakyClient`.
 npm install plaky115
 ```
 
+Requires Node.js `>=22.12` or another runtime with native `fetch`,
+`AbortController`, Web Streams, and async iterables.
+
 ## Quick Start
 
 ```ts
@@ -194,6 +197,9 @@ infrastructure. The public SDK surface is exported from `plaky115`.
 ```ts
 import type { PlakyApiResponse, SpaceShape } from "plaky115";
 ```
+
+Comment responses expose both `content` (the API response field) and `text`
+(kept for compatibility with existing SDK examples).
 
 ## Package Contents
 

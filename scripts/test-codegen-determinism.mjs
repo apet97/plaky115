@@ -51,6 +51,10 @@ test("generate-cli is deterministic", () => {
   run("node", ["scripts/generate-cli.mjs"]);
   const b = snapshot(targets);
   assert.equal(a, b);
+  const operations = readFileSync(join(root, "cli/internal/plakysdk/operations.go"), "utf8");
+  assert.match(operations, /url\.PathEscape\(opts\.SpaceId\)/);
+  assert.match(operations, /url\.PathEscape\(opts\.BoardId\)/);
+  assert.doesNotMatch(operations, /"\{spaceId\}", opts\.SpaceId\)/);
 });
 
 test("generate-docs-index is deterministic", () => {

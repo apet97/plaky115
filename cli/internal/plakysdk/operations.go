@@ -88,7 +88,7 @@ type ListUsersOptions struct {
 
 // ListBoards executes the listBoards operation: GET /v1/public/spaces/{spaceId}/boards
 func (c *Client) ListBoards(ctx context.Context, opts ListBoardsOptions) (any, error) {
-	path := strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards", "{spaceId}", opts.SpaceId)
+	path := strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards", "{spaceId}", url.PathEscape(opts.SpaceId))
 	query := url.Values{}
 	if opts.Page > 0 {
 		query.Set("page", fmt.Sprintf("%d", opts.Page))
@@ -113,7 +113,7 @@ type ListBoardsOptions struct {
 
 // ListItems executes the listItems operation: GET /v1/public/spaces/{spaceId}/boards/{boardId}/items
 func (c *Client) ListItems(ctx context.Context, opts ListItemsOptions) (any, error) {
-	path := strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items", "{spaceId}", opts.SpaceId), "{boardId}", opts.BoardId)
+	path := strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId))
 	query := url.Values{}
 	if opts.Page > 0 {
 		query.Set("page", fmt.Sprintf("%d", opts.Page))
@@ -139,7 +139,7 @@ type ListItemsOptions struct {
 
 // CreateItem executes the createItem operation: POST /v1/public/spaces/{spaceId}/boards/{boardId}/items
 func (c *Client) CreateItem(ctx context.Context, opts CreateItemOptions) (any, error) {
-	path := strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items", "{spaceId}", opts.SpaceId), "{boardId}", opts.BoardId)
+	path := strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId))
 	req := Request{Method: "POST", Path: path}
 	req.Body = opts.Body
 	req.Idempotency = opts.IdempotencyKey
@@ -159,7 +159,7 @@ type CreateItemOptions struct {
 
 // GetSpace executes the getSpace operation: GET /v1/public/spaces/{spaceId}
 func (c *Client) GetSpace(ctx context.Context, opts GetSpaceOptions) (any, error) {
-	path := strings.ReplaceAll("/v1/public/spaces/{spaceId}", "{spaceId}", opts.SpaceId)
+	path := strings.ReplaceAll("/v1/public/spaces/{spaceId}", "{spaceId}", url.PathEscape(opts.SpaceId))
 	req := Request{Method: "GET", Path: path}
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
@@ -174,7 +174,7 @@ type GetSpaceOptions struct {
 
 // GetTeam executes the getTeam operation: GET /v1/public/teams/{teamId}
 func (c *Client) GetTeam(ctx context.Context, opts GetTeamOptions) (any, error) {
-	path := strings.ReplaceAll("/v1/public/teams/{teamId}", "{teamId}", opts.TeamId)
+	path := strings.ReplaceAll("/v1/public/teams/{teamId}", "{teamId}", url.PathEscape(opts.TeamId))
 	req := Request{Method: "GET", Path: path}
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
@@ -203,7 +203,7 @@ type GetCurrentUserOptions struct {
 
 // GetBoard executes the getBoard operation: GET /v1/public/spaces/{spaceId}/boards/{boardId}
 func (c *Client) GetBoard(ctx context.Context, opts GetBoardOptions) (any, error) {
-	path := strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}", "{spaceId}", opts.SpaceId), "{boardId}", opts.BoardId)
+	path := strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId))
 	req := Request{Method: "GET", Path: path}
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
@@ -219,7 +219,7 @@ type GetBoardOptions struct {
 
 // ListSubitems executes the listSubitems operation: GET /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/sub-items
 func (c *Client) ListSubitems(ctx context.Context, opts ListSubitemsOptions) (any, error) {
-	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/sub-items", "{spaceId}", opts.SpaceId), "{boardId}", opts.BoardId), "{itemId}", opts.ItemId)
+	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/sub-items", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId))
 	query := url.Values{}
 	if opts.Page > 0 {
 		query.Set("page", fmt.Sprintf("%d", opts.Page))
@@ -246,7 +246,7 @@ type ListSubitemsOptions struct {
 
 // GetItem executes the getItem operation: GET /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}
 func (c *Client) GetItem(ctx context.Context, opts GetItemOptions) (any, error) {
-	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}", "{spaceId}", opts.SpaceId), "{boardId}", opts.BoardId), "{itemId}", opts.ItemId)
+	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId))
 	req := Request{Method: "GET", Path: path}
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
@@ -263,7 +263,7 @@ type GetItemOptions struct {
 
 // DeleteItem executes the deleteItem operation: DELETE /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}
 func (c *Client) DeleteItem(ctx context.Context, opts DeleteItemOptions) (any, error) {
-	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}", "{spaceId}", opts.SpaceId), "{boardId}", opts.BoardId), "{itemId}", opts.ItemId)
+	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId))
 	req := Request{Method: "DELETE", Path: path}
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
@@ -280,7 +280,7 @@ type DeleteItemOptions struct {
 
 // UpdateItemField executes the updateItemField operation: PATCH /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields/{itemFieldKey}
 func (c *Client) UpdateItemField(ctx context.Context, opts UpdateItemFieldOptions) (any, error) {
-	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields/{itemFieldKey}", "{spaceId}", opts.SpaceId), "{boardId}", opts.BoardId), "{itemId}", opts.ItemId), "{itemFieldKey}", opts.ItemFieldKey)
+	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields/{itemFieldKey}", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId)), "{itemFieldKey}", url.PathEscape(opts.ItemFieldKey))
 	req := Request{Method: "PATCH", Path: path}
 	req.Body = opts.Body
 	req.Idempotency = opts.IdempotencyKey
@@ -302,7 +302,7 @@ type UpdateItemFieldOptions struct {
 
 // UpdateItemFields executes the updateItemFields operation: PATCH /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields
 func (c *Client) UpdateItemFields(ctx context.Context, opts UpdateItemFieldsOptions) (any, error) {
-	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields", "{spaceId}", opts.SpaceId), "{boardId}", opts.BoardId), "{itemId}", opts.ItemId)
+	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId))
 	req := Request{Method: "PATCH", Path: path}
 	req.Body = opts.Body
 	req.Idempotency = opts.IdempotencyKey
@@ -323,7 +323,7 @@ type UpdateItemFieldsOptions struct {
 
 // ListItemComments executes the listItemComments operation: GET /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments
 func (c *Client) ListItemComments(ctx context.Context, opts ListItemCommentsOptions) (any, error) {
-	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments", "{spaceId}", opts.SpaceId), "{boardId}", opts.BoardId), "{itemId}", opts.ItemId)
+	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId))
 	req := Request{Method: "GET", Path: path}
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
@@ -340,7 +340,7 @@ type ListItemCommentsOptions struct {
 
 // CreateItemComment executes the createItemComment operation: POST /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments
 func (c *Client) CreateItemComment(ctx context.Context, opts CreateItemCommentOptions) (any, error) {
-	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments", "{spaceId}", opts.SpaceId), "{boardId}", opts.BoardId), "{itemId}", opts.ItemId)
+	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId))
 	req := Request{Method: "POST", Path: path}
 	req.Body = opts.Body
 	req.Idempotency = opts.IdempotencyKey
@@ -361,7 +361,7 @@ type CreateItemCommentOptions struct {
 
 // UpdateItemComment executes the updateItemComment operation: PUT /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}
 func (c *Client) UpdateItemComment(ctx context.Context, opts UpdateItemCommentOptions) (any, error) {
-	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}", "{spaceId}", opts.SpaceId), "{boardId}", opts.BoardId), "{itemId}", opts.ItemId), "{itemCommentId}", opts.ItemCommentId)
+	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId)), "{itemCommentId}", url.PathEscape(opts.ItemCommentId))
 	req := Request{Method: "PUT", Path: path}
 	req.Body = opts.Body
 	req.Idempotency = opts.IdempotencyKey
@@ -383,7 +383,7 @@ type UpdateItemCommentOptions struct {
 
 // DeleteItemComment executes the deleteItemComment operation: DELETE /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}
 func (c *Client) DeleteItemComment(ctx context.Context, opts DeleteItemCommentOptions) (any, error) {
-	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}", "{spaceId}", opts.SpaceId), "{boardId}", opts.BoardId), "{itemId}", opts.ItemId), "{itemCommentId}", opts.ItemCommentId)
+	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId)), "{itemCommentId}", url.PathEscape(opts.ItemCommentId))
 	req := Request{Method: "DELETE", Path: path}
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
@@ -401,7 +401,7 @@ type DeleteItemCommentOptions struct {
 
 // ReplaceCommentReactions executes the replaceCommentReactions operation: PUT /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}/reactions
 func (c *Client) ReplaceCommentReactions(ctx context.Context, opts ReplaceCommentReactionsOptions) (any, error) {
-	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}/reactions", "{spaceId}", opts.SpaceId), "{boardId}", opts.BoardId), "{itemId}", opts.ItemId), "{itemCommentId}", opts.ItemCommentId)
+	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}/reactions", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId)), "{itemCommentId}", url.PathEscape(opts.ItemCommentId))
 	req := Request{Method: "PUT", Path: path}
 	req.Body = opts.Body
 	req.Idempotency = opts.IdempotencyKey

@@ -8,6 +8,28 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
+const publicRuntimeModules = [
+  "errors",
+  "http",
+  "idempotency",
+  "ids",
+  "interceptors",
+  "pagination",
+  "rate-limit",
+  "redact",
+  "retries",
+  "types",
+  "user-agent",
+  "webhooks",
+];
+
+function runtimeExport(name) {
+  return {
+    types: `./esm/runtime/${name}.d.ts`,
+    import: `./esm/runtime/${name}.js`,
+    default: `./esm/runtime/${name}.js`,
+  };
+}
 
 function syncPackageMetadata(file, mutate) {
   const before = readFileSync(file, "utf8");
@@ -28,11 +50,7 @@ syncPackageMetadata(join(root, "sdk/package.json"), (pkg) => {
       import: "./esm/index.js",
       default: "./esm/index.js",
     },
-    "./runtime/*.js": {
-      types: "./esm/runtime/*.d.ts",
-      import: "./esm/runtime/*.js",
-      default: "./esm/runtime/*.js",
-    },
+    ...Object.fromEntries(publicRuntimeModules.map((name) => [`./runtime/${name}.js`, runtimeExport(name)])),
     "./package.json": "./package.json",
   };
 });

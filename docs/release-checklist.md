@@ -14,8 +14,9 @@ npm run goreleaser:check
 
 `npm run verify` is the offline release gate: overlay validation and OpenAPI
 lint, metadata tests, deterministic generation, drift checks, SDK/MCP lint and
-tests, CLI tests/build/help/doctor, surface checks, package artifact audit,
-pack smoke, package-consumer smoke, secret scan, and GoReleaser validation.
+tests, live-sweep source guard, CLI tests/build/help/doctor, surface checks,
+package artifact audit, pack smoke, package-consumer smoke, secret scan, and
+GoReleaser validation.
 
 ## Optional Live Gate
 
@@ -24,7 +25,10 @@ PLAKY115_API_KEY=... npm run live:sweep
 npm run secret:scan
 ```
 
-Never store the key in `.env`, `~/.zshrc`, or any committed file.
+Never store the key in `.env`, `~/.zshrc`, or any committed file. Build the SDK
+and MCP packages before running the live gate; enabled SDK, CLI, and MCP
+sections fail if their build artifacts are missing. The cleanup leftover count
+must come from a successful cleanup scan and be `0`.
 
 ## Strict Surface Gate
 
