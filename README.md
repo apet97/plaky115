@@ -23,8 +23,10 @@ hand-written.
 - `requestWithResponse()` for raw response metadata and low-level escape hatches.
 - Rate-limit snapshots, request/response interceptors, timeouts, abort handling,
   user-agent control, and webhook helpers.
-- Go CLI with curated workflows plus generated raw API commands.
-- MCP server with curated assistant-friendly tools plus generated raw tools.
+- Go CLI with curated workflows plus generated raw API commands, idempotency
+  flags, file/stdin JSON bodies, and dry-run helpers.
+- MCP server with curated assistant-friendly tools, generated raw tools,
+  structured tool results, and recoverable tool errors.
 - Local release gates for generated drift, package contents, consumer smoke,
   live smoke, secret scanning, and GoReleaser validation.
 
@@ -136,12 +138,16 @@ plaky115 fields-list --space-id 123 --board-id 456
 plaky115 items-export --space-id 123 --board-id 456 --format jsonl
 plaky115 items-create-simple --space-id 123 --board-id 456 --title "Follow up" --dry-run
 plaky115 comments-add --space-id 123 --board-id 456 --item-id 789 --text "Note" --dry-run
+plaky115 comments-thread --space-id 123 --board-id 456 --item-id 789
+plaky115 reactions-replace --space-id 123 --board-id 456 --item-id 789 --comment-id 321 --body '{"emojis":["thumbsup"]}' --dry-run
 plaky115 items-bulk-update --file updates.json --dry-run
 
 # Generated raw operations
 plaky115 raw list-spaces
 plaky115 raw get-item --space-id 123 --board-id 456 --item-id 789
-plaky115 raw create-item --space-id 123 --board-id 456 --body '{"title":"hi"}'
+plaky115 raw create-item --space-id 123 --board-id 456 --idempotency-key import-123 --body '{"title":"hi"}'
+plaky115 raw update-item-fields --space-id 123 --board-id 456 --item-id 789 --body @payload.json
+printf '{"title":"stdin"}' | plaky115 raw create-item --space-id 123 --board-id 456 --body @-
 ```
 
 ## MCP Server
@@ -172,6 +178,8 @@ Scopes:
 
 Curated tools include `plaky_search_docs`, `plaky_workspace_context`,
 `plaky_find`, `plaky_plan_mutation`, and `plaky_execute_workflow`.
+Tool results carry redacted JSON text plus `structuredContent`; known Plaky API
+failures return `isError: true` with structured error details.
 
 See `docs/install-snippets.md` for Claude Desktop, Claude Code, Cursor, and
 local CLI examples.

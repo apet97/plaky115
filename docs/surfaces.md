@@ -63,6 +63,14 @@ Run `npm run status:surfaces` to print the current state of each surface. Pass
 `--strict` to treat any `legacy` surface as drift. The SDK status should report
 `schema-types-only` for operations.
 
+## MCP Result Shape
+
+MCP tools return redacted JSON text for LLM readability and the same compacted
+object in `structuredContent` for clients that prefer machine-readable output.
+Known Plaky API failures are tool errors (`isError: true`) with structured
+details such as status, request ID, code, and retry-after values. Raw delete
+tools return `{ "ok": true }` receipts.
+
 ## Why These Layers
 
 - **Generated schema types** keep the SDK aligned with the API contract without making callers use path strings or OpenAPI response unions.
