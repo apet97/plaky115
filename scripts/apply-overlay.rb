@@ -3,6 +3,7 @@
 
 require "optparse"
 require "psych"
+require "json"
 require "yaml"
 
 HTTP_METHODS = %w[get post put patch delete head options trace].freeze
@@ -113,12 +114,62 @@ def apply_overlay!(spec, overlay)
   end
 end
 
+def scalar?(value)
+  value.nil? || value == true || value == false || value.is_a?(Numeric) || value.is_a?(String)
+end
+
+def yaml_scalar(value)
+  case value
+  when nil
+    "null"
+  when true
+    "true"
+  when false
+    "false"
+  when Numeric
+    value.to_s
+  when String
+    JSON.generate(value)
+  else
+    raise ArgumentError, "unsupported YAML scalar #{value.class}"
+  end
+end
+
+def deterministic_yaml(value, indent = 0)
+  space = " " * indent
+  case value
+  when Hash
+    return "#{space}{}\n" if value.empty?
+
+    value.map do |key, child|
+      rendered_key = JSON.generate(key.to_s)
+      if scalar?(child)
+        "#{space}#{rendered_key}: #{yaml_scalar(child)}\n"
+      else
+        "#{space}#{rendered_key}:\n#{deterministic_yaml(child, indent + 2)}"
+      end
+    end.join
+  when Array
+    return "#{space}[]\n" if value.empty?
+
+    value.map do |child|
+      if scalar?(child)
+        "#{space}- #{yaml_scalar(child)}\n"
+      else
+        "#{space}-\n#{deterministic_yaml(child, indent + 2)}"
+      end
+    end.join
+  else
+    "#{space}#{yaml_scalar(value)}\n"
+  end
+end
+
 begin
   options = parse_options(ARGV)
   spec = load_yaml(options.fetch(:source))
   overlay = load_yaml(options.fetch(:overlay))
   apply_overlay!(spec, overlay)
-  File.write(options.fetch(:out), YAML.dump(spec)) if options[:out]
+  File.write(options.fetch(:out), deterministic_yaml(spec)) if options[:out]
   puts "overlay-apply: OK"
 rescue KeyError, Psych::Exception, ArgumentError => e
   warn "apply-overlay: #{e.message}"
