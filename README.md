@@ -8,25 +8,27 @@ Unofficial, hand-crafted developer toolkit for the Plaky public API:
 - Go/Cobra CLI: `plaky115`
 - MCP server package: `plaky115-mcp`
 
-Plaky115 is not affiliated with Plaky or CAKE.com. It is built to feel like a
-polished SDK while preserving a deterministic local generation model: generated
-schema/raw surfaces are checked into the repo, and the ergonomic client, CLI,
-MCP tools, retry behavior, pagination helpers, and release gates are
-hand-written.
+Plaky115 is not affiliated with Plaky or CAKE.com. The repo keeps generated
+code narrow and reviewable: OpenAPI schema types, raw CLI commands, raw MCP
+tools, and metadata indexes are generated locally and checked in. The SDK
+client, runtime behavior, curated CLI commands, curated MCP tools, retry logic,
+pagination, and release gates are hand-written.
 
-## What You Get
+## What It Ships
 
-- Typed TypeScript client with stable `PlakyClient` resource methods.
-- Auto-pagination helpers, `listAll`, and async iterators.
-- Conservative retries with backoff and idempotency-aware write retries.
-- Typed API errors with status, request ID, retry-after, headers, and body.
-- `requestWithResponse()` for raw response metadata and low-level escape hatches.
-- Rate-limit snapshots, request/response interceptors, timeouts, abort handling,
-  user-agent control, and webhook helpers.
-- Go CLI with curated workflows plus generated raw API commands, idempotency
-  flags, file/stdin JSON bodies, and dry-run helpers.
-- MCP server with curated assistant-friendly tools, generated raw tools,
-  structured tool results, and recoverable tool errors.
+- TypeScript SDK with stable `PlakyClient` resource methods.
+- Generated OpenAPI schema types exported as type-only escape hatches.
+- Pagination helpers: page APIs, `listAll`, and async iterators.
+- Runtime controls: retries, idempotency keys, timeouts, abort signals,
+  interceptors, custom fetch, custom headers, user-agent control, rate-limit
+  snapshots, and webhook signature helpers.
+- Typed API errors with status, request ID, retry-after, headers, and response
+  body.
+- `requestWithResponse()` for status, headers, request IDs, and raw API paths.
+- Go CLI with curated workflows, generated raw API commands, idempotency flags,
+  file/stdin JSON bodies, and dry-run helpers.
+- MCP server with curated workflows, generated raw tools, `structuredContent`,
+  conservative `outputSchema` values, and structured tool errors.
 - Local release gates for generated drift, package contents, consumer smoke,
   live smoke, secret scanning, and GoReleaser validation.
 
@@ -176,10 +178,17 @@ Scopes:
 - `--scope write`
 - `--scope destructive`
 
-Curated tools include `plaky_search_docs`, `plaky_workspace_context`,
-`plaky_find`, `plaky_plan_mutation`, and `plaky_execute_workflow`.
-Tool results carry redacted JSON text plus `structuredContent`; known Plaky API
-failures return `isError: true` with structured error details.
+Curated tools:
+
+- `plaky_search_docs`
+- `plaky_workspace_context`
+- `plaky_find`
+- `plaky_plan_mutation`
+- `plaky_execute_workflow`
+
+Tool results include redacted JSON text for readability and the same object in
+`structuredContent` for clients. Known Plaky API failures return `isError: true`
+with structured error details instead of crashing the tool call.
 
 See `docs/install-snippets.md` for Claude Desktop, Claude Code, Cursor, and
 local CLI examples.

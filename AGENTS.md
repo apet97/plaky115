@@ -41,6 +41,14 @@ npm run package:consumer-smoke
 npm run secret:scan
 ```
 
+For docs-only changes, still run:
+
+```bash
+npm run generate:docs-index
+npm run docs:surface:test
+rg -n "s[p]eakeasy|S[p]eakeasy|x-s[p]eakeasy|\\.s[p]eakeasy" . -g '!**/node_modules/**' -g '!**/.git/**'
+```
+
 For live proof, only report secrets as set/unset:
 
 ```bash
@@ -52,6 +60,10 @@ npm run live:sweep
 
 Acceptance for live proof requires API, SDK, CLI, and MCP sections to run, and
 cleanup to complete with leftover count `0`.
+
+Before any direct push to `main`, verify the worktree is clean, run
+`npm run verify`, run `npm run secret:scan`, and run `npm run live:sweep` when
+the user explicitly asked for live proof.
 
 ## Generated Surface Rules
 
@@ -93,3 +105,10 @@ Keep these public contracts stable unless the user asks for a breaking change:
 - Never print live keys in logs, screenshots, docs, notes, or command output.
 - Use environment variables or the local secret store only.
 - `npm run secret:scan` is the required final check before push.
+
+## Writing Style
+
+- Keep docs concrete: commands, contracts, behavior, and verification.
+- Avoid promotional filler, vague quality claims, and AI-generated-sounding
+  adjectives.
+- Prefer exact compatibility notes and current release gates over broad claims.

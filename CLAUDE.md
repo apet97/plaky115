@@ -71,6 +71,14 @@ npm run verify
 npm run secret:scan
 ```
 
+For docs updates, refresh generated docs and check for stale language:
+
+```bash
+npm run generate:docs-index
+npm run docs:surface:test
+rg -n "s[p]eakeasy|S[p]eakeasy|x-s[p]eakeasy|\\.s[p]eakeasy" . -g '!**/node_modules/**' -g '!**/.git/**'
+```
+
 ## Live Sweep
 
 Use `npm run live:sweep` only when the user has requested live proof or explicitly
@@ -82,6 +90,13 @@ allowed sacrificial Plaky data. The live gate expects these environment variable
 
 Do not echo their values. A successful live sweep must run API, SDK, CLI, and MCP
 sections and finish with cleanup leftover count `0`.
+
+## Documentation Style
+
+- Use direct, specific language.
+- Avoid promotional phrasing and generic AI-sounding claims.
+- Keep README examples runnable and aligned with current SDK, CLI, and MCP
+  behavior.
 
 ## Current Compatibility Notes
 
