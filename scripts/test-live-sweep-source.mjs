@@ -20,3 +20,11 @@ test("live sweep cleanup fails when smoke leftovers remain", () => {
   assert.match(liveSweep, /throw new Error\(`live sweep cleanup leftover scan failed:/);
   assert.doesNotMatch(liveSweep, /leftover scan failed"[\s\S]*return 0;/);
 });
+
+test("live sweep fails when CLI probes fail and always rebuilds the CLI", () => {
+  assert.doesNotMatch(liveSweep, /if \(existsSync\(bin\)\) return bin;/);
+  assert.match(liveSweep, /throw new Error\(`CLI \$\{args\.join\(" "\)\} failed:/);
+  assert.match(liveSweep, /throw new Error\("CLI workflow probes require a smoke item created by the API or SDK sweep"\)/);
+  assert.match(liveSweep, /record\("cli", "comments-thread", runCLI/);
+  assert.match(liveSweep, /record\("cli", "reactions-replace --dry-run", runCLI/);
+});

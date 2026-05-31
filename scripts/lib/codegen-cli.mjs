@@ -32,7 +32,8 @@ export function buildCobraCommand(op) {
     lines.push(`\tcmd.Flags().Int("page-size", 0, "Page size")`);
   }
   if (op.method !== "GET" && op.method !== "DELETE") {
-    lines.push(`\tcmd.Flags().String("body", "", "Request body JSON or @file.json")`);
+    lines.push(`\tcmd.Flags().String("body", "", "Request body JSON, @file.json, or @- for stdin")`);
+    lines.push(`\tcmd.Flags().String("idempotency-key", "", "Idempotency-Key header for safe write retries")`);
   }
   lines.push(`\treturn cmd`);
   lines.push(`}`);

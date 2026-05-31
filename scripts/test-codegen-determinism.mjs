@@ -44,6 +44,12 @@ test("generate-cli is deterministic", () => {
   run("node", ["scripts/generate-cli.mjs"]);
   const targets = [
     join(root, "cli/internal/cli/raw/list-spaces.go"),
+    join(root, "cli/internal/cli/raw/create-item.go"),
+    join(root, "cli/internal/cli/raw/create-item-comment.go"),
+    join(root, "cli/internal/cli/raw/replace-comment-reactions.go"),
+    join(root, "cli/internal/cli/raw/update-item-comment.go"),
+    join(root, "cli/internal/cli/raw/update-item-field.go"),
+    join(root, "cli/internal/cli/raw/update-item-fields.go"),
     join(root, "cli/internal/cli/raw/raw.go"),
     join(root, "cli/internal/plakysdk/operations.go"),
   ];
@@ -54,7 +60,11 @@ test("generate-cli is deterministic", () => {
   const operations = readFileSync(join(root, "cli/internal/plakysdk/operations.go"), "utf8");
   assert.match(operations, /url\.PathEscape\(opts\.SpaceId\)/);
   assert.match(operations, /url\.PathEscape\(opts\.BoardId\)/);
+  assert.match(operations, /IdempotencyKey string/);
   assert.doesNotMatch(operations, /"\{spaceId\}", opts\.SpaceId\)/);
+  const createItem = readFileSync(join(root, "cli/internal/cli/raw/create-item.go"), "utf8");
+  assert.match(createItem, /"idempotency-key"/);
+  assert.match(createItem, /@- for stdin/);
 });
 
 test("generate-docs-index is deterministic", () => {

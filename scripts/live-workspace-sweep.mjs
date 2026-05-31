@@ -81,7 +81,7 @@ function smokeTitle(prefix) {
 }
 
 function redact(s) {
-  return String(s).replace(/(plk_[A-Za-z0-9]{12,})/g, "plk_***");
+  return String(s).replace(/plk_[A-Za-z0-9_-]+/g, "plk_***");
 }
 
 function record(area, name, detail = {}) {
@@ -219,6 +219,12 @@ async function cliSweep() {
   record("cli", "fields-list", runCLI(bin, ["fields-list", "--space-id", spaceId, "--board-id", boardId], env, { jsonHead: true }));
   record("cli", "items-create-simple --dry-run", runCLI(bin, ["items-create-simple", "--space-id", spaceId, "--board-id", boardId, "--title", smokeTitle("cli-dry"), "--dry-run"], env));
   record("cli", "items-bulk-update --dry-run", runCLIWithFile(bin, ["items-bulk-update", "--file", "{file}", "--dry-run"], env, JSON.stringify([{ spaceId, boardId, itemId: "0", body: { Status: "Done" } }])));
+  const itemId = [...createdItemIds][0];
+  if (!itemId) {
+    throw new Error("CLI workflow probes require a smoke item created by the API or SDK sweep");
+  }
+  record("cli", "comments-thread", runCLI(bin, ["comments-thread", "--space-id", spaceId, "--board-id", boardId, "--item-id", itemId], env, { jsonHead: true }));
+  record("cli", "reactions-replace --dry-run", runCLI(bin, ["reactions-replace", "--space-id", spaceId, "--board-id", boardId, "--item-id", itemId, "--comment-id", "0", "--body", "{\"emojis\":[\"thumbsup\"]}", "--dry-run"], env));
 }
 
 // ---------- 4. MCP sweep ----------
@@ -400,7 +406,7 @@ function ensureSDKBuilt() {
 
 function ensureCLIBuilt() {
   const bin = "/tmp/plaky115-live-sweep";
-  if (existsSync(bin)) return bin;
+  rmSync(bin, { force: true });
   const r = spawnSync("go", ["build", "-o", bin, "./cmd/plaky115"], { cwd: `${root}cli`, encoding: "utf8" });
   if (r.status !== 0) {
     console.error("go build failed:", redact(r.stderr));
@@ -412,7 +418,7 @@ function ensureCLIBuilt() {
 function runCLI(bin, args, env, opts = {}) {
   const r = spawnSync(bin, args, { encoding: "utf8", env });
   if (r.status !== 0) {
-    return { status: r.status, stderr: redact((r.stderr ?? "").slice(0, 200)) };
+    throw new Error(`CLI ${args.join(" ")} failed: ${redact((r.stderr ?? "").slice(0, 200))}`);
   }
   const stdout = r.stdout ?? "";
   if (opts.jsonHead) {

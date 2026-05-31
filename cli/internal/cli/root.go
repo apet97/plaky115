@@ -4,6 +4,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/apet97/plaky115-cli/internal/cli/raw"
 	"github.com/apet97/plaky115-cli/internal/plakysdk"
@@ -23,6 +24,8 @@ func NewRootCommand() (*cobra.Command, error) {
 
 	root.PersistentFlags().String("server-url", "", "Override Plaky API base URL (default: https://api.plaky.com)")
 	root.PersistentFlags().String("api-key", "", "Plaky API key (or set PLAKY115_API_KEY / PLAKY115_API_KEY_AUTH)")
+	root.PersistentFlags().String("timeout", "", "HTTP timeout as a duration, for example 10s or 2m")
+	root.PersistentFlags().String("user-agent", "", "Override the User-Agent sent to Plaky")
 
 	getClient := func(cmd *cobra.Command) (*plakysdk.Client, error) {
 		return buildClient(cmd.Root())
@@ -37,6 +40,8 @@ func NewRootCommand() (*cobra.Command, error) {
 	root.AddCommand(newItemsBulkUpdateCommand(getClient))
 	root.AddCommand(newItemsExportCommand(getClient))
 	root.AddCommand(newCommentsAddCommand(getClient))
+	root.AddCommand(newCommentsThreadCommand(getClient))
+	root.AddCommand(newReactionsReplaceCommand(getClient))
 	root.AddCommand(newCompletionCommand(root))
 
 	return root, nil
@@ -51,13 +56,23 @@ func buildClient(root *cobra.Command) (*plakysdk.Client, error) {
 		apiKey = os.Getenv("PLAKY115_API_KEY_AUTH")
 	}
 	serverURL, _ := root.PersistentFlags().GetString("server-url")
+	timeoutText, _ := root.PersistentFlags().GetString("timeout")
+	userAgent, _ := root.PersistentFlags().GetString("user-agent")
+	var timeout time.Duration
+	if timeoutText != "" {
+		parsed, err := time.ParseDuration(timeoutText)
+		if err != nil {
+			return nil, fmt.Errorf("invalid --timeout: %w", err)
+		}
+		timeout = parsed
+	}
 
 	// Allow client construction with an empty/placeholder key so doctor
 	// and --help still work without auth.
 	if apiKey == "" {
 		apiKey = "missing"
 	}
-	return plakysdk.New(plakysdk.ClientOptions{APIKey: apiKey, ServerURL: serverURL})
+	return plakysdk.New(plakysdk.ClientOptions{APIKey: apiKey, ServerURL: serverURL, Timeout: timeout, UserAgent: userAgent})
 }
 
 func newDoctorCommand(getClient clientFactory) *cobra.Command {

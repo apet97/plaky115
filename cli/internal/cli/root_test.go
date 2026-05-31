@@ -3,16 +3,24 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/apet97/plaky115-cli/internal/plakysdk"
 	"github.com/spf13/cobra"
 )
 
 func executeRoot(t *testing.T, args ...string) (string, error) {
+	t.Helper()
+	return executeRootWithInput(t, nil, args...)
+}
+
+func executeRootWithInput(t *testing.T, input *bytes.Buffer, args ...string) (string, error) {
 	t.Helper()
 	cmd, err := NewRootCommand()
 	if err != nil {
@@ -21,6 +29,9 @@ func executeRoot(t *testing.T, args ...string) (string, error) {
 	var out bytes.Buffer
 	cmd.SetOut(&out)
 	cmd.SetErr(&out)
+	if input != nil {
+		cmd.SetIn(input)
+	}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	return out.String(), err
@@ -121,6 +132,176 @@ func TestRawCommandEscapesPathParams(t *testing.T) {
 	}
 }
 
+func TestRawCreatePassesIdempotencyKeyAndInlineBody(t *testing.T) {
+	t.Setenv("PLAKY115_API_KEY", "")
+	t.Setenv("PLAKY115_API_KEY_AUTH", "")
+
+	var gotIdempotency string
+	var gotBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotIdempotency = r.Header.Get("Idempotency-Key")
+		if err := json.NewDecoder(r.Body).Decode(&gotBody); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":1}`))
+	}))
+	defer server.Close()
+
+	_, err := executeRoot(t,
+		"--api-key", "from-flag",
+		"--server-url", server.URL,
+		"raw", "create-item",
+		"--space-id", "1",
+		"--board-id", "2",
+		"--idempotency-key", "import-1",
+		"--body", `{"title":"From raw"}`,
+	)
+	if err != nil {
+		t.Fatalf("raw create-item returned error: %v", err)
+	}
+	if gotIdempotency != "import-1" {
+		t.Fatalf("Idempotency-Key header = %q", gotIdempotency)
+	}
+	if gotBody["title"] != "From raw" {
+		t.Fatalf("body title = %#v", gotBody)
+	}
+}
+
+func TestRawBodyReadsJSONFile(t *testing.T) {
+	t.Setenv("PLAKY115_API_KEY", "")
+	t.Setenv("PLAKY115_API_KEY_AUTH", "")
+
+	payload := t.TempDir() + "/payload.json"
+	if err := os.WriteFile(payload, []byte(`{"title":"From file"}`), 0o600); err != nil {
+		t.Fatalf("write payload: %v", err)
+	}
+	var gotBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&gotBody); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":1}`))
+	}))
+	defer server.Close()
+
+	_, err := executeRoot(t,
+		"--api-key", "from-flag",
+		"--server-url", server.URL,
+		"raw", "create-item",
+		"--space-id", "1",
+		"--board-id", "2",
+		"--body", "@"+payload,
+	)
+	if err != nil {
+		t.Fatalf("raw create-item returned error: %v", err)
+	}
+	if gotBody["title"] != "From file" {
+		t.Fatalf("body title = %#v", gotBody)
+	}
+}
+
+func TestRawBodyReadsStdin(t *testing.T) {
+	t.Setenv("PLAKY115_API_KEY", "")
+	t.Setenv("PLAKY115_API_KEY_AUTH", "")
+
+	var gotBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&gotBody); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":1}`))
+	}))
+	defer server.Close()
+
+	_, err := executeRootWithInput(t,
+		bytes.NewBufferString(`{"title":"From stdin"}`),
+		"--api-key", "from-flag",
+		"--server-url", server.URL,
+		"raw", "create-item",
+		"--space-id", "1",
+		"--board-id", "2",
+		"--body", "@-",
+	)
+	if err != nil {
+		t.Fatalf("raw create-item returned error: %v", err)
+	}
+	if gotBody["title"] != "From stdin" {
+		t.Fatalf("body title = %#v", gotBody)
+	}
+}
+
+func TestPersistentTimeoutAndUserAgentFlagsConfigureClient(t *testing.T) {
+	t.Setenv("PLAKY115_API_KEY", "")
+	t.Setenv("PLAKY115_API_KEY_AUTH", "")
+	cmd, err := NewRootCommand()
+	if err != nil {
+		t.Fatalf("NewRootCommand() error = %v", err)
+	}
+	cmd.SetArgs([]string{"--api-key", "from-flag", "--timeout", "7s", "--user-agent", "agent-test/1.0", "doctor"})
+	if err := cmd.ParseFlags([]string{"--api-key", "from-flag", "--timeout", "7s", "--user-agent", "agent-test/1.0"}); err != nil {
+		t.Fatalf("parse flags: %v", err)
+	}
+	client, err := buildClient(cmd)
+	if err != nil {
+		t.Fatalf("buildClient: %v", err)
+	}
+	if client.Timeout() != 7*time.Second {
+		t.Fatalf("timeout = %s", client.Timeout())
+	}
+	if client.UserAgent() != "agent-test/1.0" {
+		t.Fatalf("user agent = %q", client.UserAgent())
+	}
+}
+
+func TestFormatErrorRedactsAPIKeyShapedValues(t *testing.T) {
+	key := "plk_" + strings.Repeat("A", 16) + "_SECRET-ABC123"
+	var out bytes.Buffer
+	PrintError(&out, errors.New("upstream echoed "+key))
+	got := out.String()
+	if strings.Contains(got, key) {
+		t.Fatalf("formatted error leaked key: %s", got)
+	}
+	if strings.Contains(got, "SECRET") || strings.Contains(got, "ABC123") {
+		t.Fatalf("formatted error leaked key suffix: %s", got)
+	}
+	if !strings.Contains(got, "plk_[REDACTED]") {
+		t.Fatalf("formatted error missing redaction marker: %s", got)
+	}
+}
+
+func TestItemsBulkUpdateRedactsEmbeddedErrorDetails(t *testing.T) {
+	key := "plk_TEST_SECRET_ABC123"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"message":"echoed ` + key + `"}`))
+	}))
+	defer server.Close()
+
+	payload := t.TempDir() + "/updates.json"
+	if err := os.WriteFile(payload, []byte(`[{"spaceId":"1","boardId":"2","itemId":"3","body":{"Status":"Done"}}]`), 0o600); err != nil {
+		t.Fatalf("write payload: %v", err)
+	}
+
+	out, err := executeRoot(t,
+		"--api-key", "from-flag",
+		"--server-url", server.URL,
+		"items-bulk-update",
+		"--file", payload,
+	)
+	if err != nil {
+		t.Fatalf("items-bulk-update returned error: %v", err)
+	}
+	if strings.Contains(out, key) || strings.Contains(out, "SECRET_ABC123") {
+		t.Fatalf("bulk update output leaked key: %s", out)
+	}
+	if !strings.Contains(out, "plk_[REDACTED]") {
+		t.Fatalf("bulk update output missing redaction marker: %s", out)
+	}
+}
+
 func TestWorkspaceMapDrainsPaginatedSpacesAndBoards(t *testing.T) {
 	server := pagedWorkspaceServer(t)
 	defer server.Close()
@@ -142,6 +323,96 @@ func TestWorkspaceMapDrainsPaginatedSpacesAndBoards(t *testing.T) {
 	}
 	if len(got) != 2 {
 		t.Fatalf("workspace-map should include both paged spaces, got %d: %s", len(got), out.String())
+	}
+}
+
+func TestCommentsThreadCommandListsComments(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/public/spaces/1/boards/2/items/3/comments" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":4,"text":"hello"}],"hasMore":false}`))
+	}))
+	defer server.Close()
+
+	out, err := executeRoot(t,
+		"--api-key", "from-flag",
+		"--server-url", server.URL,
+		"comments-thread",
+		"--space-id", "1",
+		"--board-id", "2",
+		"--item-id", "3",
+	)
+	if err != nil {
+		t.Fatalf("comments-thread returned error: %v", err)
+	}
+	if !strings.Contains(out, `"text": "hello"`) {
+		t.Fatalf("comments-thread output = %s", out)
+	}
+}
+
+func TestReactionsReplaceDryRunDoesNotCallAPI(t *testing.T) {
+	called := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		t.Fatalf("dry-run should not call API")
+	}))
+	defer server.Close()
+
+	out, err := executeRoot(t,
+		"--api-key", "from-flag",
+		"--server-url", server.URL,
+		"reactions-replace",
+		"--space-id", "1",
+		"--board-id", "2",
+		"--item-id", "3",
+		"--comment-id", "4",
+		"--body", `{"emojis":["thumbsup"]}`,
+		"--dry-run",
+	)
+	if err != nil {
+		t.Fatalf("reactions-replace --dry-run returned error: %v", err)
+	}
+	if called {
+		t.Fatal("dry-run called API")
+	}
+	if !strings.Contains(out, `"dryRun": true`) || !strings.Contains(out, "replaceCommentReactions") {
+		t.Fatalf("dry-run output = %s", out)
+	}
+}
+
+func TestReactionsReplaceCallsAPI(t *testing.T) {
+	var gotPath string
+	var gotBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		if err := json.NewDecoder(r.Body).Decode(&gotBody); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer server.Close()
+
+	_, err := executeRoot(t,
+		"--api-key", "from-flag",
+		"--server-url", server.URL,
+		"reactions-replace",
+		"--space-id", "1",
+		"--board-id", "2",
+		"--item-id", "3",
+		"--comment-id", "4",
+		"--body", `{"emojis":["thumbsup"]}`,
+	)
+	if err != nil {
+		t.Fatalf("reactions-replace returned error: %v", err)
+	}
+	if gotPath != "/v1/public/spaces/1/boards/2/items/3/comments/4/reactions" {
+		t.Fatalf("path = %s", gotPath)
+	}
+	if gotBody["emojis"] == nil {
+		t.Fatalf("body = %#v", gotBody)
 	}
 }
 

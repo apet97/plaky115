@@ -22,6 +22,7 @@ func newCreateItemCommentCmd(getClient ClientFactory) *cobra.Command {
 	cmd.Flags().String("space-id", "", "spaceId (required)")
 	cmd.Flags().String("board-id", "", "boardId (required)")
 	cmd.Flags().String("item-id", "", "itemId (required)")
-	cmd.Flags().String("body", "", "Request body JSON or @file.json")
+	cmd.Flags().String("body", "", "Request body JSON, @file.json, or @- for stdin")
+	cmd.Flags().String("idempotency-key", "", "Idempotency-Key header for safe write retries")
 	return cmd
 }

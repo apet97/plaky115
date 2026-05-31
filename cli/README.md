@@ -9,8 +9,9 @@ top level; raw OpenAPI-shaped commands live under `raw`.
 export PLAKY115_API_KEY=...
 ```
 
-`PLAKY115_API_KEY_AUTH` remains a compatibility fallback. `--api-key` and
-`--server-url` override the environment for one invocation.
+`PLAKY115_API_KEY_AUTH` remains a compatibility fallback. `--api-key`,
+`--server-url`, `--timeout`, and `--user-agent` override defaults for one
+invocation.
 
 ## Curated Commands
 
@@ -24,6 +25,8 @@ plaky115 fields-list --space-id 123 --board-id 456 --show-config
 plaky115 items-export --space-id 123 --board-id 456 --format csv
 plaky115 items-create-simple --space-id 123 --board-id 456 --title "New item" --dry-run
 plaky115 comments-add --space-id 123 --board-id 456 --item-id 789 --text "Note" --dry-run
+plaky115 comments-thread --space-id 123 --board-id 456 --item-id 789
+plaky115 reactions-replace --space-id 123 --board-id 456 --item-id 789 --comment-id 321 --body '{"emojis":["thumbsup"]}' --dry-run
 plaky115 items-bulk-update --file updates.json --dry-run
 ```
 
@@ -37,7 +40,9 @@ plaky115 raw list-spaces --page 1 --page-size 100
 plaky115 raw list-boards --space-id 123 --page 1 --page-size 100
 plaky115 raw list-items --space-id 123 --board-id 456 --page 1 --page-size 100
 plaky115 raw get-item --space-id 123 --board-id 456 --item-id 789
-plaky115 raw create-item --space-id 123 --board-id 456 --body '{"title":"New item"}'
+plaky115 raw create-item --space-id 123 --board-id 456 --idempotency-key import-123 --body '{"title":"New item"}'
+plaky115 raw update-item-fields --space-id 123 --board-id 456 --item-id 789 --body @payload.json
+printf '{"title":"stdin"}' | plaky115 raw create-item --space-id 123 --board-id 456 --body @-
 ```
 
 Run `plaky115 raw --help` for the full operation list.

@@ -7,6 +7,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"strings"
@@ -148,6 +149,95 @@ func newCommentsAddCommand(getClient clientFactory) *cobra.Command {
 	return cmd
 }
 
+func newCommentsThreadCommand(getClient clientFactory) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "comments-thread",
+		Short: "List the comment thread for one item.",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			c, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
+			spaceID, _ := cmd.Flags().GetString("space-id")
+			boardID, _ := cmd.Flags().GetString("board-id")
+			itemID, _ := cmd.Flags().GetString("item-id")
+			if spaceID == "" || boardID == "" || itemID == "" {
+				return fmt.Errorf("--space-id, --board-id, and --item-id are required")
+			}
+			out, err := c.ListItemComments(cmd.Context(), plakysdk.ListItemCommentsOptions{
+				SpaceId: spaceID,
+				BoardId: boardID,
+				ItemId:  itemID,
+			})
+			if err != nil {
+				return err
+			}
+			return plakydx.EmitJSON(cmd, out)
+		},
+	}
+	cmd.Flags().String("space-id", "", "Space ID (required)")
+	cmd.Flags().String("board-id", "", "Board ID (required)")
+	cmd.Flags().String("item-id", "", "Item ID (required)")
+	return cmd
+}
+
+func newReactionsReplaceCommand(getClient clientFactory) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "reactions-replace",
+		Short: "Replace reactions for one item comment.",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			c, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
+			spaceID, _ := cmd.Flags().GetString("space-id")
+			boardID, _ := cmd.Flags().GetString("board-id")
+			itemID, _ := cmd.Flags().GetString("item-id")
+			commentID, _ := cmd.Flags().GetString("comment-id")
+			bodyText, _ := cmd.Flags().GetString("body")
+			dry, _ := cmd.Flags().GetBool("dry-run")
+			if spaceID == "" || boardID == "" || itemID == "" || commentID == "" || bodyText == "" {
+				return fmt.Errorf("--space-id, --board-id, --item-id, --comment-id, and --body are required")
+			}
+			body, err := parseBodyValue(cmd, bodyText)
+			if err != nil {
+				return err
+			}
+			if dry {
+				return plakydx.EmitJSON(cmd, map[string]any{
+					"dryRun":    true,
+					"operation": "replaceCommentReactions",
+					"payload": map[string]any{
+						"spaceId":   spaceID,
+						"boardId":   boardID,
+						"itemId":    itemID,
+						"commentId": commentID,
+						"body":      body,
+					},
+				})
+			}
+			out, err := c.ReplaceCommentReactions(cmd.Context(), plakysdk.ReplaceCommentReactionsOptions{
+				SpaceId:       spaceID,
+				BoardId:       boardID,
+				ItemId:        itemID,
+				ItemCommentId: commentID,
+				Body:          body,
+			})
+			if err != nil {
+				return err
+			}
+			return plakydx.EmitJSON(cmd, out)
+		},
+	}
+	cmd.Flags().String("space-id", "", "Space ID (required)")
+	cmd.Flags().String("board-id", "", "Board ID (required)")
+	cmd.Flags().String("item-id", "", "Item ID (required)")
+	cmd.Flags().String("comment-id", "", "Comment ID (required)")
+	cmd.Flags().String("body", "", "Request body JSON, @file.json, or @- for stdin (required)")
+	cmd.Flags().Bool("dry-run", false, "Print the plan without calling the API")
+	return cmd
+}
+
 func newItemsBulkUpdateCommand(getClient clientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "items-bulk-update",
@@ -188,7 +278,7 @@ func newItemsBulkUpdateCommand(getClient clientFactory) *cobra.Command {
 					Body:    u.Body,
 				})
 				if err != nil {
-					results = append(results, map[string]any{"itemId": u.ItemId, "status": "error", "detail": err.Error()})
+					results = append(results, map[string]any{"itemId": u.ItemId, "status": "error", "detail": FormatError(err)})
 					continue
 				}
 				results = append(results, map[string]any{"itemId": u.ItemId, "status": "updated"})
@@ -199,6 +289,27 @@ func newItemsBulkUpdateCommand(getClient clientFactory) *cobra.Command {
 	cmd.Flags().String("file", "", "Path to JSON file (required)")
 	cmd.Flags().Bool("dry-run", false, "Print per-item plan instead of writing")
 	return cmd
+}
+
+func parseBodyValue(cmd *cobra.Command, raw string) (any, error) {
+	if raw == "@-" {
+		b, err := io.ReadAll(cmd.InOrStdin())
+		if err != nil {
+			return nil, fmt.Errorf("read --body @-: %w", err)
+		}
+		raw = string(b)
+	} else if strings.HasPrefix(raw, "@") {
+		b, err := os.ReadFile(strings.TrimPrefix(raw, "@"))
+		if err != nil {
+			return nil, fmt.Errorf("read --body file: %w", err)
+		}
+		raw = string(b)
+	}
+	var body any
+	if err := json.Unmarshal([]byte(raw), &body); err != nil {
+		return nil, fmt.Errorf("invalid --body JSON: %w", err)
+	}
+	return body, nil
 }
 
 func newCompletionCommand(root *cobra.Command) *cobra.Command {

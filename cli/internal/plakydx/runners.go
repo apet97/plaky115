@@ -7,6 +7,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"strings"
 
 	"github.com/apet97/plaky115-cli/internal/plakysdk"
 	"github.com/spf13/cobra"
@@ -40,11 +43,29 @@ func bodyOrEmpty(cmd *cobra.Command) (any, error) {
 	if raw == "" {
 		return map[string]any{}, nil
 	}
+	if raw == "@-" {
+		b, err := io.ReadAll(cmd.InOrStdin())
+		if err != nil {
+			return nil, fmt.Errorf("read --body @-: %w", err)
+		}
+		raw = string(b)
+	} else if strings.HasPrefix(raw, "@") {
+		b, err := os.ReadFile(strings.TrimPrefix(raw, "@"))
+		if err != nil {
+			return nil, fmt.Errorf("read --body file: %w", err)
+		}
+		raw = string(b)
+	}
 	var v any
 	if err := json.Unmarshal([]byte(raw), &v); err != nil {
 		return nil, fmt.Errorf("invalid --body JSON: %w", err)
 	}
 	return v, nil
+}
+
+func idempotencyKey(cmd *cobra.Command) string {
+	key, _ := cmd.Flags().GetString("idempotency-key")
+	return key
 }
 
 // ---- generated mapping (one per operation) ----
@@ -119,7 +140,7 @@ func RunCreateItem(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) 
 	if err != nil {
 		return err
 	}
-	out, err := c.CreateItem(ctx, plakysdk.CreateItemOptions{SpaceId: spaceID, BoardId: boardID, Body: body})
+	out, err := c.CreateItem(ctx, plakysdk.CreateItemOptions{SpaceId: spaceID, BoardId: boardID, Body: body, IdempotencyKey: idempotencyKey(cmd)})
 	if err != nil {
 		return err
 	}
@@ -256,7 +277,7 @@ func RunUpdateItemField(ctx context.Context, cmd *cobra.Command, c *plakysdk.Cli
 	if err != nil {
 		return err
 	}
-	out, err := c.UpdateItemField(ctx, plakysdk.UpdateItemFieldOptions{SpaceId: spaceID, BoardId: boardID, ItemId: itemID, ItemFieldKey: fieldKey, Body: body})
+	out, err := c.UpdateItemField(ctx, plakysdk.UpdateItemFieldOptions{SpaceId: spaceID, BoardId: boardID, ItemId: itemID, ItemFieldKey: fieldKey, Body: body, IdempotencyKey: idempotencyKey(cmd)})
 	if err != nil {
 		return err
 	}
@@ -280,7 +301,7 @@ func RunUpdateItemFields(ctx context.Context, cmd *cobra.Command, c *plakysdk.Cl
 	if err != nil {
 		return err
 	}
-	out, err := c.UpdateItemFields(ctx, plakysdk.UpdateItemFieldsOptions{SpaceId: spaceID, BoardId: boardID, ItemId: itemID, Body: body})
+	out, err := c.UpdateItemFields(ctx, plakysdk.UpdateItemFieldsOptions{SpaceId: spaceID, BoardId: boardID, ItemId: itemID, Body: body, IdempotencyKey: idempotencyKey(cmd)})
 	if err != nil {
 		return err
 	}
@@ -324,7 +345,7 @@ func RunCreateItemComment(ctx context.Context, cmd *cobra.Command, c *plakysdk.C
 	if err != nil {
 		return err
 	}
-	out, err := c.CreateItemComment(ctx, plakysdk.CreateItemCommentOptions{SpaceId: spaceID, BoardId: boardID, ItemId: itemID, Body: body})
+	out, err := c.CreateItemComment(ctx, plakysdk.CreateItemCommentOptions{SpaceId: spaceID, BoardId: boardID, ItemId: itemID, Body: body, IdempotencyKey: idempotencyKey(cmd)})
 	if err != nil {
 		return err
 	}
@@ -352,7 +373,7 @@ func RunUpdateItemComment(ctx context.Context, cmd *cobra.Command, c *plakysdk.C
 	if err != nil {
 		return err
 	}
-	out, err := c.UpdateItemComment(ctx, plakysdk.UpdateItemCommentOptions{SpaceId: spaceID, BoardId: boardID, ItemId: itemID, ItemCommentId: commentID, Body: body})
+	out, err := c.UpdateItemComment(ctx, plakysdk.UpdateItemCommentOptions{SpaceId: spaceID, BoardId: boardID, ItemId: itemID, ItemCommentId: commentID, Body: body, IdempotencyKey: idempotencyKey(cmd)})
 	if err != nil {
 		return err
 	}
@@ -404,7 +425,7 @@ func RunReplaceCommentReactions(ctx context.Context, cmd *cobra.Command, c *plak
 	if err != nil {
 		return err
 	}
-	out, err := c.ReplaceCommentReactions(ctx, plakysdk.ReplaceCommentReactionsOptions{SpaceId: spaceID, BoardId: boardID, ItemId: itemID, ItemCommentId: commentID, Body: body})
+	out, err := c.ReplaceCommentReactions(ctx, plakysdk.ReplaceCommentReactionsOptions{SpaceId: spaceID, BoardId: boardID, ItemId: itemID, ItemCommentId: commentID, Body: body, IdempotencyKey: idempotencyKey(cmd)})
 	if err != nil {
 		return err
 	}

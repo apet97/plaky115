@@ -103,3 +103,7 @@ func (c *Client) Do(ctx context.Context, req Request, out any) error {
 
 func (c *Client) ServerURL() string { return c.opts.ServerURL }
 func (c *Client) APIKey() string    { return c.opts.APIKey }
+func (c *Client) Timeout() time.Duration {
+	return c.opts.Timeout
+}
+func (c *Client) UserAgent() string { return c.opts.UserAgent }
