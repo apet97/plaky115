@@ -34,6 +34,30 @@ try {
     "const sdk = await import('plaky115'); if (typeof sdk.PlakyClient !== 'function') throw new Error('missing PlakyClient'); const runtime = await import('plaky115/runtime/http.js'); if (typeof runtime.request !== 'function') throw new Error('missing runtime request');",
   ], { cwd: consumer });
 
+  writeFileSync(
+    join(consumer, "type-smoke.ts"),
+    [
+      "import type { PlakyOpenApiComponents, PlakyOpenApiOperations } from 'plaky115';",
+      "type Space = PlakyOpenApiComponents['schemas']['SpaceResponse'];",
+      "const space: Space = {};",
+      "type ListSpaces = PlakyOpenApiOperations['listSpaces'];",
+      "const query: ListSpaces['parameters']['query'] = { expand: ['board'] };",
+      "void space;",
+      "void query;",
+    ].join("\n"),
+  );
+  run(join(root, "sdk/node_modules/.bin/tsc"), [
+    "--noEmit",
+    "--module",
+    "NodeNext",
+    "--moduleResolution",
+    "NodeNext",
+    "--target",
+    "ES2022",
+    "--strict",
+    "type-smoke.ts",
+  ], { cwd: consumer });
+
   assertImportFails(consumer, "plaky115/operations/list-spaces.js");
   assertImportFails(consumer, "plaky115/generated/operations/list-spaces.js");
   assertImportFails(consumer, "plaky115/runtime/internal/request-builders.js");

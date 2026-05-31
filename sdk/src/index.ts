@@ -2,20 +2,27 @@ export { PlakyClient, DEFAULT_SERVER_URL } from "./client/client.js";
 export type { PlakyClientOptions } from "./client/client.js";
 
 export { SpacesResource } from "./client/spaces.js";
+export type { SpaceExpand, SpaceGetParams, SpaceIteratorParams, SpaceListParams } from "./client/spaces.js";
 export { BoardsResource } from "./client/boards.js";
 export { ItemsResource } from "./client/items.js";
 export type {
+  ItemExpand,
+  ItemGetParams,
+  ItemIteratorParams,
   ItemListParams,
+  ItemListSubitemsParams,
   ItemCreateParams,
   ItemUpdateFieldParams,
   ItemUpdateFieldsParams,
   ItemDeleteParams,
+  SubitemsBehaviour,
 } from "./client/items.js";
 export { ItemCommentsResource } from "./client/item-comments.js";
 export type { CommentScopeParams } from "./client/item-comments.js";
 export { ReactionsResource } from "./client/reactions.js";
 export type { ReplaceReactionsParams } from "./client/reactions.js";
 export { UsersResource } from "./client/users.js";
+export type { UserIteratorParams, UserListParams, UserStatus, UserType } from "./client/users.js";
 export { TeamsResource } from "./client/teams.js";
 
 export {
@@ -56,6 +63,12 @@ export type { RateLimitSnapshot } from "./runtime/rate-limit.js";
 export { paginate } from "./runtime/pagination.js";
 export type { Page, PageFetcher, PageOptions, PaginatedIterator } from "./runtime/pagination.js";
 export type { PlakyRequestOptions } from "./runtime/http.js";
+
+export type {
+  paths as PlakyOpenApiPaths,
+  components as PlakyOpenApiComponents,
+  operations as PlakyOpenApiOperations,
+} from "./generated/types.js";
 
 export {
   SpaceId,

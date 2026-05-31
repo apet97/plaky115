@@ -42,8 +42,18 @@ Resources are grouped under `PlakyClient`.
 
 ```ts
 const space = await client.spaces.get(123);
+const expandedSpace = await client.spaces.get({ spaceId: 123, expand: ["board"] });
 const boards = await client.boards.list({ spaceId: 123 });
 const item = await client.items.get({ spaceId: 123, boardId: 456, itemId: 789 });
+const users = await client.users.list({ emails: ["teammate@example.com"], status: "ACTIVE", type: "MEMBER" });
+```
+
+Generated OpenAPI schema types are exported as type-only escape hatches:
+
+```ts
+import type { PlakyOpenApiComponents } from "plaky115";
+
+type SpaceResponse = PlakyOpenApiComponents["schemas"]["SpaceResponse"];
 ```
 
 Writes attach idempotency keys by default. You can still pass one explicitly.

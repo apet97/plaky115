@@ -6,11 +6,48 @@ import type { PlakyRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId, ItemId, FieldKey } from "../runtime/ids.js";
 import type { PagedResult, ItemShape } from "./shapes.js";
 
+export type ItemExpand =
+  | "space"
+  | "board"
+  | "group"
+  | "createdBy"
+  | "parent"
+  | "subscriptions"
+  | "fields"
+  | "subitems"
+  | "subscribedUsers"
+  | "subscribedTeams";
+export type SubitemsBehaviour = "INCLUDE" | "EXCLUDE" | "EMBED";
+
 export type ItemListParams = {
   spaceId: SpaceId | string | number;
   boardId: BoardId | string | number;
+  boardViewId?: number | undefined;
+  parentId?: ItemId | string | number | undefined;
+  subitemsBehaviour?: SubitemsBehaviour | undefined;
+  expand?: readonly ItemExpand[] | undefined;
   page?: number;
   pageSize?: number;
+};
+
+export type ItemGetParams = {
+  spaceId: SpaceId | string | number;
+  boardId: BoardId | string | number;
+  itemId: ItemId | string | number;
+  expand?: readonly ItemExpand[] | undefined;
+};
+
+export type ItemListSubitemsParams = {
+  spaceId: SpaceId | string | number;
+  boardId: BoardId | string | number;
+  itemId: ItemId | string | number;
+  expand?: readonly ItemExpand[] | undefined;
+  page?: number | undefined;
+  pageSize?: number | undefined;
+};
+
+export type ItemIteratorParams = Omit<ItemListParams, "page"> & {
+  limit?: number | undefined;
 };
 
 export type ItemCreateParams = {
@@ -68,14 +105,13 @@ export class ItemsResource {
     );
   }
 
-  get(
-    params: { spaceId: SpaceId | string | number; boardId: BoardId | string | number; itemId: ItemId | string | number },
-    options?: PlakyRequestOverrides,
-  ): Promise<ItemShape> {
+  get(params: ItemGetParams, options?: PlakyRequestOverrides): Promise<ItemShape> {
+    const { spaceId, boardId, itemId, ...query } = params;
     return this.client.request<ItemShape>(
       {
         method: "GET",
-        path: `/v1/public/spaces/${pathSegment(params.spaceId)}/boards/${pathSegment(params.boardId)}/items/${pathSegment(params.itemId)}`,
+        path: `/v1/public/spaces/${pathSegment(spaceId)}/boards/${pathSegment(boardId)}/items/${pathSegment(itemId)}`,
+        query,
         operationId: "getItem",
       },
       options,
@@ -83,7 +119,7 @@ export class ItemsResource {
   }
 
   listSubitems(
-    params: { spaceId: SpaceId | string | number; boardId: BoardId | string | number; itemId: ItemId | string | number; page?: number; pageSize?: number },
+    params: ItemListSubitemsParams,
     options?: PlakyRequestOverrides,
   ): Promise<PagedResult<ItemShape>> {
     const { spaceId, boardId, itemId, ...query } = params;
@@ -156,17 +192,18 @@ export class ItemsResource {
     );
   }
 
-  iterate(params: { spaceId: SpaceId | string | number; boardId: BoardId | string | number; pageSize?: number; limit?: number }): PaginatedIterator<ItemShape> {
+  iterate(params: ItemIteratorParams): PaginatedIterator<ItemShape> {
+    const { limit, pageSize, ...query } = params;
     return paginate<ItemShape>(
       async ({ page, pageSize }) => {
-        const res = await this.list({ spaceId: params.spaceId, boardId: params.boardId, page, pageSize });
+        const res = await this.list({ ...query, page, pageSize });
         return { data: (res.data ?? []) as ItemShape[], hasMore: res.hasMore === true, raw: res };
       },
-      { pageSize: params.pageSize, limit: params.limit },
+      { pageSize, limit },
     );
   }
 
-  async listAll(params: { spaceId: SpaceId | string | number; boardId: BoardId | string | number; pageSize?: number; limit?: number }): Promise<ItemShape[]> {
+  async listAll(params: ItemIteratorParams): Promise<ItemShape[]> {
     const out: ItemShape[] = [];
     for await (const i of this.iterate(params)) out.push(i);
     return out;

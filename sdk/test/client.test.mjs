@@ -33,6 +33,67 @@ test("client.spaces.list returns paged data", async () => {
   assert.deepEqual(page.data?.[0]?.title, "Ops");
 });
 
+test("client.spaces.list serializes expand array query values", async () => {
+  let captured;
+  globalThis.fetch = async (url) => {
+    captured = new URL(url.toString());
+    return new Response(JSON.stringify({ data: [], hasMore: false }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  const client = new PlakyClient({ apiKey: "plk_test", serverURL: "https://example.test" });
+  await client.spaces.list({ expand: ["board"], pageSize: 100 });
+
+  assert.deepEqual(captured.searchParams.getAll("expand"), ["board"]);
+  assert.equal(captured.searchParams.get("pageSize"), "100");
+});
+
+test("client.users.list serializes email filters as repeated query values", async () => {
+  let captured;
+  globalThis.fetch = async (url) => {
+    captured = new URL(url.toString());
+    return new Response(JSON.stringify({ data: [], hasMore: false }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  const client = new PlakyClient({ apiKey: "plk_test", serverURL: "https://example.test" });
+  await client.users.list({ emails: ["a@example.com", "b@example.com"], status: "ACTIVE", type: "MEMBER" });
+
+  assert.deepEqual(captured.searchParams.getAll("emails"), ["a@example.com", "b@example.com"]);
+  assert.equal(captured.searchParams.get("status"), "ACTIVE");
+  assert.equal(captured.searchParams.get("type"), "MEMBER");
+});
+
+test("client.items.list forwards expanded query coverage", async () => {
+  let captured;
+  globalThis.fetch = async (url) => {
+    captured = new URL(url.toString());
+    return new Response(JSON.stringify({ data: [], hasMore: false }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  const client = new PlakyClient({ apiKey: "plk_test", serverURL: "https://example.test" });
+  await client.items.list({
+    spaceId: 123,
+    boardId: 456,
+    boardViewId: 789,
+    parentId: 111,
+    subitemsBehaviour: "INCLUDE",
+    expand: ["fields"],
+  });
+
+  assert.equal(captured.searchParams.get("boardViewId"), "789");
+  assert.equal(captured.searchParams.get("parentId"), "111");
+  assert.equal(captured.searchParams.get("subitemsBehaviour"), "INCLUDE");
+  assert.deepEqual(captured.searchParams.getAll("expand"), ["fields"]);
+});
+
 test("client.items.list flows path params into URL", async () => {
   let captured;
   globalThis.fetch = async (url) => {
