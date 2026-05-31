@@ -20,10 +20,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26.x"
-      - name: Install Speakeasy
-        run: curl -fsSL https://raw.githubusercontent.com/speakeasy-api/speakeasy/main/install.sh | sh
-      - name: Add Speakeasy to PATH
-        run: echo "$HOME/.speakeasy/bin" >> "$GITHUB_PATH"
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.2.17"

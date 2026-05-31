@@ -12,7 +12,7 @@ produce zero diff, as checked by `scripts/test-codegen-determinism.mjs`.
 ```
 api-1.yaml (upstream)
     |
-    +-- speakeasy overlay apply  (overlays/plaky115-dx.overlay.yaml)
+    +-- ruby scripts/apply-overlay.rb  (overlays/plaky115-dx.overlay.yaml)
     v
 openapi/plaky115-dx.openapi.yaml
     |
@@ -33,7 +33,9 @@ openapi/plaky115-operation-metadata.json
 - `scripts/generate-mcp.mjs` - one MCP raw tool definition per operation, scope/annotation-aware. `index.ts` exports `rawTools[]`.
 - `scripts/generate-cli.mjs` - one cobra command per operation, one Go method on `*Client` per operation, plus `raw.go` registering them all.
 - `scripts/generate-docs-index.mjs` - corpus of operation, workflow, and guide entries consumed by `plaky_search_docs`.
-- `scripts/generate-all.mjs` - runs overlay apply, lint, metadata generate/test, every codegen step, then `test:surfaces`.
+- `scripts/apply-overlay.rb` - applies the DX overlay using Ruby standard library YAML support.
+- `scripts/lint-openapi.rb` - validates local OpenAPI files without external CLI dependencies.
+- `scripts/generate-all.mjs` - runs overlay apply, lint, OpenAPI tests, metadata generate/test, every codegen step, then `test:surfaces`.
 
 ## SDK Resource API
 
@@ -61,7 +63,7 @@ const response = await client.requestWithResponse({
 ## Adding a New Operation
 
 1. Update `api-1.yaml` or the upstream source.
-2. Add metadata to `overlays/plaky115-dx.overlay.yaml`: `operationId`, MCP annotations, and pagination metadata if it is a list.
+2. Add metadata to `overlays/plaky115-dx.overlay.yaml`: `operationId`, `x-plaky115-mcp` annotations, and `x-plaky115-pagination` metadata if it is a list.
 3. Run `npm run overlay:apply` and `npm run lint:openapi`.
 4. Run `npm run metadata:generate` and `npm run metadata:test`.
 5. Run `npm run generate:all`.

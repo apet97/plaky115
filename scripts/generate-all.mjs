@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 const steps = [
   ["npm", "run", "overlay:apply"],
   ["npm", "run", "lint:openapi"],
+  ["npm", "run", "openapi:test"],
   ["npm", "run", "metadata:generate"],
   ["npm", "run", "metadata:test"],
   ["npm", "run", "generate:types"],

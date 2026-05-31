@@ -18,11 +18,11 @@ actions:
       operationId: listSpaces
       summary: List workspace spaces
       description: List Plaky spaces visible to the API key, optionally embedding boards.
-      x-speakeasy-usage-example:
+      x-plaky115-usage-example:
         title: List spaces
         description: Discover spaces before resolving boards or items.
         position: 1
-      x-speakeasy-pagination:
+      x-plaky115-pagination:
         type: offsetLimit
         inputs:
           - name: page
@@ -33,7 +33,7 @@ actions:
             type: limit
         outputs:
           results: $.data
-      x-speakeasy-mcp:
+      x-plaky115-mcp:
         name: plaky_list_spaces
         title: List spaces
         description: List Plaky spaces visible to the API key, optionally embedding boards.
@@ -48,11 +48,11 @@ actions:
       operationId: getSpace
       summary: Retrieve a space
       description: Retrieve one Plaky space by ID.
-      x-speakeasy-usage-example:
+      x-plaky115-usage-example:
         title: Get a space
         description: Fetch one space after choosing its ID from listSpaces.
         position: 2
-      x-speakeasy-mcp:
+      x-plaky115-mcp:
         name: plaky_get_space
         title: Get space
         description: Retrieve one Plaky space by ID.
@@ -67,11 +67,11 @@ actions:
       operationId: listBoards
       summary: List space boards
       description: List boards in a Plaky space.
-      x-speakeasy-usage-example:
+      x-plaky115-usage-example:
         title: List boards
         description: Discover boards in a space before reading or mutating items.
         position: 3
-      x-speakeasy-pagination:
+      x-plaky115-pagination:
         type: offsetLimit
         inputs:
           - name: page
@@ -82,7 +82,7 @@ actions:
             type: limit
         outputs:
           results: $.data
-      x-speakeasy-mcp:
+      x-plaky115-mcp:
         name: plaky_list_boards
         title: List boards
         description: List boards in a Plaky space.
@@ -97,11 +97,11 @@ actions:
       operationId: getBoard
       summary: Retrieve a board
       description: Retrieve one Plaky board by space ID and board ID.
-      x-speakeasy-usage-example:
+      x-plaky115-usage-example:
         title: Get a board
         description: Fetch board schema and groups before building item field values.
         position: 4
-      x-speakeasy-mcp:
+      x-plaky115-mcp:
         name: plaky_get_board
         title: Get board
         description: Retrieve one Plaky board by space ID and board ID.
@@ -116,11 +116,11 @@ actions:
       operationId: listItems
       summary: List board items
       description: List items on a Plaky board with optional view, parent, and expansion filters.
-      x-speakeasy-usage-example:
+      x-plaky115-usage-example:
         title: List board items
         description: Read board items with fields when preparing searches or exports.
         position: 5
-      x-speakeasy-pagination:
+      x-plaky115-pagination:
         type: offsetLimit
         inputs:
           - name: page
@@ -131,7 +131,7 @@ actions:
             type: limit
         outputs:
           results: $.data
-      x-speakeasy-mcp:
+      x-plaky115-mcp:
         name: plaky_list_items
         title: List board items
         description: List items on a Plaky board with optional view, parent, and expansion filters.
@@ -146,11 +146,11 @@ actions:
       operationId: createItem
       summary: Create an item
       description: Create a Plaky item using a title, group, parent, and optional field values.
-      x-speakeasy-usage-example:
+      x-plaky115-usage-example:
         title: Create an item
         description: Create one item after resolving the target space, board, and group.
         position: 6
-      x-speakeasy-mcp:
+      x-plaky115-mcp:
         name: plaky_create_item
         title: Create item
         description: Create a Plaky item using a title, group, parent, and optional field values.
@@ -165,11 +165,11 @@ actions:
       operationId: getItem
       summary: Retrieve an item
       description: Retrieve one Plaky item by ID.
-      x-speakeasy-usage-example:
+      x-plaky115-usage-example:
         title: Get an item
         description: Fetch a specific item before reading details or planning a mutation.
         position: 7
-      x-speakeasy-mcp:
+      x-plaky115-mcp:
         name: plaky_get_item
         title: Get item
         description: Retrieve one Plaky item by ID.
@@ -184,11 +184,11 @@ actions:
       operationId: deleteItem
       summary: Delete an item
       description: Delete one Plaky item by ID.
-      x-speakeasy-usage-example:
+      x-plaky115-usage-example:
         title: Delete an item
         description: Remove one known item after explicit user confirmation.
         position: 8
-      x-speakeasy-mcp:
+      x-plaky115-mcp:
         name: plaky_delete_item
         title: Delete item
         description: Delete one Plaky item by ID.
@@ -203,11 +203,11 @@ actions:
       operationId: listSubitems
       summary: List subitems
       description: List subitems under one Plaky item.
-      x-speakeasy-usage-example:
+      x-plaky115-usage-example:
         title: List subitems
         description: Read child items under a parent item.
         position: 9
-      x-speakeasy-pagination:
+      x-plaky115-pagination:
         type: offsetLimit
         inputs:
           - name: page
@@ -218,7 +218,7 @@ actions:
             type: limit
         outputs:
           results: $.data
-      x-speakeasy-mcp:
+      x-plaky115-mcp:
         name: plaky_list_subitems
         title: List subitems
         description: List subitems under one Plaky item.
@@ -233,11 +233,11 @@ actions:
       operationId: updateItemField
       summary: Update one item field
       description: Update a single field value on one Plaky item.
-      x-speakeasy-usage-example:
+      x-plaky115-usage-example:
         title: Update one item field
         description: Change one field by field key after resolving the item.
         position: 10
-      x-speakeasy-mcp:
+      x-plaky115-mcp:
         name: plaky_update_item_field
         title: Update item field
         description: Update a single field value on one Plaky item.
@@ -252,11 +252,11 @@ actions:
       operationId: updateItemFields
       summary: Update item fields
       description: Update multiple field values on one Plaky item.
-      x-speakeasy-usage-example:
+      x-plaky115-usage-example:
         title: Update item fields
         description: Apply a compact field-value object keyed by field title or field key.
         position: 11
-      x-speakeasy-mcp:
+      x-plaky115-mcp:
         name: plaky_update_item_fields
         title: Update item fields
         description: Update multiple field values on one Plaky item.
@@ -271,11 +271,11 @@ actions:
       operationId: listUsers
       summary: List workspace users
       description: List Plaky users, optionally filtered by email, status, or role.
-      x-speakeasy-usage-example:
+      x-plaky115-usage-example:
         title: List users
         description: Resolve users before assigning people fields.
         position: 12
-      x-speakeasy-pagination:
+      x-plaky115-pagination:
         type: offsetLimit
         inputs:
           - name: page
@@ -286,7 +286,7 @@ actions:
             type: limit
         outputs:
           results: $.data
-      x-speakeasy-mcp:
+      x-plaky115-mcp:
         name: plaky_list_users
         title: List users
         description: List Plaky users, optionally filtered by email, status, or role.
@@ -301,11 +301,11 @@ actions:
       operationId: getCurrentUser
       summary: Retrieve current user
       description: Retrieve the user associated with the provided API key.
-      x-speakeasy-usage-example:
+      x-plaky115-usage-example:
         title: Get current user
         description: Check which Plaky user owns the current API key.
         position: 13
-      x-speakeasy-mcp:
+      x-plaky115-mcp:
         name: plaky_get_current_user
         title: Get current user
         description: Retrieve the user associated with the provided API key.
@@ -320,11 +320,11 @@ actions:
       operationId: listTeams
       summary: List workspace teams
       description: List Plaky teams visible to the API key.
-      x-speakeasy-usage-example:
+      x-plaky115-usage-example:
         title: List teams
         description: Resolve teams before assigning person/team fields.
         position: 14
-      x-speakeasy-pagination:
+      x-plaky115-pagination:
         type: offsetLimit
         inputs:
           - name: page
@@ -335,7 +335,7 @@ actions:
             type: limit
         outputs:
           results: $.data
-      x-speakeasy-mcp:
+      x-plaky115-mcp:
         name: plaky_list_teams
         title: List teams
         description: List Plaky teams visible to the API key.
@@ -350,11 +350,11 @@ actions:
       operationId: getTeam
       summary: Retrieve a team
       description: Retrieve one Plaky team by ID.
-      x-speakeasy-usage-example:
+      x-plaky115-usage-example:
         title: Get a team
         description: Fetch one team after choosing its ID from listTeams.
         position: 15
-      x-speakeasy-mcp:
+      x-plaky115-mcp:
         name: plaky_get_team
         title: Get team
         description: Retrieve one Plaky team by ID.
@@ -369,11 +369,11 @@ actions:
       operationId: listItemComments
       summary: List item comments
       description: List comments on one Plaky item.
-      x-speakeasy-usage-example:
+      x-plaky115-usage-example:
         title: List item comments
         description: Read comment history for one item.
         position: 16
-      x-speakeasy-mcp:
+      x-plaky115-mcp:
         name: plaky_list_item_comments
         title: List item comments
         description: List comments on one Plaky item.
@@ -388,11 +388,11 @@ actions:
       operationId: createItemComment
       summary: Create item comment
       description: Add a comment or reply to one Plaky item.
-      x-speakeasy-usage-example:
+      x-plaky115-usage-example:
         title: Create item comment
         description: Add a comment to a known item or reply to an existing comment.
         position: 17
-      x-speakeasy-mcp:
+      x-plaky115-mcp:
         name: plaky_create_item_comment
         title: Create item comment
         description: Add a comment or reply to one Plaky item.
@@ -407,11 +407,11 @@ actions:
       operationId: updateItemComment
       summary: Update item comment
       description: Replace the text of one Plaky item comment.
-      x-speakeasy-usage-example:
+      x-plaky115-usage-example:
         title: Update item comment
         description: Replace a known comment's text.
         position: 18
-      x-speakeasy-mcp:
+      x-plaky115-mcp:
         name: plaky_update_item_comment
         title: Update item comment
         description: Replace the text of one Plaky item comment.
@@ -426,11 +426,11 @@ actions:
       operationId: deleteItemComment
       summary: Delete item comment
       description: Delete one Plaky item comment by ID.
-      x-speakeasy-usage-example:
+      x-plaky115-usage-example:
         title: Delete item comment
         description: Remove one known comment after explicit user confirmation.
         position: 19
-      x-speakeasy-mcp:
+      x-plaky115-mcp:
         name: plaky_delete_item_comment
         title: Delete item comment
         description: Delete one Plaky item comment by ID.
@@ -445,11 +445,11 @@ actions:
       operationId: replaceCommentReactions
       summary: Replace comment reactions
       description: Replace the current user's reactions on one Plaky item comment.
-      x-speakeasy-usage-example:
+      x-plaky115-usage-example:
         title: Replace comment reactions
         description: Set or clear the current user's reactions on one comment.
         position: 20
-      x-speakeasy-mcp:
+      x-plaky115-mcp:
         name: plaky_replace_comment_reactions
         title: Replace comment reactions
         description: Replace the current user's reactions on one Plaky item comment.

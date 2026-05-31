@@ -1,0 +1,20 @@
+openapi: 3.1.0
+info:
+  title: Unresolved Ref
+  version: 1.0.0
+paths:
+  /v1/public/spaces:
+    get:
+      operationId: listSpaces
+      summary: List workspace spaces
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Missing"
+components:
+  schemas:
+    SpaceResponse:
+      type: object

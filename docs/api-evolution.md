@@ -1,11 +1,11 @@
 # API Evolution Playbook
 
-What to do when the Plaky API changes. Replaces the v1 plan's "wait for Speakeasy unblock" with a concrete, repeatable flow.
+What to do when the Plaky API changes. The workflow is fully local and repeatable.
 
 ## New endpoint added
 
 1. Update `api-1.yaml` (upstream mirror).
-2. Add an action under `overlays/plaky115-dx.overlay.yaml` with `operationId`, `summary`, `x-speakeasy-mcp` annotations (scope, idempotent, destructive), and `x-speakeasy-pagination` if it returns a list.
+2. Add an action under `overlays/plaky115-dx.overlay.yaml` with `operationId`, `summary`, `x-plaky115-mcp` annotations (scope, idempotent, destructive), and `x-plaky115-pagination` if it returns a list.
 3. `npm run overlay:apply && npm run lint:openapi`.
 4. `npm run metadata:generate && npm run metadata:test`.
 5. `npm run generate:all` — SDK schema types, MCP raw tool, CLI raw command, and docs index update automatically.
@@ -35,10 +35,13 @@ If Plaky introduces cursor-based pagination on top of `page/pageSize`, update:
 - `scripts/lib/codegen-common.mjs`, `scripts/lib/codegen-mcp.mjs`, and `scripts/lib/codegen-cli.mjs` to emit cursor params for raw MCP and CLI surfaces.
 - `sdk/src/runtime/pagination.ts` `paginate()` to thread cursors.
 
-## Speakeasy CLI unavailable
+## OpenAPI gate failures
 
-Only `speakeasy overlay {validate,apply,compare}` and `speakeasy lint openapi` are used here. If those become unavailable:
-- Overlay: switch to `@redocly/cli` or `openapi-overlay` (npm).
-- Lint: switch to `@redocly/cli lint` or `spectral`.
+The local overlay and lint scripts are the source of truth for OpenAPI checks:
 
-Update `package.json` scripts; no SDK/CLI/MCP code changes needed.
+- Overlay: `ruby scripts/apply-overlay.rb --source api-1.yaml --overlay overlays/plaky115-dx.overlay.yaml --out openapi/plaky115-dx.openapi.yaml`
+- Lint: `ruby scripts/lint-openapi.rb api-1.yaml openapi/plaky115-dx.openapi.yaml`
+
+Fix the upstream mirror, overlay action, or local validator test that explains
+the failure; no SDK/CLI/MCP code changes are needed unless generated surfaces
+or hand-written convenience methods change.

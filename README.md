@@ -44,7 +44,7 @@ hand-written.
 - Node.js `>=22.12` for SDK and MCP package builds.
 - Bun `1.2.17` for the MCP executable bundle.
 - Go `1.26.x` for the CLI.
-- Speakeasy CLI for local OpenAPI overlay/lint checks.
+- Ruby for local OpenAPI overlay, lint, and metadata checks.
 - GoReleaser for CLI release configuration validation.
 
 Set an API key when calling live Plaky endpoints:
@@ -225,5 +225,5 @@ This rebuilds SDK schema types, MCP raw tools, CLI raw commands, Go raw helpers,
 and the MCP docs index. Change generators under `scripts/lib/` or operation
 metadata rather than hand-editing generated outputs.
 
-No Speakeasy cloud generation is involved. Speakeasy is used locally only for
-overlay validation and OpenAPI linting.
+No cloud API generation is involved. OpenAPI overlay validation and linting run
+through repo-local Ruby scripts.

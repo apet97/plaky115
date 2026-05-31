@@ -28,14 +28,14 @@ def response_schema(operation, spec)
 end
 
 def list_operation?(operation, method, spec)
-  return true if operation.key?("x-speakeasy-pagination")
+  return true if operation.key?("x-plaky115-pagination")
 
   schema = response_schema(operation, spec)
   method == "get" && schema.is_a?(Hash) && schema.dig("properties", "hasMore")
 end
 
 def default_scopes(operation, method)
-  mcp = operation["x-speakeasy-mcp"] || {}
+  mcp = operation["x-plaky115-mcp"] || {}
   scopes = Array(mcp["scopes"]).uniq
   return scopes unless scopes.empty?
 
@@ -46,7 +46,7 @@ def default_scopes(operation, method)
 end
 
 def destructive?(operation, method)
-  mcp = operation["x-speakeasy-mcp"] || {}
+  mcp = operation["x-plaky115-mcp"] || {}
   return mcp["destructiveHint"] unless mcp["destructiveHint"].nil?
 
   method == "delete"
@@ -61,9 +61,9 @@ spec.fetch("paths").each do |path, path_item|
     next unless HTTP_METHODS.include?(method)
 
     operation_id = operation.fetch("operationId")
-    mcp = operation["x-speakeasy-mcp"] || {}
-    pagination = operation["x-speakeasy-pagination"]
-    usage_example = operation["x-speakeasy-usage-example"]
+    mcp = operation["x-plaky115-mcp"] || {}
+    pagination = operation["x-plaky115-pagination"]
+    usage_example = operation["x-plaky115-usage-example"]
     scopes = default_scopes(operation, method)
     destructive = destructive?(operation, method)
 

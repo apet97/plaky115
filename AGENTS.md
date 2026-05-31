@@ -9,7 +9,7 @@ Go CLI, and MCP server for the Plaky public API.
 - `cli/` builds the Go/Cobra binary `plaky115`.
 - `mcp-server/` publishes the MCP package `plaky115-mcp`.
 - Generated schema/raw surfaces come from local scripts and checked-in metadata;
-  do not migrate this repo to Stainless, Speakeasy, or Fern generation.
+  do not migrate this repo to external API generation vendors.
 
 ## Toolchain
 
@@ -17,7 +17,7 @@ Go CLI, and MCP server for the Plaky public API.
 - CI tests Node `22.12.0`, `24`, and `26`.
 - MCP binary builds require Bun `1.2.17`.
 - CLI checks use Go `1.26.x`.
-- OpenAPI checks use the Speakeasy CLI; release checks use GoReleaser.
+- OpenAPI checks use local Ruby scripts; release checks use GoReleaser.
 
 ## Setup
 

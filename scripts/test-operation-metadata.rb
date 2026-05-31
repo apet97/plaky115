@@ -37,17 +37,17 @@ class OperationMetadataTest < Minitest::Test
     REQUIRED_OPERATION_IDS.each do |operation_id|
       assert by_operation_id.key?(operation_id), "missing operationId #{operation_id}"
       assert by_operation_id.fetch(operation_id).fetch("summary").length >= 12
-      mcp = by_operation_id.fetch(operation_id).fetch("x-speakeasy-mcp")
+      mcp = by_operation_id.fetch(operation_id).fetch("x-plaky115-mcp")
       assert_match(/\Aplaky_[a-z0-9_]+\z/, mcp.fetch("name"))
       assert mcp.fetch("title").length >= 8
       assert_includes mcp.fetch("scopes"), "read" unless mcp.fetch("readOnlyHint") == false
       refute_nil mcp.fetch("destructiveHint")
       refute_nil mcp.fetch("idempotentHint")
       refute_nil mcp.fetch("openWorldHint")
-      assert by_operation_id.fetch(operation_id).key?("x-speakeasy-usage-example")
+      assert by_operation_id.fetch(operation_id).key?("x-plaky115-usage-example")
     end
 
-    delete_item = by_operation_id.fetch("deleteItem").fetch("x-speakeasy-mcp")
+    delete_item = by_operation_id.fetch("deleteItem").fetch("x-plaky115-mcp")
     assert_equal true, delete_item.fetch("destructiveHint")
     assert_includes delete_item.fetch("scopes"), "destructive"
   end
