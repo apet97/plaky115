@@ -350,7 +350,7 @@ func TestPersistentTimeoutAndUserAgentFlagsConfigureClient(t *testing.T) {
 func TestFormatErrorRedactsAPIKeyShapedValues(t *testing.T) {
 	key := "plk_" + strings.Repeat("A", 16) + "_SECRET-ABC123"
 	var out bytes.Buffer
-	PrintError(&out, errors.New("upstream echoed "+key))
+	PrintError(&out, errors.New("upstream echoed "+key), false)
 	got := out.String()
 	if strings.Contains(got, key) {
 		t.Fatalf("formatted error leaked key: %s", got)
@@ -488,7 +488,7 @@ func TestReactionsReplaceDryRunDoesNotCallAPI(t *testing.T) {
 		"--board-id", "2",
 		"--item-id", "3",
 		"--comment-id", "4",
-		"--body", `{"emojis":["thumbsup"]}`,
+		"--body", `{"reactions":[{"value":"1f44d"}]}`,
 		"--dry-run",
 	)
 	if err != nil {
@@ -523,7 +523,7 @@ func TestReactionsReplaceCallsAPI(t *testing.T) {
 		"--board-id", "2",
 		"--item-id", "3",
 		"--comment-id", "4",
-		"--body", `{"emojis":["thumbsup"]}`,
+		"--body", `{"reactions":[{"value":"1f44d"}]}`,
 	)
 	if err != nil {
 		t.Fatalf("reactions-replace returned error: %v", err)
@@ -531,7 +531,7 @@ func TestReactionsReplaceCallsAPI(t *testing.T) {
 	if gotPath != "/v1/public/spaces/1/boards/2/items/3/comments/4/reactions" {
 		t.Fatalf("path = %s", gotPath)
 	}
-	if gotBody["emojis"] == nil {
+	if gotBody["reactions"] == nil {
 		t.Fatalf("body = %#v", gotBody)
 	}
 }

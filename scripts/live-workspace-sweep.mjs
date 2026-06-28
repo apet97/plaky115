@@ -224,7 +224,7 @@ async function cliSweep() {
     throw new Error("CLI workflow probes require a smoke item created by the API or SDK sweep");
   }
   record("cli", "comments-thread", runCLI(bin, ["comments-thread", "--space-id", spaceId, "--board-id", boardId, "--item-id", itemId], env, { jsonHead: true }));
-  record("cli", "reactions-replace --dry-run", runCLI(bin, ["reactions-replace", "--space-id", spaceId, "--board-id", boardId, "--item-id", itemId, "--comment-id", "0", "--body", "{\"emojis\":[\"thumbsup\"]}", "--dry-run"], env));
+  record("cli", "reactions-replace --dry-run", runCLI(bin, ["reactions-replace", "--space-id", spaceId, "--board-id", boardId, "--item-id", itemId, "--comment-id", "0", "--body", "{\"reactions\":[{\"value\":\"1f44d\"}]}", "--dry-run"], env));
 }
 
 // ---------- 4. MCP sweep ----------

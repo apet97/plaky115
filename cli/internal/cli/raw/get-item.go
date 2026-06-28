@@ -22,5 +22,6 @@ func newGetItemCmd(getClient ClientFactory) *cobra.Command {
 	cmd.Flags().String("space-id", "", "Plaky space ID for the target workspace area (required)")
 	cmd.Flags().String("board-id", "", "Plaky board ID within the selected space (required)")
 	cmd.Flags().String("item-id", "", "Plaky item ID within the selected board (required)")
+	cmd.Flags().String("expand", "", "Comma-separated list of relationships to expand into full objects instead of IDs.")
 	return cmd
 }

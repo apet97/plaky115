@@ -17,6 +17,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// markRequired marks the named flags required via Cobra's own mechanism, so
+// missing flags are reported uniformly (and before any handler/client work).
+// A failure means the flag was never defined (a programmer error), so we panic
+// to surface it immediately in tests rather than silently no-op.
+func markRequired(cmd *cobra.Command, names ...string) {
+	for _, name := range names {
+		if err := cmd.MarkFlagRequired(name); err != nil {
+			panic(fmt.Sprintf("markRequired %q: %v", name, err))
+		}
+	}
+}
+
 func newWorkspaceMapCommand(getClient clientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "workspace-map",
@@ -75,9 +87,6 @@ func newItemsCreateSimpleCommand(getClient clientFactory) *cobra.Command {
 			boardID, _ := cmd.Flags().GetString("board-id")
 			title, _ := cmd.Flags().GetString("title")
 			dry, _ := cmd.Flags().GetBool("dry-run")
-			if spaceID == "" || boardID == "" || title == "" {
-				return fmt.Errorf("--space-id, --board-id, and --title are required")
-			}
 			body := map[string]any{"title": title}
 			if dry {
 				return plakydx.EmitJSON(cmd, map[string]any{
@@ -101,6 +110,7 @@ func newItemsCreateSimpleCommand(getClient clientFactory) *cobra.Command {
 	cmd.Flags().String("board-id", "", "Board ID (required)")
 	cmd.Flags().String("title", "", "Item title (required)")
 	cmd.Flags().Bool("dry-run", false, "Print the plan without calling the API")
+	markRequired(cmd, "space-id", "board-id", "title")
 	return cmd
 }
 
@@ -118,9 +128,6 @@ func newCommentsAddCommand(getClient clientFactory) *cobra.Command {
 			itemID, _ := cmd.Flags().GetString("item-id")
 			text, _ := cmd.Flags().GetString("text")
 			dry, _ := cmd.Flags().GetBool("dry-run")
-			if spaceID == "" || boardID == "" || itemID == "" || text == "" {
-				return fmt.Errorf("--space-id, --board-id, --item-id, --text are required")
-			}
 			body := map[string]any{"text": text}
 			if dry {
 				return plakydx.EmitJSON(cmd, map[string]any{
@@ -146,6 +153,7 @@ func newCommentsAddCommand(getClient clientFactory) *cobra.Command {
 	cmd.Flags().String("item-id", "", "Item ID (required)")
 	cmd.Flags().String("text", "", "Comment text (required)")
 	cmd.Flags().Bool("dry-run", false, "Print the plan without calling the API")
+	markRequired(cmd, "space-id", "board-id", "item-id", "text")
 	return cmd
 }
 
@@ -161,9 +169,6 @@ func newCommentsThreadCommand(getClient clientFactory) *cobra.Command {
 			spaceID, _ := cmd.Flags().GetString("space-id")
 			boardID, _ := cmd.Flags().GetString("board-id")
 			itemID, _ := cmd.Flags().GetString("item-id")
-			if spaceID == "" || boardID == "" || itemID == "" {
-				return fmt.Errorf("--space-id, --board-id, and --item-id are required")
-			}
 			out, err := c.ListItemComments(cmd.Context(), plakysdk.ListItemCommentsOptions{
 				SpaceId: spaceID,
 				BoardId: boardID,
@@ -178,6 +183,7 @@ func newCommentsThreadCommand(getClient clientFactory) *cobra.Command {
 	cmd.Flags().String("space-id", "", "Space ID (required)")
 	cmd.Flags().String("board-id", "", "Board ID (required)")
 	cmd.Flags().String("item-id", "", "Item ID (required)")
+	markRequired(cmd, "space-id", "board-id", "item-id")
 	return cmd
 }
 
@@ -196,9 +202,6 @@ func newReactionsReplaceCommand(getClient clientFactory) *cobra.Command {
 			commentID, _ := cmd.Flags().GetString("comment-id")
 			bodyText, _ := cmd.Flags().GetString("body")
 			dry, _ := cmd.Flags().GetBool("dry-run")
-			if spaceID == "" || boardID == "" || itemID == "" || commentID == "" || bodyText == "" {
-				return fmt.Errorf("--space-id, --board-id, --item-id, --comment-id, and --body are required")
-			}
 			body, err := parseBodyValue(cmd, bodyText)
 			if err != nil {
 				return err
@@ -235,6 +238,7 @@ func newReactionsReplaceCommand(getClient clientFactory) *cobra.Command {
 	cmd.Flags().String("comment-id", "", "Comment ID (required)")
 	cmd.Flags().String("body", "", "Request body JSON, @file.json, or @- for stdin (required)")
 	cmd.Flags().Bool("dry-run", false, "Print the plan without calling the API")
+	markRequired(cmd, "space-id", "board-id", "item-id", "comment-id", "body")
 	return cmd
 }
 
@@ -249,9 +253,6 @@ func newItemsBulkUpdateCommand(getClient clientFactory) *cobra.Command {
 			}
 			file, _ := cmd.Flags().GetString("file")
 			dry, _ := cmd.Flags().GetBool("dry-run")
-			if file == "" {
-				return fmt.Errorf("--file is required (JSON array of {spaceId, boardId, itemId, body})")
-			}
 			raw, err := os.ReadFile(file)
 			if err != nil {
 				return err
@@ -267,6 +268,13 @@ func newItemsBulkUpdateCommand(getClient clientFactory) *cobra.Command {
 			}
 			results := []map[string]any{}
 			for _, u := range updates {
+				// Pre-validate identifiers before any API call so a bad entry is
+				// reported as "invalid" up front rather than failing soft against
+				// the API (or, in dry-run, masking a malformed entry as planned).
+				if u.SpaceId == "" || u.BoardId == "" || u.ItemId == "" {
+					results = append(results, map[string]any{"itemId": u.ItemId, "status": "invalid", "detail": "spaceId, boardId, and itemId are required"})
+					continue
+				}
 				if dry {
 					results = append(results, map[string]any{"itemId": u.ItemId, "status": "dry-run"})
 					continue
@@ -288,6 +296,7 @@ func newItemsBulkUpdateCommand(getClient clientFactory) *cobra.Command {
 	}
 	cmd.Flags().String("file", "", "Path to JSON file (required)")
 	cmd.Flags().Bool("dry-run", false, "Print per-item plan instead of writing")
+	markRequired(cmd, "file")
 	return cmd
 }
 
@@ -364,9 +373,6 @@ func newFindCommand(getClient clientFactory) *cobra.Command {
 			}
 			typ, _ := cmd.Flags().GetString("type")
 			query, _ := cmd.Flags().GetString("query")
-			if typ == "" || query == "" {
-				return fmt.Errorf("--type and --query are required")
-			}
 			needle := strings.ToLower(query)
 			ctx := cmd.Context()
 			switch typ {
@@ -412,6 +418,7 @@ func newFindCommand(getClient clientFactory) *cobra.Command {
 	cmd.Flags().String("query", "", "Case-insensitive needle (required)")
 	cmd.Flags().String("space-id", "", "Required when type=board or type=item")
 	cmd.Flags().String("board-id", "", "Required when type=item")
+	markRequired(cmd, "type", "query")
 	return cmd
 }
 
@@ -427,9 +434,6 @@ func newFieldsListCommand(getClient clientFactory) *cobra.Command {
 			spaceID, _ := cmd.Flags().GetString("space-id")
 			boardID, _ := cmd.Flags().GetString("board-id")
 			showConfig, _ := cmd.Flags().GetBool("show-config")
-			if spaceID == "" || boardID == "" {
-				return fmt.Errorf("--space-id and --board-id are required")
-			}
 			out, err := c.GetBoard(cmd.Context(), plakysdk.GetBoardOptions{SpaceId: spaceID, BoardId: boardID})
 			if err != nil {
 				return err
@@ -465,6 +469,7 @@ func newFieldsListCommand(getClient clientFactory) *cobra.Command {
 	cmd.Flags().String("space-id", "", "Space ID (required)")
 	cmd.Flags().String("board-id", "", "Board ID (required)")
 	cmd.Flags().Bool("show-config", false, "Include the full field configuration block (large)")
+	markRequired(cmd, "space-id", "board-id")
 	return cmd
 }
 
@@ -480,9 +485,6 @@ func newItemsExportCommand(getClient clientFactory) *cobra.Command {
 			spaceID, _ := cmd.Flags().GetString("space-id")
 			boardID, _ := cmd.Flags().GetString("board-id")
 			format, _ := cmd.Flags().GetString("format")
-			if spaceID == "" || boardID == "" {
-				return fmt.Errorf("--space-id and --board-id are required")
-			}
 			if format != "jsonl" && format != "csv" {
 				return fmt.Errorf("--format must be jsonl or csv")
 			}
@@ -509,6 +511,7 @@ func newItemsExportCommand(getClient clientFactory) *cobra.Command {
 	cmd.Flags().String("space-id", "", "Space ID (required)")
 	cmd.Flags().String("board-id", "", "Board ID (required)")
 	cmd.Flags().String("format", "jsonl", "Output format: jsonl | csv")
+	markRequired(cmd, "space-id", "board-id")
 	return cmd
 }
 
@@ -577,6 +580,13 @@ func stringify(v any) string {
 	}
 }
 
+// maxPaginationPages is a safety valve, not an API contract: it bounds an
+// otherwise unbounded paging loop so a server that always reports
+// `hasMore: true` cannot spin forever. Kept in lockstep with the SDK's
+// MAX_PAGES (sdk/src/runtime/pagination.ts). Not configurable. See
+// docs/api-behavior.md.
+const maxPaginationPages = 10_000
+
 func drainPaged(pageSize int, fetch func(page int, pageSize int) (any, error)) ([]map[string]any, error) {
 	all := []map[string]any{}
 	for page := 1; ; page++ {
@@ -592,8 +602,8 @@ func drainPaged(pageSize int, fetch func(page int, pageSize int) (any, error)) (
 		if hasMore, _ := r["hasMore"].(bool); !hasMore {
 			return all, nil
 		}
-		if page >= 1000 {
-			return nil, fmt.Errorf("pagination aborted after 1000 pages")
+		if page >= maxPaginationPages {
+			return nil, fmt.Errorf("pagination aborted after %d pages", maxPaginationPages)
 		}
 	}
 }

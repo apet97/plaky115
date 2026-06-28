@@ -6,7 +6,7 @@ import type { McpToolDefinition } from "../../runtime/types.js";
 const args = z.object({
   spaceId: z.union([z.string(), z.number()]).describe("Plaky space ID for the target workspace area."),
   boardId: z.union([z.string(), z.number()]).describe("Plaky board ID within the selected space."),
-  body: z.record(z.unknown()).describe("JSON request body for Create an item.").optional(),
+  body: z.record(z.unknown()).describe("JSON request body for Create an item."),
 });
 const output = z.object({}).passthrough();
 

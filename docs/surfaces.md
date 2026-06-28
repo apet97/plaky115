@@ -32,7 +32,7 @@ contract and separate user-facing runtimes.
 
 1. **Generated schema types** - produced by `openapi-typescript` from the overlay. These are pure TypeScript types and have zero runtime weight.
 2. **Generated raw CLI and MCP surfaces** - one Go raw command/helper and one MCP raw tool per OpenAPI operation. These are deterministic outputs from local scripts.
-3. **Hand-written SDK and curated surfaces** - resource-oriented `PlakyClient`, curated cobra commands, and curated MCP tools. This layer owns pagination iterators, retries, timeouts, cancellation, idempotency, typed errors, rate-limit budget, interceptors, webhook helpers, mutation planning, and workflow composition.
+3. **Hand-written SDK and curated surfaces** - resource-oriented `PlakyClient`, curated cobra commands, and curated MCP tools. This layer owns pagination iterators, retries, timeouts, cancellation, idempotency, typed errors, rate-limit budget, interceptors, mutation planning, and workflow composition.
 
 ## SDK Boundary
 

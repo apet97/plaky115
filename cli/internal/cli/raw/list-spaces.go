@@ -21,5 +21,6 @@ func newListSpacesCmd(getClient ClientFactory) *cobra.Command {
 	}
 	cmd.Flags().Int("page", 0, "Page number (1-based)")
 	cmd.Flags().Int("page-size", 0, "Page size")
+	cmd.Flags().String("expand", "", "Comma-separated list of relationships to be expanded into full objects.")
 	return cmd
 }

@@ -7,7 +7,7 @@ const args = z.object({
   spaceId: z.union([z.string(), z.number()]).describe("Plaky space ID for the target workspace area."),
   boardId: z.union([z.string(), z.number()]).describe("Plaky board ID within the selected space."),
   itemId: z.union([z.string(), z.number()]).describe("Plaky item ID within the selected board."),
-  body: z.record(z.unknown()).describe("JSON request body for Update item fields.").optional(),
+  body: z.record(z.unknown()).describe("JSON request body for Update item fields."),
 });
 const output = z.object({}).passthrough();
 

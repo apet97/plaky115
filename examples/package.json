@@ -1,0 +1,9 @@
+{
+  "name": "plaky115-examples",
+  "private": true,
+  "type": "module",
+  "description": "Runnable, secret-free examples for the Plaky115 SDK. Env credentials only.",
+  "dependencies": {
+    "plaky115": "file:../sdk"
+  }
+}

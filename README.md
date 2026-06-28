@@ -20,8 +20,8 @@ pagination, and release gates are hand-written.
 - Generated OpenAPI schema types exported as type-only escape hatches.
 - Pagination helpers: page APIs, `listAll`, and async iterators.
 - Runtime controls: retries, idempotency keys, timeouts, abort signals,
-  interceptors, custom fetch, custom headers, user-agent control, rate-limit
-  snapshots, and webhook signature helpers.
+  interceptors, custom fetch, custom headers, user-agent control, and rate-limit
+  snapshots.
 - Typed API errors with status, request ID, retry-after, headers, and response
   body.
 - `requestWithResponse()` for status, headers, request IDs, and raw API paths.
@@ -127,6 +127,22 @@ console.log(response.status, response.requestId, response.data);
 `CommentShape` exposes both `content` for the API response field and `text` for
 caller compatibility.
 
+## Base URL and Pagination
+
+Real Plaky workspaces are account-prefixed, for example
+`https://<account>.api.plaky.com`. The SDK and CLI default to
+`https://api.plaky.com`; set the host explicitly when the generic host does not
+route for your workspace:
+
+- SDK: `new PlakyClient({ apiKey, serverURL: "https://<account>.api.plaky.com" })`
+- CLI: `plaky115 --server-url https://<account>.api.plaky.com ...`
+- Live sweep: `PLAKY115_BASE_URL=https://<account>.api.plaky.com`
+
+The API is strictly page-based. `page` and `pageSize` are honored server-side;
+`limit` and `offset` are not server parameters. The SDK iterator `limit` option
+is a client-side cap on items yielded, not an API parameter. Verified wire
+behavior and real request/response payloads are in `docs/api-behavior.md`.
+
 ## CLI
 
 ```bash
@@ -141,7 +157,7 @@ plaky115 items-export --space-id 123 --board-id 456 --format jsonl
 plaky115 items-create-simple --space-id 123 --board-id 456 --title "Follow up" --dry-run
 plaky115 comments-add --space-id 123 --board-id 456 --item-id 789 --text "Note" --dry-run
 plaky115 comments-thread --space-id 123 --board-id 456 --item-id 789
-plaky115 reactions-replace --space-id 123 --board-id 456 --item-id 789 --comment-id 321 --body '{"emojis":["thumbsup"]}' --dry-run
+plaky115 reactions-replace --space-id 123 --board-id 456 --item-id 789 --comment-id 321 --body '{"reactions":[{"value":"1f44d"}]}' --dry-run
 plaky115 items-bulk-update --file updates.json --dry-run
 
 # Generated raw operations
@@ -196,6 +212,18 @@ with structured error details instead of crashing the tool call.
 
 See `docs/install-snippets.md` for Claude Desktop, Claude Code, Cursor, and
 local CLI examples.
+
+## Examples
+
+Runnable, secret-free examples live in `examples/` (SDK scripts, CLI recipes, and
+an MCP host config). They read credentials from the environment. See
+`examples/README.md`.
+
+## Security
+
+Credential handling, transport, idempotency, the absence of webhooks, and the
+MCP destructive model are documented in `SECURITY.md`. Report vulnerabilities
+through GitHub Security Advisories.
 
 ## Quality Gates
 

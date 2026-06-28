@@ -24,6 +24,9 @@ func (c *Client) ListSpaces(ctx context.Context, opts ListSpacesOptions) (any, e
 	if opts.PageSize > 0 {
 		query.Set("pageSize", fmt.Sprintf("%d", opts.PageSize))
 	}
+	if opts.Expand != "" {
+		query.Set("expand", opts.Expand)
+	}
 	req := Request{Method: "GET", Path: path}
 	req.Query = query
 	var out any
@@ -36,6 +39,7 @@ func (c *Client) ListSpaces(ctx context.Context, opts ListSpacesOptions) (any, e
 type ListSpacesOptions struct {
 	Page     int
 	PageSize int
+	Expand   string
 }
 
 // ListTeams executes the listTeams operation: GET /v1/public/teams
@@ -121,6 +125,9 @@ func (c *Client) ListItems(ctx context.Context, opts ListItemsOptions) (any, err
 	if opts.PageSize > 0 {
 		query.Set("pageSize", fmt.Sprintf("%d", opts.PageSize))
 	}
+	if opts.Expand != "" {
+		query.Set("expand", opts.Expand)
+	}
 	req := Request{Method: "GET", Path: path}
 	req.Query = query
 	var out any
@@ -135,6 +142,7 @@ type ListItemsOptions struct {
 	BoardId  string
 	Page     int
 	PageSize int
+	Expand   string
 }
 
 // CreateItem executes the createItem operation: POST /v1/public/spaces/{spaceId}/boards/{boardId}/items
@@ -160,7 +168,12 @@ type CreateItemOptions struct {
 // GetSpace executes the getSpace operation: GET /v1/public/spaces/{spaceId}
 func (c *Client) GetSpace(ctx context.Context, opts GetSpaceOptions) (any, error) {
 	path := strings.ReplaceAll("/v1/public/spaces/{spaceId}", "{spaceId}", url.PathEscape(opts.SpaceId))
+	query := url.Values{}
+	if opts.Expand != "" {
+		query.Set("expand", opts.Expand)
+	}
 	req := Request{Method: "GET", Path: path}
+	req.Query = query
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
 		return nil, err
@@ -170,6 +183,7 @@ func (c *Client) GetSpace(ctx context.Context, opts GetSpaceOptions) (any, error
 
 type GetSpaceOptions struct {
 	SpaceId string
+	Expand  string
 }
 
 // GetTeam executes the getTeam operation: GET /v1/public/teams/{teamId}
@@ -227,6 +241,9 @@ func (c *Client) ListSubitems(ctx context.Context, opts ListSubitemsOptions) (an
 	if opts.PageSize > 0 {
 		query.Set("pageSize", fmt.Sprintf("%d", opts.PageSize))
 	}
+	if opts.Expand != "" {
+		query.Set("expand", opts.Expand)
+	}
 	req := Request{Method: "GET", Path: path}
 	req.Query = query
 	var out any
@@ -242,12 +259,18 @@ type ListSubitemsOptions struct {
 	ItemId   string
 	Page     int
 	PageSize int
+	Expand   string
 }
 
 // GetItem executes the getItem operation: GET /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}
 func (c *Client) GetItem(ctx context.Context, opts GetItemOptions) (any, error) {
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId))
+	query := url.Values{}
+	if opts.Expand != "" {
+		query.Set("expand", opts.Expand)
+	}
 	req := Request{Method: "GET", Path: path}
+	req.Query = query
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
 		return nil, err
@@ -259,6 +282,7 @@ type GetItemOptions struct {
 	SpaceId string
 	BoardId string
 	ItemId  string
+	Expand  string
 }
 
 // DeleteItem executes the deleteItem operation: DELETE /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}

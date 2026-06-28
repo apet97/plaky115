@@ -26,7 +26,7 @@ plaky115 items-export --space-id 123 --board-id 456 --format csv
 plaky115 items-create-simple --space-id 123 --board-id 456 --title "New item" --dry-run
 plaky115 comments-add --space-id 123 --board-id 456 --item-id 789 --text "Note" --dry-run
 plaky115 comments-thread --space-id 123 --board-id 456 --item-id 789
-plaky115 reactions-replace --space-id 123 --board-id 456 --item-id 789 --comment-id 321 --body '{"emojis":["thumbsup"]}' --dry-run
+plaky115 reactions-replace --space-id 123 --board-id 456 --item-id 789 --comment-id 321 --body '{"reactions":[{"value":"1f44d"}]}' --dry-run
 plaky115 items-bulk-update --file updates.json --dry-run
 ```
 

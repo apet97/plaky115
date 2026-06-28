@@ -26,11 +26,13 @@ export function buildCobraCommand(op) {
   lines.push(`\t\t\treturn plakydx.Run${cap(op.operationId)}(ctx, cmd, client)`);
   lines.push(`\t\t},`);
   lines.push(`\t}`);
+  const queryParams = op.query ?? [];
   for (const p of params) lines.push(`\tcmd.Flags().String(${JSON.stringify(flagFor(p))}, "", ${JSON.stringify(paramDescription(p) + " (required)")})`);
   if (op.pagination) {
     lines.push(`\tcmd.Flags().Int("page", 0, "Page number (1-based)")`);
     lines.push(`\tcmd.Flags().Int("page-size", 0, "Page size")`);
   }
+  for (const q of queryParams) lines.push(`\tcmd.Flags().String(${JSON.stringify(flagFor(q.name))}, "", ${JSON.stringify(queryFlagDescription(q))})`);
   if (op.method !== "GET" && op.method !== "DELETE") {
     lines.push(`\tcmd.Flags().String("body", "", "Request body JSON, @file.json, or @- for stdin (required)")`);
     lines.push(`\tcmd.Flags().String("idempotency-key", "", "Idempotency-Key header for safe write retries")`);
@@ -86,21 +88,30 @@ export function buildGoOperations(ops) {
   for (const op of ops) {
     const params = pathParams(op.path);
     const hasBody = op.method !== "GET" && op.method !== "DELETE";
+    const queryParams = op.query ?? [];
+    const hasQuery = Boolean(op.pagination) || queryParams.length > 0;
     const fn = cap(op.operationId);
     lines.push(`// ${fn} executes the ${op.operationId} operation: ${op.method} ${op.path}`);
     lines.push(`func (c *Client) ${fn}(ctx context.Context, opts ${fn}Options) (any, error) {`);
     lines.push(`\tpath := ${formatGoPath(op.path, params)}`);
-    if (op.pagination) {
+    if (hasQuery) {
       lines.push(`\tquery := url.Values{}`);
-      lines.push(`\tif opts.Page > 0 {`);
-      lines.push(`\t\tquery.Set("page", fmt.Sprintf("%d", opts.Page))`);
-      lines.push(`\t}`);
-      lines.push(`\tif opts.PageSize > 0 {`);
-      lines.push(`\t\tquery.Set("pageSize", fmt.Sprintf("%d", opts.PageSize))`);
-      lines.push(`\t}`);
+      if (op.pagination) {
+        lines.push(`\tif opts.Page > 0 {`);
+        lines.push(`\t\tquery.Set("page", fmt.Sprintf("%d", opts.Page))`);
+        lines.push(`\t}`);
+        lines.push(`\tif opts.PageSize > 0 {`);
+        lines.push(`\t\tquery.Set("pageSize", fmt.Sprintf("%d", opts.PageSize))`);
+        lines.push(`\t}`);
+      }
+      for (const q of queryParams) {
+        lines.push(`\tif opts.${cap(q.name)} != "" {`);
+        lines.push(`\t\tquery.Set(${JSON.stringify(q.name)}, opts.${cap(q.name)})`);
+        lines.push(`\t}`);
+      }
     }
     lines.push(`\treq := Request{Method: ${JSON.stringify(op.method)}, Path: path}`);
-    if (op.pagination) lines.push(`\treq.Query = query`);
+    if (hasQuery) lines.push(`\treq.Query = query`);
     if (hasBody) lines.push(`\treq.Body = opts.Body`);
     if (op.method !== "GET" && op.method !== "DELETE") lines.push(`\treq.Idempotency = opts.IdempotencyKey`);
     lines.push(`\tvar out any`);
@@ -116,6 +127,7 @@ export function buildGoOperations(ops) {
       lines.push(`\tPage int`);
       lines.push(`\tPageSize int`);
     }
+    for (const q of queryParams) lines.push(`\t${cap(q.name)} string`);
     if (hasBody) lines.push(`\tBody any`);
     if (op.method !== "GET" && op.method !== "DELETE") lines.push(`\tIdempotencyKey string`);
     lines.push(`}`);
@@ -135,6 +147,7 @@ function formatGoPath(path, params) {
 
 function cap(s) { return s[0].toUpperCase() + s.slice(1); }
 function flagFor(p) { return p.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase(); }
+function queryFlagDescription(q) { return q.description ?? `${q.name} query parameter for this Plaky operation`; }
 function goSlug(operationId) { return operationId.replace(/([A-Z])/g, "-$1").toLowerCase().replace(/^-/, ""); }
 function paramDescription(param) {
   const descriptions = {

@@ -20,5 +20,6 @@ func newGetSpaceCmd(getClient ClientFactory) *cobra.Command {
 		},
 	}
 	cmd.Flags().String("space-id", "", "Plaky space ID for the target workspace area (required)")
+	cmd.Flags().String("expand", "", "Comma-separated list of relationships to be expanded into full objects.")
 	return cmd
 }

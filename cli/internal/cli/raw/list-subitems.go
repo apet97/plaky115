@@ -24,5 +24,6 @@ func newListSubitemsCmd(getClient ClientFactory) *cobra.Command {
 	cmd.Flags().String("item-id", "", "Plaky item ID within the selected board (required)")
 	cmd.Flags().Int("page", 0, "Page number (1-based)")
 	cmd.Flags().Int("page-size", 0, "Page size")
+	cmd.Flags().String("expand", "", "Comma-separated list of relationships to expand into full objects instead of IDs.")
 	return cmd
 }

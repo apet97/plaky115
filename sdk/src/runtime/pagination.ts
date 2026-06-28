@@ -18,6 +18,13 @@ export type PaginatedIterator<T> = AsyncIterableIterator<T> & {
 };
 
 const DEFAULT_PAGE_SIZE = 100;
+
+/**
+ * Safety valve, not an API contract. Bounds an otherwise unbounded paging loop
+ * so a server that always reports `hasMore: true` cannot spin forever. The CLI
+ * uses the same value (`cli/internal/cli/dx.go`). Not configurable. See
+ * `docs/api-behavior.md`.
+ */
 const MAX_PAGES = 10_000;
 
 export function paginate<T>(fetcher: PageFetcher<T>, opts: PageOptions = {}): PaginatedIterator<T> {

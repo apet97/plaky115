@@ -12,15 +12,16 @@ export type {
   ItemListParams,
   ItemListSubitemsParams,
   ItemCreateParams,
+  ItemCreateBody,
   ItemUpdateFieldParams,
   ItemUpdateFieldsParams,
   ItemDeleteParams,
   SubitemsBehaviour,
 } from "./client/items.js";
 export { ItemCommentsResource } from "./client/item-comments.js";
-export type { CommentScopeParams } from "./client/item-comments.js";
+export type { CommentScopeParams, CommentWriteBody } from "./client/item-comments.js";
 export { ReactionsResource } from "./client/reactions.js";
-export type { ReplaceReactionsParams } from "./client/reactions.js";
+export type { ReplaceReactionsParams, ReactionReplaceBody, ReactionReplaceResult } from "./client/reactions.js";
 export { UsersResource } from "./client/users.js";
 export type { UserIteratorParams, UserListParams, UserStatus, UserType } from "./client/users.js";
 export { TeamsResource } from "./client/teams.js";
@@ -52,8 +53,6 @@ export type {
 } from "./runtime/types.js";
 
 export { newIdempotencyKey } from "./runtime/idempotency.js";
-export { verifyWebhookSignature } from "./runtime/webhooks.js";
-export type { WebhookVerifyOptions } from "./runtime/webhooks.js";
 export { redact, redactRecord } from "./runtime/redact.js";
 export { withRetries } from "./runtime/retries.js";
 export type { RetryOptions } from "./runtime/retries.js";
@@ -109,6 +108,7 @@ export type {
   UserShape,
   TeamShape,
   ReactionShape,
+  ReactionDetailShape,
   CommentShape,
   ItemShape,
 } from "./client/shapes.js";

@@ -23,6 +23,13 @@ export async function buildHeaders(req: RawRequest, opts: PlakyRequestOptions): 
   return headers;
 }
 
+// Query parameters the Plaky spec declares with `explode: false`: their array
+// values must be serialized as one comma-joined value (`?expand=a,b`) rather
+// than repeated keys (`?expand=a&expand=b`). The live API accepts both forms,
+// but comma-join is the spec-aligned serialization. All other array params keep
+// the default `explode: true` (repeated-key) behavior.
+const EXPLODE_FALSE_PARAMS = new Set<string>(["expand"]);
+
 export function buildUrl(server: string, path: string, query?: QueryParams): string {
   const base = server.endsWith("/") ? server : `${server}/`;
   const url = new URL(path.replace(/^\//, ""), base);
@@ -32,7 +39,12 @@ export function buildUrl(server: string, path: string, query?: QueryParams): str
       if (value === undefined || value === null) continue;
 
       if (isQueryArray(value)) {
-        for (const item of value) url.searchParams.append(key, formatQueryValue(item));
+        if (value.length === 0) continue;
+        if (EXPLODE_FALSE_PARAMS.has(key)) {
+          url.searchParams.set(key, value.map(formatQueryValue).join(","));
+        } else {
+          for (const item of value) url.searchParams.append(key, formatQueryValue(item));
+        }
       } else {
         url.searchParams.set(key, formatQueryValue(value));
       }

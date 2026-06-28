@@ -10,6 +10,15 @@ OUT = File.join(ROOT, "openapi/plaky115-operation-metadata.json")
 
 HTTP_METHODS = %w[get post put patch delete head options trace].freeze
 
+# Pagination query params are threaded through dedicated codegen branches, so
+# they are excluded from the generic query-param list.
+PAGINATION_QUERY_PARAMS = %w[page pageSize limit offset].freeze
+
+# Non-pagination query params threaded onto the raw CLI/MCP surfaces. Scoped to
+# `expand` today (the highest-utility expandable-relationships parameter);
+# broaden this allow-list to thread more spec query params through codegen.
+THREADED_QUERY_PARAMS = %w[expand].freeze
+
 def load_yaml(path)
   YAML.safe_load(File.read(path), aliases: true)
 end
@@ -52,6 +61,35 @@ def destructive?(operation, method)
   method == "delete"
 end
 
+def body_required?(operation)
+  request_body = operation["requestBody"]
+  return false unless request_body.is_a?(Hash)
+
+  request_body["required"] == true
+end
+
+def collapse_whitespace(text)
+  return nil if text.nil?
+
+  text.gsub(/\s+/, " ").strip
+end
+
+def query_parameters(operation, path_item, spec)
+  raw = Array(path_item["parameters"]) + Array(operation["parameters"])
+  raw
+    .map { |param| fetch_ref(param, spec) }
+    .select { |param| param.is_a?(Hash) && param["in"] == "query" }
+    .reject { |param| PAGINATION_QUERY_PARAMS.include?(param["name"]) }
+    .select { |param| THREADED_QUERY_PARAMS.include?(param["name"]) }
+    .map do |param|
+      {
+        "name" => param.fetch("name"),
+        "explode" => param["explode"] == false ? false : true,
+        "description" => collapse_whitespace(param["description"]),
+      }.compact
+    end
+end
+
 spec = load_yaml(SOURCE)
 operations = []
 examples = {}
@@ -81,6 +119,7 @@ spec.fetch("paths").each do |path, path_item|
       "openWorld" => mcp.fetch("openWorldHint", true),
       "list" => list_operation?(operation, method, spec),
       "mutation" => !%w[get head].include?(method),
+      "bodyRequired" => body_required?(operation),
     }
 
     if pagination
@@ -89,6 +128,9 @@ spec.fetch("paths").each do |path, path_item|
         "results" => pagination.dig("outputs", "results"),
       }.compact
     end
+
+    query = query_parameters(operation, path_item, spec)
+    entry["query"] = query unless query.empty?
 
     operations << entry
     examples[operation_id] = usage_example if usage_example

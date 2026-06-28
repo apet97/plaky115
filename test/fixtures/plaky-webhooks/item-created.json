@@ -1,6 +1,0 @@
-{
-  "payload": "{\"event\":\"item.created\",\"itemId\":42,\"boardId\":7,\"spaceId\":3}",
-  "secret": "test_webhook_secret_do_not_use_in_prod",
-  "timestamp": "1716624000",
-  "signature": "e82e33c17385951499842a119645593497b206422911b1336f51ed17fc3b5b23"
-}

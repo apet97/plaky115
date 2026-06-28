@@ -8,6 +8,25 @@ test("buildUrl appends array query params without losing values", () => {
   assert.equal(url.searchParams.get("page"), "2");
 });
 
+test("buildUrl comma-joins explode:false expand into a single param", () => {
+  const url = new URL(
+    buildUrl("https://example.test", "/v1/items", { expand: ["group", "createdBy"], page: 1 }),
+  );
+  assert.equal(url.searchParams.get("expand"), "group,createdBy");
+  assert.deepEqual(url.searchParams.getAll("expand"), ["group,createdBy"]);
+  assert.equal(url.searchParams.get("page"), "1");
+});
+
+test("buildUrl serializes a single-value expand without a trailing comma", () => {
+  const url = new URL(buildUrl("https://example.test", "/v1/items", { expand: ["fields"] }));
+  assert.equal(url.searchParams.get("expand"), "fields");
+});
+
+test("buildUrl omits an empty expand array", () => {
+  const url = new URL(buildUrl("https://example.test", "/v1/items", { expand: [] }));
+  assert.equal(url.searchParams.has("expand"), false);
+});
+
 test("mergeHeadersInto deletes a default header when override value is empty", () => {
   const headers = new Headers({ "X-Trace": "client", Accept: "application/json" });
   mergeHeadersInto(headers, { "X-Trace": "" });

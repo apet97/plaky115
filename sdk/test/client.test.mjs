@@ -175,6 +175,19 @@ test("constructor throws without apiKey", () => {
   assert.throws(() => new PlakyClient({ apiKey: "" }), /apiKey is required/);
 });
 
+test("constructor rejects negative or NaN timeoutMs/maxRetries", () => {
+  assert.throws(() => new PlakyClient({ apiKey: "plk_test", timeoutMs: -1 }), /timeoutMs must be a non-negative number/);
+  assert.throws(() => new PlakyClient({ apiKey: "plk_test", timeoutMs: Number.NaN }), /timeoutMs must be a non-negative number/);
+  assert.throws(() => new PlakyClient({ apiKey: "plk_test", maxRetries: -2 }), /maxRetries must be a non-negative number/);
+  assert.throws(() => new PlakyClient({ apiKey: "plk_test", maxRetries: Number.NaN }), /maxRetries must be a non-negative number/);
+});
+
+test("constructor accepts maxRetries:0 and large finite timeouts without clamping", () => {
+  const client = new PlakyClient({ apiKey: "plk_test", maxRetries: 0, timeoutMs: 3_600_000 });
+  assert.equal(client.options.maxRetries, 0);
+  assert.equal(client.options.timeoutMs, 3_600_000);
+});
+
 test("redact handles API-key-shaped tokens with separators", () => {
   const token = "plk_" + "TEST_SECRET-ABC123";
   assert.equal(redact(`echo ${token}`), "echo plk_***");

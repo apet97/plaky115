@@ -93,6 +93,59 @@ test("raw delete tools return structured ok receipts", async () => {
   }
 });
 
+test("raw write tool rejects a missing body", async () => {
+  const previousFetch = globalThis.fetch;
+  // Fail loudly if the tool ever reaches the network: a missing required body
+  // must be rejected during input validation, before any request is made.
+  globalThis.fetch = async () => {
+    throw new Error("fetch should not be called when body is missing");
+  };
+  try {
+    const { server } = buildServer({
+      apiKey: "plk_test",
+      serverURL: "https://example.test",
+      mode: "generated",
+      scopes: ["read", "write"],
+    });
+    const tool = server._registeredTools.plaky_create_item;
+    await assert.rejects(
+      () => tool.handler({ spaceId: 1, boardId: 2 }),
+      (error) => {
+        assert.ok(error instanceof Error);
+        assert.match(JSON.stringify(error.issues ?? error.message ?? String(error)), /body/i);
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("raw write tool accepts a provided body", async () => {
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ id: 1, title: "x" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  try {
+    const { server } = buildServer({
+      apiKey: "plk_test",
+      serverURL: "https://example.test",
+      mode: "generated",
+      scopes: ["read", "write"],
+    });
+    const tool = server._registeredTools.plaky_create_item;
+    const response = await tool.handler({ spaceId: 1, boardId: 2, body: { title: "x" } });
+
+    assert.equal(response.content[0].type, "text");
+    assert.ok(response.structuredContent);
+    assert.notEqual(response.isError, true);
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
 test("--mode generated returns 20 raw tools", () => {
   assert.equal(selectTools("generated").length, 20);
 });

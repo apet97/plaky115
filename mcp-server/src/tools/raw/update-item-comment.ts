@@ -8,7 +8,7 @@ const args = z.object({
   boardId: z.union([z.string(), z.number()]).describe("Plaky board ID within the selected space."),
   itemId: z.union([z.string(), z.number()]).describe("Plaky item ID within the selected board."),
   itemCommentId: z.union([z.string(), z.number()]).describe("Plaky comment ID on the selected item."),
-  body: z.record(z.unknown()).describe("JSON request body for Update item comment.").optional(),
+  body: z.record(z.unknown()).describe("JSON request body for Update item comment."),
 });
 const output = z.object({}).passthrough();
 

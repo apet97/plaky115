@@ -3,6 +3,8 @@ import { slug, pathParams } from "./codegen-common.mjs";
 export function buildRawToolModule(op) {
   const params = pathParams(op.path);
   const hasBody = op.method !== "GET" && op.method !== "DELETE";
+  const queryParams = op.query ?? [];
+  const hasQuery = Boolean(op.pagination) || queryParams.length > 0;
   const camelOp = op.operationId;
   const lines = [];
   lines.push(`// AUTO-GENERATED. Source: openapi/plaky115-operation-metadata.json operationId=${camelOp}`);
@@ -16,7 +18,8 @@ export function buildRawToolModule(op) {
     lines.push(`  page: z.number().int().min(1).describe("One-based result page to request.").optional(),`);
     lines.push(`  pageSize: z.number().int().min(1).max(200).describe("Maximum number of records to return for this page.").optional(),`);
   }
-  if (hasBody) lines.push(`  body: z.record(z.unknown()).describe("JSON request body for ${op.summary ?? op.operationId}.").optional(),`);
+  for (const q of queryParams) lines.push(`  ${q.name}: z.string().describe(${JSON.stringify(queryDescription(q))}).optional(),`);
+  if (hasBody) lines.push(`  body: z.record(z.unknown()).describe("JSON request body for ${op.summary ?? op.operationId}.")${op.bodyRequired ? "" : ".optional()"},`);
   lines.push(`});`);
   lines.push(`const output = ${op.method === "DELETE" ? `z.object({ ok: z.boolean() })` : `z.object({}).passthrough()`};`);
   lines.push(``);
@@ -33,13 +36,16 @@ export function buildRawToolModule(op) {
   lines.push(`  },`);
   lines.push(`  inputSchema: args,`);
   lines.push(`  outputSchema: output,`);
-  const usesInput = params.length > 0 || op.pagination || hasBody;
+  const usesInput = params.length > 0 || hasQuery || hasBody;
   lines.push(`  async handler(${usesInput ? "input" : "_input"}, ctx) {`);
   if (usesInput) lines.push(`    const parsed = args.parse(input);`);
-  if (op.pagination) {
+  if (hasQuery) {
     lines.push(`    const query = {`);
-    lines.push(`      ...(parsed.page !== undefined ? { page: parsed.page } : {}),`);
-    lines.push(`      ...(parsed.pageSize !== undefined ? { pageSize: parsed.pageSize } : {}),`);
+    if (op.pagination) {
+      lines.push(`      ...(parsed.page !== undefined ? { page: parsed.page } : {}),`);
+      lines.push(`      ...(parsed.pageSize !== undefined ? { pageSize: parsed.pageSize } : {}),`);
+    }
+    for (const q of queryParams) lines.push(`      ...(parsed.${q.name} !== undefined ? { ${q.name}: parsed.${q.name} } : {}),`);
     lines.push(`    };`);
   }
   if (op.method === "DELETE") {
@@ -49,7 +55,7 @@ export function buildRawToolModule(op) {
   }
   lines.push(`      method: "${op.method}",`);
   lines.push(`      path: ${formatTsPath(op.path, params)},`);
-  if (op.pagination) lines.push(`      query,`);
+  if (hasQuery) lines.push(`      query,`);
   if (hasBody) lines.push(`      body: parsed.body,`);
   if (op.method === "DELETE") lines.push(`      responseType: "void",`);
   lines.push(`      operationId: "${camelOp}",`);
@@ -79,6 +85,10 @@ function pickCompact(op) {
   if (op.path.includes("/spaces")) return `"space"`;
   if (op.path.includes("/comments")) return `"comment"`;
   return `"raw"`;
+}
+
+function queryDescription(q) {
+  return q.description ?? `${q.name} query parameter for this Plaky operation.`;
 }
 
 function paramDescription(param) {

@@ -20,7 +20,6 @@ const publicRuntimeModules = [
   "retries",
   "types",
   "user-agent",
-  "webhooks",
 ];
 
 function runtimeExport(name) {

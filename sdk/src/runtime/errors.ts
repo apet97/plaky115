@@ -1,3 +1,7 @@
+/**
+ * Base class for every error thrown by the SDK. `name` is set to the concrete
+ * subclass name. Use `instanceof` to branch on specific cases.
+ */
 export class PlakyError extends Error {
   override readonly name: string;
 
@@ -8,14 +12,17 @@ export class PlakyError extends Error {
   }
 }
 
+/** Thrown when the request never reaches the server (DNS, TCP, TLS failures). */
 export class PlakyConnectionError extends PlakyError {}
 
+/** Thrown when a request exceeds the configured timeout. */
 export class PlakyTimeoutError extends PlakyError {
   constructor(message = "Request timed out.", options?: { cause?: unknown }) {
     super(message, options);
   }
 }
 
+/** Thrown when a request is aborted via an `AbortSignal`. */
 export class PlakyAbortError extends PlakyError {
   constructor(message = "Request was aborted.", options?: { cause?: unknown }) {
     super(message, options);
@@ -32,6 +39,12 @@ export type ApiErrorInput = {
   retryAfterMs?: number | undefined;
 };
 
+/**
+ * Thrown for any non-2xx API response. Carries `status`, `method`, `url`,
+ * response `headers`, parsed `body`, and—when present—`requestId`, the API
+ * error `code`, and `retryAfterMs`. {@link classify} narrows this to a
+ * status-specific subclass.
+ */
 export class PlakyApiError extends PlakyError {
   readonly status: number;
   readonly method: string;
@@ -57,21 +70,40 @@ export class PlakyApiError extends PlakyError {
   }
 }
 
+/** HTTP 401. The API key is missing or invalid. */
 export class PlakyAuthError extends PlakyApiError {}
+/** HTTP 403. The key lacks permission for the resource. */
 export class PlakyPermissionError extends PlakyApiError {}
+/** HTTP 404. The resource does not exist. */
 export class PlakyNotFoundError extends PlakyApiError {}
+/** HTTP 409. A conflict, such as a duplicate or version mismatch. */
 export class PlakyConflictError extends PlakyApiError {}
+/** HTTP 400. The request was malformed or failed validation. */
 export class PlakyValidationError extends PlakyApiError {}
+/** HTTP 422. The request was well-formed but semantically rejected. */
 export class PlakyUnprocessableEntityError extends PlakyApiError {}
+/** HTTP 429. Rate limited; inspect `retryAfterMs` to back off. */
 export class PlakyRateLimitError extends PlakyApiError {}
+/** HTTP 5xx. A server-side error. */
 export class PlakyServerError extends PlakyApiError {}
 
+/**
+ * Thrown by resolver helpers when a lookup matches more than one entity.
+ * `candidates` holds the ambiguous matches.
+ */
 export class PlakyAmbiguousMatchError extends PlakyError {
   constructor(message: string, readonly candidates: unknown[]) {
     super(message);
   }
 }
 
+/**
+ * Map an API error response to the most specific {@link PlakyApiError} subclass
+ * by status code.
+ *
+ * @param input - Status, method, url, headers, and parsed body.
+ * @returns A status-specific error instance (falls back to {@link PlakyApiError}).
+ */
 export function classify(input: ApiErrorInput): PlakyApiError {
   const message = readErrorMessage(input.body) ?? `HTTP ${input.status}`;
 

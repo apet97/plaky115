@@ -68,6 +68,11 @@ func idempotencyKey(cmd *cobra.Command) string {
 	return key
 }
 
+func expandFlag(cmd *cobra.Command) string {
+	v, _ := cmd.Flags().GetString("expand")
+	return v
+}
+
 func confirmDestructive(cmd *cobra.Command) error {
 	confirmed, _ := cmd.Flags().GetBool("confirm")
 	if !confirmed {
@@ -80,7 +85,7 @@ func confirmDestructive(cmd *cobra.Command) error {
 
 func RunListSpaces(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
 	p, ps := pageOpts(cmd)
-	out, err := c.ListSpaces(ctx, plakysdk.ListSpacesOptions{Page: p, PageSize: ps})
+	out, err := c.ListSpaces(ctx, plakysdk.ListSpacesOptions{Page: p, PageSize: ps, Expand: expandFlag(cmd)})
 	if err != nil {
 		return err
 	}
@@ -128,7 +133,7 @@ func RunListItems(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) e
 		return err
 	}
 	p, ps := pageOpts(cmd)
-	out, err := c.ListItems(ctx, plakysdk.ListItemsOptions{SpaceId: spaceID, BoardId: boardID, Page: p, PageSize: ps})
+	out, err := c.ListItems(ctx, plakysdk.ListItemsOptions{SpaceId: spaceID, BoardId: boardID, Page: p, PageSize: ps, Expand: expandFlag(cmd)})
 	if err != nil {
 		return err
 	}
@@ -160,7 +165,7 @@ func RunGetSpace(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) er
 	if err != nil {
 		return err
 	}
-	out, err := c.GetSpace(ctx, plakysdk.GetSpaceOptions{SpaceId: spaceID})
+	out, err := c.GetSpace(ctx, plakysdk.GetSpaceOptions{SpaceId: spaceID, Expand: expandFlag(cmd)})
 	if err != nil {
 		return err
 	}
@@ -217,7 +222,7 @@ func RunListSubitems(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client
 		return err
 	}
 	p, ps := pageOpts(cmd)
-	out, err := c.ListSubitems(ctx, plakysdk.ListSubitemsOptions{SpaceId: spaceID, BoardId: boardID, ItemId: itemID, Page: p, PageSize: ps})
+	out, err := c.ListSubitems(ctx, plakysdk.ListSubitemsOptions{SpaceId: spaceID, BoardId: boardID, ItemId: itemID, Page: p, PageSize: ps, Expand: expandFlag(cmd)})
 	if err != nil {
 		return err
 	}
@@ -237,7 +242,7 @@ func RunGetItem(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) err
 	if err != nil {
 		return err
 	}
-	out, err := c.GetItem(ctx, plakysdk.GetItemOptions{SpaceId: spaceID, BoardId: boardID, ItemId: itemID})
+	out, err := c.GetItem(ctx, plakysdk.GetItemOptions{SpaceId: spaceID, BoardId: boardID, ItemId: itemID, Expand: expandFlag(cmd)})
 	if err != nil {
 		return err
 	}

@@ -9,7 +9,9 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 
 const scannedRoots = [
   "README.md",
+  "SECURITY.md",
   "docs",
+  "examples",
   "sdk/README.md",
   "cli/README.md",
   "mcp-server/README.md",
@@ -37,6 +39,7 @@ const banned = [
   ["old grouped boards command", /\bplaky115\s+boards\s+list\b/],
   ["old grouped items command", /\bplaky115\s+items\s+list\b/],
   ["removed MCP curated tool", /\bplaky_list_items\b/],
+  ["leaked tool-call markup", /<\/(content|invoke|parameter)>|<(invoke|parameter)\b/],
 ];
 
 test("public docs do not reference stale generated-era surfaces", () => {

@@ -22,9 +22,19 @@ export type SpaceIteratorParams = Omit<SpaceListParams, "page"> & {
   limit?: number | undefined;
 };
 
+/** Spaces resource. Access via `client.spaces`. */
 export class SpacesResource {
   constructor(private readonly client: PlakyClient) {}
 
+  /**
+   * List a page of spaces in the workspace.
+   *
+   * @param query - Optional `expand`, `page`, and `pageSize`. The API is
+   *   page-based; `pageSize` controls page size. See `docs/api-behavior.md`.
+   * @param options - Per-request overrides.
+   * @returns A page of spaces with `data` and `hasMore`.
+   * @throws {import("../runtime/errors.js").PlakyApiError} On API errors.
+   */
   list(query?: SpaceListParams, options?: PlakyRequestOverrides): Promise<PagedResult<SpaceShape>> {
     return this.client.request<PagedResult<SpaceShape>>(
       {
@@ -37,6 +47,19 @@ export class SpacesResource {
     );
   }
 
+  /**
+   * Fetch one space by id, optionally expanding relationships.
+   *
+   * @param spaceIdOrParams - A space id, or `{ spaceId, expand }`.
+   * @param options - Per-request overrides.
+   * @returns The space.
+   * @throws {import("../runtime/errors.js").PlakyNotFoundError} If the space does not exist.
+   * @example
+   * ```ts
+   * const space = await client.spaces.get(123);
+   * const expanded = await client.spaces.get({ spaceId: 123, expand: ["board"] });
+   * ```
+   */
   get(spaceId: SpaceId | string | number, options?: PlakyRequestOverrides): Promise<SpaceShape>;
   get(params: SpaceGetParams, options?: PlakyRequestOverrides): Promise<SpaceShape>;
   get(spaceIdOrParams: SpaceId | string | number | SpaceGetParams, options?: PlakyRequestOverrides): Promise<SpaceShape> {
@@ -53,6 +76,14 @@ export class SpacesResource {
     );
   }
 
+  /**
+   * Lazily iterate spaces across pages. `limit` is a client-side cap on total
+   * items yielded (the API has no server-side `limit`/`offset`; it is strictly
+   * page-based). See `docs/api-behavior.md`.
+   *
+   * @param opts - `expand`, `pageSize`, and optional client-side `limit`.
+   * @returns An async iterator with `firstPage()` and `toArray()` helpers.
+   */
   iterate(opts: SpaceIteratorParams = {}): PaginatedIterator<SpaceShape> {
     const { limit, pageSize, ...query } = opts;
     return paginate<SpaceShape>(
@@ -64,6 +95,13 @@ export class SpacesResource {
     );
   }
 
+  /**
+   * Collect all spaces into an array, walking every page. Honors the client-side
+   * `limit` if set.
+   *
+   * @param opts - `expand`, `pageSize`, and optional client-side `limit`.
+   * @returns Every matching space.
+   */
   async listAll(opts: SpaceIteratorParams = {}): Promise<SpaceShape[]> {
     const out: SpaceShape[] = [];
     for await (const s of this.iterate(opts)) out.push(s);

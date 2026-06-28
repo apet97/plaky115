@@ -18,10 +18,18 @@
       "openWorld": true,
       "list": true,
       "mutation": false,
+      "bodyRequired": false,
       "pagination": {
         "type": "offsetLimit",
         "results": "$.data"
-      }
+      },
+      "query": [
+        {
+          "name": "expand",
+          "explode": false,
+          "description": "Comma-separated list of relationships to be expanded into full objects."
+        }
+      ]
     },
     {
       "operationId": "listTeams",
@@ -39,6 +47,7 @@
       "openWorld": true,
       "list": true,
       "mutation": false,
+      "bodyRequired": false,
       "pagination": {
         "type": "offsetLimit",
         "results": "$.data"
@@ -60,6 +69,7 @@
       "openWorld": true,
       "list": true,
       "mutation": false,
+      "bodyRequired": false,
       "pagination": {
         "type": "offsetLimit",
         "results": "$.data"
@@ -81,6 +91,7 @@
       "openWorld": true,
       "list": true,
       "mutation": false,
+      "bodyRequired": false,
       "pagination": {
         "type": "offsetLimit",
         "results": "$.data"
@@ -102,10 +113,18 @@
       "openWorld": true,
       "list": true,
       "mutation": false,
+      "bodyRequired": false,
       "pagination": {
         "type": "offsetLimit",
         "results": "$.data"
-      }
+      },
+      "query": [
+        {
+          "name": "expand",
+          "explode": false,
+          "description": "Comma-separated list of relationships to expand into full objects instead of IDs."
+        }
+      ]
     },
     {
       "operationId": "createItem",
@@ -122,7 +141,8 @@
       "idempotent": false,
       "openWorld": true,
       "list": false,
-      "mutation": true
+      "mutation": true,
+      "bodyRequired": true
     },
     {
       "operationId": "getSpace",
@@ -139,7 +159,15 @@
       "idempotent": true,
       "openWorld": true,
       "list": null,
-      "mutation": false
+      "mutation": false,
+      "bodyRequired": false,
+      "query": [
+        {
+          "name": "expand",
+          "explode": false,
+          "description": "Comma-separated list of relationships to be expanded into full objects."
+        }
+      ]
     },
     {
       "operationId": "getTeam",
@@ -156,7 +184,8 @@
       "idempotent": true,
       "openWorld": true,
       "list": null,
-      "mutation": false
+      "mutation": false,
+      "bodyRequired": false
     },
     {
       "operationId": "getCurrentUser",
@@ -173,7 +202,8 @@
       "idempotent": true,
       "openWorld": true,
       "list": null,
-      "mutation": false
+      "mutation": false,
+      "bodyRequired": false
     },
     {
       "operationId": "getBoard",
@@ -190,7 +220,8 @@
       "idempotent": true,
       "openWorld": true,
       "list": null,
-      "mutation": false
+      "mutation": false,
+      "bodyRequired": false
     },
     {
       "operationId": "listSubitems",
@@ -208,10 +239,18 @@
       "openWorld": true,
       "list": true,
       "mutation": false,
+      "bodyRequired": false,
       "pagination": {
         "type": "offsetLimit",
         "results": "$.data"
-      }
+      },
+      "query": [
+        {
+          "name": "expand",
+          "explode": false,
+          "description": "Comma-separated list of relationships to expand into full objects instead of IDs."
+        }
+      ]
     },
     {
       "operationId": "getItem",
@@ -228,7 +267,15 @@
       "idempotent": true,
       "openWorld": true,
       "list": null,
-      "mutation": false
+      "mutation": false,
+      "bodyRequired": false,
+      "query": [
+        {
+          "name": "expand",
+          "explode": false,
+          "description": "Comma-separated list of relationships to expand into full objects instead of IDs."
+        }
+      ]
     },
     {
       "operationId": "deleteItem",
@@ -246,7 +293,8 @@
       "idempotent": true,
       "openWorld": true,
       "list": false,
-      "mutation": true
+      "mutation": true,
+      "bodyRequired": false
     },
     {
       "operationId": "updateItemField",
@@ -263,7 +311,8 @@
       "idempotent": true,
       "openWorld": true,
       "list": false,
-      "mutation": true
+      "mutation": true,
+      "bodyRequired": true
     },
     {
       "operationId": "updateItemFields",
@@ -280,7 +329,8 @@
       "idempotent": true,
       "openWorld": true,
       "list": false,
-      "mutation": true
+      "mutation": true,
+      "bodyRequired": true
     },
     {
       "operationId": "listItemComments",
@@ -297,7 +347,8 @@
       "idempotent": true,
       "openWorld": true,
       "list": null,
-      "mutation": false
+      "mutation": false,
+      "bodyRequired": false
     },
     {
       "operationId": "createItemComment",
@@ -314,7 +365,8 @@
       "idempotent": false,
       "openWorld": true,
       "list": false,
-      "mutation": true
+      "mutation": true,
+      "bodyRequired": true
     },
     {
       "operationId": "updateItemComment",
@@ -331,7 +383,8 @@
       "idempotent": true,
       "openWorld": true,
       "list": false,
-      "mutation": true
+      "mutation": true,
+      "bodyRequired": true
     },
     {
       "operationId": "deleteItemComment",
@@ -349,7 +402,8 @@
       "idempotent": true,
       "openWorld": true,
       "list": false,
-      "mutation": true
+      "mutation": true,
+      "bodyRequired": false
     },
     {
       "operationId": "replaceCommentReactions",
@@ -366,7 +420,8 @@
       "idempotent": true,
       "openWorld": true,
       "list": false,
-      "mutation": true
+      "mutation": true,
+      "bodyRequired": true
     }
   ],
   "paths": [

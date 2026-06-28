@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "plaky115": {
+      "command": "npx",
+      "args": ["--yes", "--package", "/absolute/path/to/mcp-server", "--", "mcp", "start", "--mode", "curated", "--scope", "read"],
+      "env": {
+        "PLAKY115_API_KEY": "set-this-in-your-secret-store",
+        "PLAKY115_BASE_URL": "https://<account>.api.plaky.com"
+      }
+    }
+  }
+}
