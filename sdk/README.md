@@ -1,7 +1,8 @@
 # plaky115
 
 Unofficial TypeScript SDK for the Plaky public API. The public entry point is
-the hand-written `PlakyClient`.
+the hand-written `PlakyClient`. Not affiliated with, endorsed by, or sponsored
+by Plaky or CAKE.com.
 
 ## Installation
 
@@ -24,6 +25,24 @@ const client = new PlakyClient({
 const spaces = await client.spaces.list();
 console.log(spaces.data);
 ```
+
+## Base URL
+
+Real Plaky workspaces are account-prefixed (for example
+`https://<account>.api.plaky.com`). The client defaults to
+`https://api.plaky.com`; set the host explicitly when the generic host does not
+route for your workspace:
+
+```ts
+const client = new PlakyClient({
+  apiKey: process.env.PLAKY115_API_KEY!,
+  serverURL: "https://<account>.api.plaky.com",
+});
+```
+
+The API is page-based: `page` and `pageSize` are server parameters, while the
+iterator `limit` is a client-side cap. Verified wire behavior is documented at
+<https://github.com/apet97/plaky115/blob/main/docs/api-behavior.md>.
 
 ## Authentication
 
@@ -221,3 +240,14 @@ published.
 
 This package is unofficial. Treat minor releases as the place for SDK surface
 additions and patch releases as bug fixes.
+
+## License
+
+MIT — see the bundled `LICENSE` file.
+
+## See Also
+
+- [Repository README](https://github.com/apet97/plaky115#readme)
+- [SECURITY.md](https://github.com/apet97/plaky115/blob/main/SECURITY.md) — API-key handling, transport, and the destructive-operation model
+- [docs/api-behavior.md](https://github.com/apet97/plaky115/blob/main/docs/api-behavior.md) — verified wire behavior
+- [examples/](https://github.com/apet97/plaky115/tree/main/examples) — runnable SDK, CLI, and MCP examples

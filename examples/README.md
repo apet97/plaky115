@@ -29,7 +29,7 @@ Then run any script:
 ```bash
 node sdk/01-auth-and-list.mjs
 node sdk/02-paginate.mjs
-node sdk/03-fields-and-create.mjs        # creates a sacrificial item (use a smoke board)
+node sdk/03-fields-and-create.mjs        # previews the payload (dry-run); set CREATE=1 to write a sacrificial item (use a smoke board)
 node sdk/04-error-handling.mjs
 node sdk/05-request-with-response.mjs
 ```

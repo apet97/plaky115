@@ -43,14 +43,22 @@ func bodyRequired(cmd *cobra.Command) (any, error) {
 	if raw == "" {
 		return nil, fmt.Errorf("--body is required")
 	}
+	return ParseBody(cmd, raw)
+}
+
+// ParseBody resolves a raw --body value into JSON: "@-" reads stdin, "@file"
+// reads a file, and anything else is parsed as inline JSON. This is the single
+// home for --body semantics shared by the generated raw runners and the curated
+// commands.
+func ParseBody(cmd *cobra.Command, raw string) (any, error) {
 	if raw == "@-" {
 		b, err := io.ReadAll(cmd.InOrStdin())
 		if err != nil {
 			return nil, fmt.Errorf("read --body @-: %w", err)
 		}
 		raw = string(b)
-	} else if strings.HasPrefix(raw, "@") {
-		b, err := os.ReadFile(strings.TrimPrefix(raw, "@"))
+	} else if file, ok := strings.CutPrefix(raw, "@"); ok {
+		b, err := os.ReadFile(file)
 		if err != nil {
 			return nil, fmt.Errorf("read --body file: %w", err)
 		}

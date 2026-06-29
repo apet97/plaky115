@@ -40,8 +40,8 @@ export type PlakyRequestOverrides = {
 };
 
 /**
- * Full response envelope returned by `requestWithResponse` and the `*WithResponse`
- * helpers: the parsed `data` plus transport metadata.
+ * Full response envelope returned by `requestWithResponse` and
+ * `client.requestWithResponse`: the parsed `data` plus transport metadata.
  *
  * @typeParam T - The parsed response body type.
  */

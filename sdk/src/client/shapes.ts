@@ -94,7 +94,8 @@ export type TeamShape = {
   title?: string | undefined;
   name?: string | undefined;
   description?: string | null | undefined;
-  members?: ShortUserShape[] | undefined;
+  /** User ids of the team's members. The API returns ids, not user objects. */
+  members?: (ShortUserShape | number)[] | undefined;
 };
 
 /** One user's reaction detail. Mirrors generated `ReactionDetails`. */
@@ -138,6 +139,7 @@ export type CommentShape = {
   content?: string | undefined;
   /** Compatibility alias for {@link CommentShape.content}; the request field is `text`. */
   text?: string | undefined;
+  /** @deprecated Not present in generated `CommentResponse`; the API does not emit `itemId` on a comment. */
   itemId?: ItemId | undefined;
   createdAt?: string | undefined;
   /** Null until the comment is edited. */
@@ -187,6 +189,7 @@ export type ItemShape = {
   subscribedTeams?: (TeamShape | number)[] | null | undefined;
   subscribedUsers?: (ShortUserShape | number)[] | null | undefined;
   createdAt?: string | undefined;
+  /** @deprecated Not present in generated `ItemResponse`; the API does not emit `updatedAt` on an item. */
   updatedAt?: string | undefined;
   /** Creator id (numeric in the API response), or full user when expanded. */
   createdBy?: ShortUserShape | UserId | number | undefined;

@@ -507,7 +507,7 @@
         "request":
           "title": "Example item"
           "fields":
-            []
+            "string-2": ""
         "response":
           "id": 123456
           "title": "Example item"

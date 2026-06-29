@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, beforeEach } from "node:test";
-import { PlakyClient, PlakyTimeoutError, SpaceId, redact } from "../esm/index.js";
+import { PlakyClient, PlakyTimeoutError, SpaceId, redact, redactRecord } from "../esm/index.js";
 
 beforeEach(() => {
   globalThis.fetch = async (url) => {
@@ -180,6 +180,8 @@ test("constructor rejects negative or NaN timeoutMs/maxRetries", () => {
   assert.throws(() => new PlakyClient({ apiKey: "plk_test", timeoutMs: Number.NaN }), /timeoutMs must be a non-negative number/);
   assert.throws(() => new PlakyClient({ apiKey: "plk_test", maxRetries: -2 }), /maxRetries must be a non-negative number/);
   assert.throws(() => new PlakyClient({ apiKey: "plk_test", maxRetries: Number.NaN }), /maxRetries must be a non-negative number/);
+  assert.throws(() => new PlakyClient({ apiKey: "plk_test", maxRetries: Number.POSITIVE_INFINITY }), /maxRetries must be a non-negative number/);
+  assert.throws(() => new PlakyClient({ apiKey: "plk_test", timeoutMs: Number.POSITIVE_INFINITY }), /timeoutMs must be a non-negative number/);
 });
 
 test("constructor accepts maxRetries:0 and large finite timeouts without clamping", () => {
@@ -191,6 +193,17 @@ test("constructor accepts maxRetries:0 and large finite timeouts without clampin
 test("redact handles API-key-shaped tokens with separators", () => {
   const token = "plk_" + "TEST_SECRET-ABC123";
   assert.equal(redact(`echo ${token}`), "echo plk_***");
+});
+
+test("redactRecord deep-redacts nested keys and tolerates non-serializable top-level input", () => {
+  const token = "plk_" + "TEST_SECRET-ABC123";
+  const cleaned = redactRecord({ auth: `Bearer ${token}`, nested: { note: token } });
+  assert.equal(cleaned.auth, "Bearer plk_***");
+  assert.equal(cleaned.nested.note, "plk_***");
+  // Top-level non-serializable input is returned unchanged rather than throwing.
+  assert.equal(redactRecord(undefined), undefined);
+  const fn = () => token;
+  assert.equal(redactRecord(fn), fn);
 });
 
 test("client.items.create returns dry-run plan when dryRun:true", async () => {

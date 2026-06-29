@@ -26,7 +26,7 @@ func NewRootCommand() (*cobra.Command, error) {
 	root.PersistentFlags().String("api-key", "", "Plaky API key (or set PLAKY115_API_KEY / PLAKY115_API_KEY_AUTH)")
 	root.PersistentFlags().String("timeout", "", "HTTP timeout as a duration, for example 10s or 2m")
 	root.PersistentFlags().String("user-agent", "", "Override the User-Agent sent to Plaky")
-	root.PersistentFlags().Bool("json", false, "Emit errors as a JSON envelope on stderr (success output is already JSON)")
+	root.PersistentFlags().Bool("json", false, "Emit errors as a JSON envelope on stderr")
 
 	getClient := func(cmd *cobra.Command) (*plakysdk.Client, error) {
 		return buildClient(cmd.Root())

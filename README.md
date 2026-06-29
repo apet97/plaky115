@@ -8,11 +8,16 @@ Unofficial, hand-crafted developer toolkit for the Plaky public API:
 - Go/Cobra CLI: `plaky115`
 - MCP server package: `plaky115-mcp`
 
-Plaky115 is not affiliated with Plaky or CAKE.com. The repo keeps generated
-code narrow and reviewable: OpenAPI schema types, raw CLI commands, raw MCP
-tools, and metadata indexes are generated locally and checked in. The SDK
-client, runtime behavior, curated CLI commands, curated MCP tools, retry logic,
-pagination, and release gates are hand-written.
+> [!IMPORTANT]
+> **Unofficial and independent.** Plaky115 is **not affiliated with, endorsed by,
+> or sponsored by Plaky or CAKE.com**. "Plaky" and "CAKE.com" are trademarks of
+> their respective owners. This project only targets the documented public Plaky
+> API and is provided as-is under the [MIT License](LICENSE).
+
+The repo keeps generated code narrow and reviewable: OpenAPI schema types, raw
+CLI commands, raw MCP tools, and metadata indexes are generated locally and
+checked in. The SDK client, runtime behavior, curated CLI commands, curated MCP
+tools, retry logic, pagination, and release gates are hand-written.
 
 ## What It Ships
 
@@ -276,3 +281,8 @@ metadata rather than hand-editing generated outputs.
 
 No cloud API generation is involved. OpenAPI overlay validation and linting run
 through repo-local Ruby scripts.
+
+## License
+
+MIT — see [LICENSE](LICENSE). The published `plaky115` and `plaky115-mcp` npm
+packages each ship the license text.

@@ -11,6 +11,17 @@ Go CLI, and MCP server for the Plaky public API.
 - Generated schema/raw surfaces come from local scripts and checked-in metadata;
   do not migrate this repo to external API generation vendors.
 
+## License and Affiliation
+
+- The toolkit is unofficial and not affiliated with, endorsed by, or sponsored by
+  Plaky or CAKE.com. Keep that notice visible in the root README, each package
+  README, the CLI command help (`root.go` `Short`), and the MCP server
+  `instructions`.
+- Licensed MIT. The repo root and each published package (`sdk/`, `mcp-server/`)
+  ship a `LICENSE` allowlisted in their `.npmignore`. After any change to
+  published package contents, run `npm run packsnapshot:write` and commit the
+  refreshed `<pkg>/.packsnapshot` baselines.
+
 ## Toolchain
 
 - SDK and MCP packages require Node.js `>=22.12`.
@@ -106,6 +117,8 @@ Keep these public contracts stable unless the user asks for a breaking change:
 - Never commit API keys or `plk_` values.
 - Never print live keys in logs, screenshots, docs, notes, or command output.
 - Use environment variables or the local secret store only.
+- Redaction is centralized: Go callers use `plakysdk.RedactSecrets`; the SDK uses
+  `redact`/`redactRecord`. Do not reintroduce a package-local key regex.
 - `npm run secret:scan` is the required final check before push.
 
 ## Writing Style

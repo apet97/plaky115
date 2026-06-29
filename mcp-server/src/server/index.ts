@@ -19,7 +19,13 @@ export function buildServer(opts: ServerOptions): { server: McpServer; tools: Mc
     ...(opts.serverURL ? { serverURL: opts.serverURL } : {}),
   });
   const tools = filterByScopes(selectTools(opts.mode), new Set(opts.scopes));
-  const server = new McpServer({ name: "plaky115", version: "0.1.0" });
+  const server = new McpServer(
+    { name: "plaky115", version: "0.1.0" },
+    {
+      instructions:
+        "Unofficial, hand-crafted toolkit for the Plaky public API. Not affiliated with Plaky or CAKE.com. See SECURITY.md for API-key handling and the destructive-operation model.",
+    },
+  );
 
   for (const tool of tools) {
     const handler = async (input: unknown): Promise<McpToolResponse> => {

@@ -644,9 +644,9 @@
       "position": 6,
       "request": {
         "title": "Example item",
-        "fields": [
-
-        ]
+        "fields": {
+          "string-2": ""
+        }
       },
       "response": {
         "id": 123456,

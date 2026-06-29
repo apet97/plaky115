@@ -18,12 +18,16 @@ export function redact(value: string): string {
 /**
  * Deep-redact `plk_`-style API keys from any JSON-serializable value by
  * round-tripping through {@link redact}. Non-serializable fields (functions,
- * symbols) are dropped, as with `JSON.stringify`.
+ * symbols) are dropped, as with `JSON.stringify`. A top-level value that
+ * `JSON.stringify` cannot serialize (a bare `undefined`, function, or symbol)
+ * is returned unchanged rather than throwing.
  *
  * @typeParam T - The value's type, preserved on the returned clone.
  * @param value - A JSON-serializable value to scrub.
  * @returns A redacted deep clone of `value`.
  */
 export function redactRecord<T>(value: T): T {
-  return JSON.parse(redact(JSON.stringify(value))) as T;
+  const json = JSON.stringify(value);
+  if (json === undefined) return value;
+  return JSON.parse(redact(json)) as T;
 }

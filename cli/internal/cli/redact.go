@@ -5,24 +5,20 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"regexp"
 
 	"github.com/apet97/plaky115-cli/internal/plakysdk"
 )
-
-var apiKeyPattern = regexp.MustCompile(`plk_[A-Za-z0-9_-]+`)
 
 func FormatError(err error) string {
 	if err == nil {
 		return ""
 	}
-	return apiKeyPattern.ReplaceAllString(err.Error(), "plk_[REDACTED]")
+	return plakysdk.RedactSecrets(err.Error())
 }
 
 // PrintError writes a redacted error to w. When asJSON is true it emits a
-// structured envelope ({"error":{...}}); otherwise it emits one line of
-// redacted text. Success output is already JSON, so the envelope lets scripts
-// parse failures from the same toolchain.
+// structured envelope ({"error":{...}}) on stderr; otherwise it emits one line
+// of redacted text.
 func PrintError(w io.Writer, err error, asJSON bool) {
 	if err == nil {
 		return

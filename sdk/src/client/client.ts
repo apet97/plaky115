@@ -189,12 +189,13 @@ export class PlakyClient {
 }
 
 /**
- * Reject negative or `NaN` numeric options. Intentionally narrow: legitimate
- * values such as `maxRetries: 0` and large finite timeouts pass through
- * unchanged (no clamping).
+ * Reject negative, `NaN`, or non-finite numeric options. Intentionally narrow:
+ * legitimate values such as `maxRetries: 0` and large finite timeouts pass
+ * through unchanged (no clamping). `Infinity` is rejected so a flapping GET
+ * cannot retry without bound.
  */
 function assertNonNegativeNumber(value: number, name: string): void {
-  if (Number.isNaN(value) || value < 0) {
+  if (Number.isNaN(value) || value < 0 || !Number.isFinite(value)) {
     throw new Error(`PlakyClient: ${name} must be a non-negative number`);
   }
 }

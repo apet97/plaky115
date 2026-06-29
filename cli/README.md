@@ -1,7 +1,8 @@
 # plaky115 CLI
 
 Unofficial Go/Cobra CLI for the Plaky public API. Curated commands live at the
-top level; raw OpenAPI-shaped commands live under `raw`.
+top level; raw OpenAPI-shaped commands live under `raw`. Not affiliated with,
+endorsed by, or sponsored by Plaky or CAKE.com.
 
 ## Auth
 
@@ -11,7 +12,9 @@ export PLAKY115_API_KEY=...
 
 `PLAKY115_API_KEY_AUTH` remains a compatibility fallback. `--api-key`,
 `--server-url`, `--timeout`, and `--user-agent` override defaults for one
-invocation.
+invocation. Real Plaky workspaces are account-prefixed; pass
+`--server-url https://<account>.api.plaky.com` when the default
+`https://api.plaky.com` host does not route for your workspace.
 
 ## Curated Commands
 
@@ -46,3 +49,10 @@ printf '{"title":"stdin"}' | plaky115 raw create-item --space-id 123 --board-id 
 ```
 
 Run `plaky115 raw --help` for the full operation list.
+
+## See Also
+
+- [Repository README](https://github.com/apet97/plaky115#readme)
+- [SECURITY.md](https://github.com/apet97/plaky115/blob/main/SECURITY.md) — API-key handling and the destructive-operation model
+- [docs/api-behavior.md](https://github.com/apet97/plaky115/blob/main/docs/api-behavior.md) — verified wire behavior
+- [LICENSE](https://github.com/apet97/plaky115/blob/main/LICENSE) — MIT

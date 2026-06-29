@@ -108,3 +108,9 @@ sections and finish with cleanup scanning all item pages and leftover count `0`.
 - `CommentShape` intentionally includes both `content?: string` and
   `text?: string`.
 - SDK runtime internals are intentionally private package subpaths.
+- The toolkit is unofficial and not affiliated with Plaky/CAKE.com; keep that
+  notice prominent in the README, sub-package READMEs, CLI help, and the MCP
+  server `instructions`.
+- MIT-licensed: the repo root and each published package (`sdk/`, `mcp-server/`)
+  ship a `LICENSE` allowlisted in `.npmignore`. Run `npm run packsnapshot:write`
+  after any change to published package contents.

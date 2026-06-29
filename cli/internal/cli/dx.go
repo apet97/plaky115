@@ -7,7 +7,6 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"sort"
 	"strings"
@@ -202,7 +201,7 @@ func newReactionsReplaceCommand(getClient clientFactory) *cobra.Command {
 			commentID, _ := cmd.Flags().GetString("comment-id")
 			bodyText, _ := cmd.Flags().GetString("body")
 			dry, _ := cmd.Flags().GetBool("dry-run")
-			body, err := parseBodyValue(cmd, bodyText)
+			body, err := plakydx.ParseBody(cmd, bodyText)
 			if err != nil {
 				return err
 			}
@@ -298,27 +297,6 @@ func newItemsBulkUpdateCommand(getClient clientFactory) *cobra.Command {
 	cmd.Flags().Bool("dry-run", false, "Print per-item plan instead of writing")
 	markRequired(cmd, "file")
 	return cmd
-}
-
-func parseBodyValue(cmd *cobra.Command, raw string) (any, error) {
-	if raw == "@-" {
-		b, err := io.ReadAll(cmd.InOrStdin())
-		if err != nil {
-			return nil, fmt.Errorf("read --body @-: %w", err)
-		}
-		raw = string(b)
-	} else if strings.HasPrefix(raw, "@") {
-		b, err := os.ReadFile(strings.TrimPrefix(raw, "@"))
-		if err != nil {
-			return nil, fmt.Errorf("read --body file: %w", err)
-		}
-		raw = string(b)
-	}
-	var body any
-	if err := json.Unmarshal([]byte(raw), &body); err != nil {
-		return nil, fmt.Errorf("invalid --body JSON: %w", err)
-	}
-	return body, nil
 }
 
 func newCompletionCommand(root *cobra.Command) *cobra.Command {

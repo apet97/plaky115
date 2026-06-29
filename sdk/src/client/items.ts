@@ -10,6 +10,9 @@ import type { components } from "../generated/types.js";
 /** Request body for creating an item, derived from the generated `ItemCreateRequest`. */
 export type ItemCreateBody = components["schemas"]["ItemCreateRequest"];
 
+/** Request body for updating a single field, derived from the generated `FieldValueChangeRequest`. */
+export type ItemFieldValueBody = components["schemas"]["FieldValueChangeRequest"];
+
 export type ItemExpand =
   | "space"
   | "board"
@@ -67,7 +70,7 @@ export type ItemUpdateFieldParams = {
   boardId: BoardId | string | number;
   itemId: ItemId | string | number;
   itemFieldKey: FieldKey | string;
-  body: Record<string, unknown>;
+  body: ItemFieldValueBody;
   idempotencyKey?: string;
 };
 
@@ -225,7 +228,7 @@ export class ItemsResource {
    * Sends a `FieldValueChangeRequest` (`{ value }`) and returns the full item.
    *
    * @param params - `spaceId`, `boardId`, `itemId`, `itemFieldKey`, and `body`
-   *   (the value envelope is field-type-specific, so kept open).
+   *   ({@link ItemFieldValueBody}: `{ value }`, where `value` stays field-type-specific).
    * @param options - Per-request overrides.
    * @returns The updated {@link ItemShape}.
    */
