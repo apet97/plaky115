@@ -504,6 +504,37 @@
         "title": "Create an item"
         "description": "Create one item after resolving the target space, board, and group."
         "position": 6
+        "request":
+          "title": "Example item"
+          "fields":
+            []
+        "response":
+          "id": 123456
+          "title": "Example item"
+          "board": 222
+          "space": 111
+          "group": 333
+          "parent": null
+          "createdBy": 1001
+          "createdAt": "2026-06-28T12:00:00Z"
+          "archived": false
+          "deleted": false
+          "deletedAt": null
+          "ranking": "0|hzzzzz:"
+          "commentCount": 0
+          "fileCount": 0
+          "fields":
+            -
+              "key": "string-2"
+              "type": "STRING"
+              "title": "Notes"
+              "value": ""
+          "subitems":
+            []
+          "subscribedTeams":
+            []
+          "subscribedUsers":
+            []
       "x-plaky115-mcp":
         "name": "plaky_create_item"
         "title": "Create item"
@@ -978,6 +1009,17 @@
         "title": "Update one item field"
         "description": "Change one field by field key after resolving the item."
         "position": 10
+        "request":
+          "value": "new value"
+        "response":
+          "id": 123456
+          "title": "Example item"
+          "fields":
+            -
+              "key": "string-2"
+              "type": "STRING"
+              "title": "Notes"
+              "value": "new value"
       "x-plaky115-mcp":
         "name": "plaky_update_item_field"
         "title": "Update item field"
@@ -1048,6 +1090,17 @@
         "title": "Update item fields"
         "description": "Apply a compact field-value object keyed by field title or field key."
         "position": 11
+        "request":
+          "string-2": "new value"
+        "response":
+          "id": 123456
+          "title": "Example item"
+          "fields":
+            -
+              "key": "string-2"
+              "type": "STRING"
+              "title": "Notes"
+              "value": "new value"
       "x-plaky115-mcp":
         "name": "plaky_update_item_fields"
         "title": "Update item fields"
@@ -1167,6 +1220,20 @@
         "title": "Create item comment"
         "description": "Add a comment to a known item or reply to an existing comment."
         "position": 17
+        "request":
+          "text": "Example comment"
+        "response":
+          "id": 987654
+          "content": "Example comment"
+          "createdBy": 1001
+          "createdAt": "2026-06-28T12:00:00Z"
+          "updatedAt": null
+          "pinned": false
+          "deleted": false
+          "reactions":
+            []
+          "replies":
+            []
       "x-plaky115-mcp":
         "name": "plaky_create_item_comment"
         "title": "Create item comment"
@@ -1238,6 +1305,20 @@
         "title": "Update item comment"
         "description": "Replace a known comment's text."
         "position": 18
+        "request":
+          "text": "Updated comment"
+        "response":
+          "id": 987654
+          "content": "Updated comment"
+          "createdBy": 1001
+          "createdAt": "2026-06-28T12:00:00Z"
+          "updatedAt": "2026-06-28T12:05:00Z"
+          "pinned": false
+          "deleted": false
+          "reactions":
+            []
+          "replies":
+            []
       "x-plaky115-mcp":
         "name": "plaky_update_item_comment"
         "title": "Update item comment"
@@ -1370,6 +1451,16 @@
         "title": "Replace comment reactions"
         "description": "Set or clear the current user's reactions on one comment."
         "position": 20
+        "request":
+          "reactions":
+            -
+              "value": "1f44d"
+        "response":
+          "reactions":
+            "1f44d":
+              -
+                "createdById": 1001
+                "createdAt": "2026-06-28T12:00:00Z"
       "x-plaky115-mcp":
         "name": "plaky_replace_comment_reactions"
         "title": "Replace comment reactions"

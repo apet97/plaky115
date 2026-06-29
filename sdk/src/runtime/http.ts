@@ -9,37 +9,80 @@ import type { ApiKeyProvider, FetchLike, HeaderProvider, PlakyApiResponse, Query
 
 export { mergeHeadersInto, resolveHeaders } from "./internal/request-builders.js";
 
+/** A raw, low-level request descriptor accepted by {@link request}. */
 export type RawRequest = {
+  /** HTTP method. */
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  /** Path beginning with `/v1/public/...`; joined onto `serverURL`. */
   path: string;
+  /** Optional query parameters; arrays are serialized per the param's `explode`. */
   query?: QueryParams | undefined;
+  /** Optional request body; objects are JSON-encoded. */
   body?: unknown;
+  /** Operation id used for interceptors, idempotency, and diagnostics. */
   operationId?: string | undefined;
+  /** Override how the response body is parsed (defaults to `json`). */
   responseType?: ResponseType | undefined;
 };
 
+/** Transport options for {@link request} / {@link requestWithResponse}. */
 export type PlakyRequestOptions = {
+  /** API key or a provider returning it; sent as the `X-API-Key` header. */
   apiKey: ApiKeyProvider;
+  /** Base URL, for example `https://<account>.api.plaky.com`. */
   serverURL: string;
+  /** Per-request timeout in milliseconds (default `30000`). */
   timeoutMs?: number | undefined;
+  /** Max retries for retryable failures (writes retry only with an idempotency key). */
   maxRetries?: number | undefined;
+  /** Extra headers to merge in. */
   headers?: HeaderProvider | undefined;
+  /** Custom `fetch` implementation (for proxying or testing). */
   fetch?: FetchLike | undefined;
+  /** Request/response interceptors. */
   interceptors?: Interceptors | undefined;
+  /** Abort signal to cancel the request. */
   signal?: AbortSignal | undefined;
+  /** Sink that records observed rate-limit headers. */
   rateLimitSink?: RateLimitSink | undefined;
+  /** Idempotency key to attach to writes. */
   idempotencyKey?: string | undefined;
+  /** Override the `User-Agent` header. */
   userAgent?: string | undefined;
+  /** Override how the response body is parsed (defaults to `json`). */
   responseType?: ResponseType | undefined;
 };
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
+/**
+ * Execute a raw request and return only the parsed body. This is the transport
+ * primitive resource methods build on; prefer the typed `client.*` methods.
+ *
+ * @typeParam T - The parsed response body type.
+ * @param req - The request descriptor.
+ * @param opts - Transport options (auth, base URL, retries, interceptors).
+ * @returns The parsed response body.
+ * @throws {@link PlakyApiError} for non-2xx responses (narrowed by `classify`),
+ *   {@link PlakyTimeoutError}, {@link PlakyAbortError}, or {@link PlakyConnectionError}.
+ */
 export async function request<T>(req: RawRequest, opts: PlakyRequestOptions): Promise<T> {
   const response = await requestWithResponse<T>(req, opts);
   return response.data;
 }
 
+/**
+ * Execute a raw request and return the full {@link PlakyApiResponse} envelope
+ * (parsed `data` plus `status`, `headers`, and `requestId`). Applies retries,
+ * timeout, interceptors, and rate-limit observation.
+ *
+ * @typeParam T - The parsed response body type.
+ * @param req - The request descriptor.
+ * @param opts - Transport options (auth, base URL, retries, interceptors).
+ * @returns The response envelope.
+ * @throws {@link PlakyApiError} for non-2xx responses (narrowed by `classify`),
+ *   {@link PlakyTimeoutError}, {@link PlakyAbortError}, or {@link PlakyConnectionError}.
+ */
 export async function requestWithResponse<T>(req: RawRequest, opts: PlakyRequestOptions): Promise<PlakyApiResponse<T>> {
   const fetchFn = getFetch(opts.fetch);
   const operationId = req.operationId ?? `${req.method} ${req.path}`;
