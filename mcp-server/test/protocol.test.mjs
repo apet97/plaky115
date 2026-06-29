@@ -39,6 +39,17 @@ test("invalid known-tool arguments remain in-band tool errors", async () => {
   }
 });
 
+test("missing required body surfaces as an in-band tool error over the protocol", async () => {
+  const { client, server } = await connectedPair();
+  try {
+    const response = await client.callTool({ name: "plaky_create_item", arguments: { spaceId: 1, boardId: 2 } });
+    assert.equal(response.isError, true);
+    assert.match(response.content[0].text, /body/i);
+  } finally {
+    await server.close();
+  }
+});
+
 test("listed tool input parameters include useful descriptions", async () => {
   const { client, server } = await connectedPair();
   try {

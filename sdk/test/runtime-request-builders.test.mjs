@@ -9,12 +9,14 @@ test("buildUrl appends array query params without losing values", () => {
 });
 
 test("buildUrl comma-joins explode:false expand into a single param", () => {
-  const url = new URL(
-    buildUrl("https://example.test", "/v1/items", { expand: ["group", "createdBy"], page: 1 }),
-  );
+  const raw = buildUrl("https://example.test", "/v1/items", { expand: ["group", "createdBy"], page: 1 });
+  const url = new URL(raw);
   assert.equal(url.searchParams.get("expand"), "group,createdBy");
   assert.deepEqual(url.searchParams.getAll("expand"), ["group,createdBy"]);
   assert.equal(url.searchParams.get("page"), "1");
+  // Pin the raw wire bytes: the comma is percent-encoded as %2C and expand is
+  // emitted once (not repeated). Decoded .get()/.getAll() cannot catch a wire regression.
+  assert.match(raw, /[?&]expand=group%2CcreatedBy(?:&|$)/);
 });
 
 test("buildUrl serializes a single-value expand without a trailing comma", () => {

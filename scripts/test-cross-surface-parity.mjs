@@ -13,7 +13,7 @@ import assert from "node:assert/strict";
 import { test, before, after } from "node:test";
 import { execFile, execFileSync } from "node:child_process";
 import { createServer } from "node:http";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -164,10 +164,11 @@ function recordingFetch(store) {
   };
 }
 
-function ensureBuild(relEsm, prefix) {
-  if (existsSync(join(root, relEsm))) return;
-  const result = execFileSync("npm", ["--prefix", prefix, "run", "build"], { cwd: root, stdio: "inherit" });
-  void result;
+// Always rebuild the esm before importing it: validating a stale build against
+// fresh metadata would be a false green. The gated path already rebuilds; this
+// also makes standalone `node --test` runs trustworthy.
+function ensureBuild(prefix) {
+  execFileSync("npm", ["--prefix", prefix, "run", "build"], { cwd: root, stdio: "inherit" });
 }
 
 const metadata = JSON.parse(readFileSync(join(root, "openapi/plaky115-operation-metadata.json"), "utf8"));
@@ -185,8 +186,8 @@ let recorder;
 let cliBase;
 
 before(async () => {
-  ensureBuild("sdk/esm/index.js", "sdk");
-  ensureBuild("mcp-server/esm/server/index.js", "mcp-server");
+  ensureBuild("sdk");
+  ensureBuild("mcp-server");
 
   const sdkMod = await import(pathToFileURL(join(root, "sdk/esm/index.js")).href);
   sdkClient = new sdkMod.PlakyClient({

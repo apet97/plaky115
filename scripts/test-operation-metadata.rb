@@ -25,6 +25,20 @@ class OperationMetadataTest < Minitest::Test
     replaceCommentReactions
   ].freeze
 
+  HTTP_METHODS = %w[get post put patch delete head options trace].freeze
+
+  # Mirror of the allow-lists in scripts/generate-operation-metadata.rb. Spec
+  # query params deliberately NOT threaded onto raw CLI/MCP surfaces are listed
+  # here explicitly, so a NEW spec query param fails this test until it is either
+  # threaded (THREADED_QUERY_PARAMS in the generator) or ignored on purpose here.
+  PAGINATION_QUERY_PARAMS = %w[page pageSize limit offset].freeze
+  THREADED_QUERY_PARAMS = %w[expand].freeze
+  KNOWN_UNTHREADED_QUERY_PARAMS = %w[emails status type boardViewId parentId subitemsBehaviour].freeze
+
+  # Uppercase item-field type enum (ItemFieldResponse.type). Example payloads must
+  # use these, not lowercase JSON-schema primitive names like "string".
+  FIELD_TYPE_ENUM = %w[STRING NUMBER DATE_TIME STATUS TAG PERSON RICH_TEXT LINK TIMELINE].freeze
+
   def test_dx_overlay_names_core_operations_and_mcp_tools
     overlay = load_yaml("overlays/plaky115-dx.overlay.yaml")
     updates = overlay.fetch("actions").map { |action| action.fetch("update", {}) }
@@ -78,6 +92,41 @@ class OperationMetadataTest < Minitest::Test
     assert_match(/create/i, examples.fetch("createItem").fetch("title"))
   end
 
+  def test_every_spec_query_param_is_threaded_or_explicitly_ignored
+    spec = load_yaml("openapi/plaky115-dx.openapi.yaml")
+    known = PAGINATION_QUERY_PARAMS + THREADED_QUERY_PARAMS + KNOWN_UNTHREADED_QUERY_PARAMS
+    unexpected = []
+    each_operation(spec) do |_id, _method, operation, path_item|
+      query_param_names(operation, path_item, spec).each do |name|
+        unexpected << name unless known.include?(name)
+      end
+    end
+    assert_equal [], unexpected.uniq.sort,
+                 "spec query params are neither threaded onto raw surfaces nor explicitly ignored; thread " \
+                 "them in generate-operation-metadata.rb or add to KNOWN_UNTHREADED_QUERY_PARAMS: " \
+                 "#{unexpected.uniq.sort.join(', ')}"
+  end
+
+  def test_example_payloads_match_request_and_response_shapes
+    spec = load_yaml("openapi/plaky115-dx.openapi.yaml")
+    metadata = JSON.parse(File.read(File.join(ROOT, "openapi/plaky115-operation-metadata.json")))
+    by_id = {}
+    each_operation(spec) { |id, _method, operation, _path_item| by_id[id] = operation }
+
+    errors = []
+    metadata.fetch("examples").each do |op_id, example|
+      next unless example.is_a?(Hash)
+
+      operation = by_id[op_id]
+      next unless operation
+
+      check_request_example(op_id, example.fetch("request"), resolve_request_schema(operation, spec), spec, errors) if example.key?("request")
+      check_response_example(op_id, example.fetch("response"), errors) if example.key?("response")
+    end
+
+    assert_equal [], errors, errors.join("\n")
+  end
+
   private
 
   def operation(operations, id)
@@ -86,5 +135,74 @@ class OperationMetadataTest < Minitest::Test
 
   def load_yaml(path)
     YAML.safe_load(File.read(File.join(ROOT, path)), aliases: true)
+  end
+
+  def each_operation(spec)
+    spec.fetch("paths").each do |_path, path_item|
+      path_item.each do |method, operation|
+        next unless HTTP_METHODS.include?(method)
+
+        yield operation.fetch("operationId"), method, operation, path_item
+      end
+    end
+  end
+
+  def query_param_names(operation, path_item, spec)
+    (Array(path_item["parameters"]) + Array(operation["parameters"]))
+      .map { |param| fetch_ref(param, spec) }
+      .select { |param| param.is_a?(Hash) && param["in"] == "query" }
+      .map { |param| param["name"] }
+      .compact
+  end
+
+  def fetch_ref(schema, spec)
+    return schema unless schema.is_a?(Hash) && schema["$ref"]
+
+    pointer = schema.fetch("$ref").delete_prefix("#/").split("/")
+    pointer.reduce(spec) { |node, part| node.fetch(part) }
+  end
+
+  def resolve_request_schema(operation, spec)
+    schema = operation.dig("requestBody", "content", "application/json", "schema")
+    schema && fetch_ref(schema, spec)
+  end
+
+  # Conservative request-example check: only enforced when the request schema is a
+  # plain object with declared properties (skips genuinely-dynamic bodies such as
+  # updateItemFields, typed as a string in the spec). Catches unknown top-level
+  # keys and a wrong `fields` container type (object map vs array).
+  def check_request_example(op_id, request, schema, spec, errors)
+    return unless request.is_a?(Hash)
+    return unless schema.is_a?(Hash) && schema["type"] == "object" && schema["properties"].is_a?(Hash)
+
+    props = schema.fetch("properties")
+    request.each_key do |key|
+      errors << "#{op_id}.request: unknown key #{key.inspect} (not in #{props.keys.join(', ')})" unless props.key?(key)
+    end
+
+    return unless request.key?("fields") && props.key?("fields")
+
+    fields_schema = fetch_ref(props.fetch("fields"), spec)
+    fields_type = fields_schema.is_a?(Hash) ? fields_schema["type"] : nil
+    if fields_type == "object" && !request.fetch("fields").is_a?(Hash)
+      errors << "#{op_id}.request.fields must be an object map (schema type object), got #{request.fetch('fields').class}"
+    elsif fields_type == "array" && !request.fetch("fields").is_a?(Array)
+      errors << "#{op_id}.request.fields must be an array (schema type array), got #{request.fetch('fields').class}"
+    end
+  end
+
+  # Walks a response example and enforces: item-field `type` values use the
+  # uppercase enum, and any `fields` container is an array (item responses).
+  def check_response_example(op_id, value, errors)
+    case value
+    when Hash
+      if value["key"].is_a?(String) && value["type"].is_a?(String) && !FIELD_TYPE_ENUM.include?(value["type"])
+        errors << "#{op_id}.response: field type #{value['type'].inspect} not in #{FIELD_TYPE_ENUM.join('|')}"
+      end
+      errors << "#{op_id}.response.fields must be an array" if value.key?("fields") && !value["fields"].is_a?(Array)
+      value.each_value { |child| check_response_example(op_id, child, errors) }
+    when Array
+      value.each { |child| check_response_example(op_id, child, errors) }
+    end
   end
 end

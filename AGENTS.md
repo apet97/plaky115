@@ -88,6 +88,12 @@ the user explicitly asked for live proof.
   the explicit SDK runtime export allowlist.
 - `npm run generated:drift`, `npm run codegen:test`, and
   `npm run postgen:drift` must stay green.
+- `npm run metadata:test` validates the operation metadata: example request/response
+  payloads must match the spec shapes (object-map vs array `fields`, uppercase
+  field-type enum) and every spec query param must be threaded
+  (`THREADED_QUERY_PARAMS`) or explicitly listed in `KNOWN_UNTHREADED_QUERY_PARAMS`.
+- `npm run examples:check` syntax-gates the runnable `examples/` (offline; part of
+  `verify`).
 
 ## Public Compatibility
 

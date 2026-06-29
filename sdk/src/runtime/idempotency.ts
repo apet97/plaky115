@@ -16,3 +16,22 @@ import { randomUUID } from "node:crypto";
 export function newIdempotencyKey(prefix = "idmp"): string {
   return `${prefix}_${randomUUID()}`;
 }
+
+/**
+ * Resolve the idempotency key for a write in one place: an explicit per-call
+ * `params.idempotencyKey` wins, then a per-request `options.idempotencyKey`,
+ * otherwise a fresh generated key. Centralizes the precedence the resource
+ * methods all share.
+ *
+ * @param params - Method params that may carry an explicit `idempotencyKey`.
+ * @param options - Per-request overrides that may carry an `idempotencyKey`.
+ * @param prefix - Prefix for the generated fallback (see {@link newIdempotencyKey}).
+ * @returns The resolved idempotency key.
+ */
+export function resolveIdempotencyKey(
+  params: { idempotencyKey?: string | undefined },
+  options: { idempotencyKey?: string | undefined } | undefined,
+  prefix: string,
+): string {
+  return params.idempotencyKey ?? options?.idempotencyKey ?? newIdempotencyKey(prefix);
+}

@@ -40,6 +40,7 @@ npm run generate:all
 npm run generated:drift
 npm run codegen:test
 npm run postgen:drift
+npm run metadata:test   # also validates example payloads + spec query-param coverage
 ```
 
 After SDK public-surface changes:
@@ -79,6 +80,7 @@ For docs updates, refresh generated docs and check for stale language:
 ```bash
 npm run generate:docs-index
 npm run docs:surface:test
+npm run examples:check   # node --check the SDK examples + bash -n the CLI recipe
 rg -n "s[p]eakeasy|S[p]eakeasy|x-s[p]eakeasy|\\.s[p]eakeasy" . -g '!**/node_modules/**' -g '!**/.git/**'
 ```
 

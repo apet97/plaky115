@@ -238,10 +238,11 @@ Run the release-grade local gate:
 npm run verify
 ```
 
-It covers overlay validation, OpenAPI linting, metadata tests, deterministic
-generation, drift checks, SDK/MCP type/lint/test suites, CLI tests/build/help,
-surface status, package artifact audit, pack smoke, consumer smoke, secret scan,
-and GoReleaser validation.
+It covers overlay validation, OpenAPI linting, metadata tests (including example
+payload and query-param coverage checks), deterministic generation, drift checks,
+example syntax, SDK/MCP type/lint/test suites, CLI tests/build/help, cross-surface
+parity, surface status, package artifact audit, pack smoke, consumer smoke, secret
+scan, and GoReleaser validation.
 
 Useful focused checks:
 
@@ -251,6 +252,7 @@ npm run generated:drift
 npm run codegen:test
 npm run postgen:drift
 npm run package:consumer-smoke
+npm run examples:check
 npm run secret:scan
 ```
 

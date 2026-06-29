@@ -1,7 +1,7 @@
 import type { PlakyClient } from "./client.js";
 import { pathSegment } from "./path.js";
 import { paginate, type PaginatedIterator } from "../runtime/pagination.js";
-import { newIdempotencyKey } from "../runtime/idempotency.js";
+import { resolveIdempotencyKey } from "../runtime/idempotency.js";
 import type { PlakyRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId, ItemId, FieldKey } from "../runtime/ids.js";
 import type { PagedResult, ItemShape } from "./shapes.js";
@@ -190,7 +190,7 @@ export class ItemsResource {
     if (params.dryRun === true) {
       return planMutation("createItem", { spaceId: params.spaceId, boardId: params.boardId, body: params.body });
     }
-    const idempotencyKey = params.idempotencyKey ?? options?.idempotencyKey ?? newIdempotencyKey("item");
+    const idempotencyKey = resolveIdempotencyKey(params, options, "item");
     return this.client.request<ItemShape>(
       {
         method: "POST",
@@ -211,7 +211,7 @@ export class ItemsResource {
    * @throws {import("../runtime/errors.js").PlakyNotFoundError} If the item does not exist.
    */
   async delete(params: ItemDeleteParams, options?: PlakyRequestOverrides): Promise<void> {
-    const idempotencyKey = params.idempotencyKey ?? options?.idempotencyKey ?? newIdempotencyKey("item-del");
+    const idempotencyKey = resolveIdempotencyKey(params, options, "item-del");
     await this.client.request<void>(
       {
         method: "DELETE",
@@ -233,7 +233,7 @@ export class ItemsResource {
    * @returns The updated {@link ItemShape}.
    */
   async updateField(params: ItemUpdateFieldParams, options?: PlakyRequestOverrides): Promise<ItemShape> {
-    const idempotencyKey = params.idempotencyKey ?? options?.idempotencyKey ?? newIdempotencyKey("item-field");
+    const idempotencyKey = resolveIdempotencyKey(params, options, "item-field");
     return this.client.request<ItemShape>(
       {
         method: "PATCH",
@@ -259,7 +259,7 @@ export class ItemsResource {
     if (params.dryRun === true) {
       return planMutation("updateItemFields", { spaceId: params.spaceId, boardId: params.boardId, itemId: params.itemId, body: params.body });
     }
-    const idempotencyKey = params.idempotencyKey ?? options?.idempotencyKey ?? newIdempotencyKey("item-fields");
+    const idempotencyKey = resolveIdempotencyKey(params, options, "item-fields");
     return this.client.request<ItemShape>(
       {
         method: "PATCH",

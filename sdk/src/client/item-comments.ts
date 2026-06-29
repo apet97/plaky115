@@ -1,7 +1,7 @@
 import type { PlakyClient } from "./client.js";
 import { pathSegment } from "./path.js";
 import { paginate, type PaginatedIterator } from "../runtime/pagination.js";
-import { newIdempotencyKey } from "../runtime/idempotency.js";
+import { resolveIdempotencyKey } from "../runtime/idempotency.js";
 import type { PlakyRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId, ItemId, CommentId } from "../runtime/ids.js";
 import type { PagedResult, CommentShape } from "./shapes.js";
@@ -59,7 +59,7 @@ export class ItemCommentsResource {
    * ```
    */
   async create(params: CommentScopeParams & { body: CommentWriteBody; idempotencyKey?: string }, options?: PlakyRequestOverrides): Promise<CommentShape> {
-    const idempotencyKey = params.idempotencyKey ?? options?.idempotencyKey ?? newIdempotencyKey("comment");
+    const idempotencyKey = resolveIdempotencyKey(params, options, "comment");
     return this.client.request<CommentShape>(
       {
         method: "POST",
@@ -83,7 +83,7 @@ export class ItemCommentsResource {
     params: CommentScopeParams & { itemCommentId: CommentId | string | number; body: CommentWriteBody; idempotencyKey?: string },
     options?: PlakyRequestOverrides,
   ): Promise<CommentShape> {
-    const idempotencyKey = params.idempotencyKey ?? options?.idempotencyKey ?? newIdempotencyKey("comment-up");
+    const idempotencyKey = resolveIdempotencyKey(params, options, "comment-up");
     return this.client.request<CommentShape>(
       {
         method: "PUT",
@@ -103,7 +103,7 @@ export class ItemCommentsResource {
    * @returns Nothing; resolves once the API confirms deletion.
    */
   async delete(params: CommentScopeParams & { itemCommentId: CommentId | string | number; idempotencyKey?: string }, options?: PlakyRequestOverrides): Promise<void> {
-    const idempotencyKey = params.idempotencyKey ?? options?.idempotencyKey ?? newIdempotencyKey("comment-del");
+    const idempotencyKey = resolveIdempotencyKey(params, options, "comment-del");
     await this.client.request<void>(
       {
         method: "DELETE",

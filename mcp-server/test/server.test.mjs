@@ -121,13 +121,16 @@ test("raw write tool rejects a missing body", async () => {
   }
 });
 
-test("raw write tool accepts a provided body", async () => {
+test("raw write tool accepts a provided body and forwards it to the transport", async () => {
   const previousFetch = globalThis.fetch;
-  globalThis.fetch = async () =>
-    new Response(JSON.stringify({ id: 1, title: "x" }), {
+  let captured;
+  globalThis.fetch = async (url, init) => {
+    captured = { url: String(url), init };
+    return new Response(JSON.stringify({ id: 1, title: "x" }), {
       status: 200,
       headers: { "content-type": "application/json" },
     });
+  };
   try {
     const { server } = buildServer({
       apiKey: "plk_test",
@@ -141,6 +144,10 @@ test("raw write tool accepts a provided body", async () => {
     assert.equal(response.content[0].type, "text");
     assert.ok(response.structuredContent);
     assert.notEqual(response.isError, true);
+    // The provided body must reach the transport unchanged at the create-item path.
+    assert.ok(captured, "fetch was not called");
+    assert.match(captured.url, /\/v1\/public\/spaces\/1\/boards\/2\/items$/);
+    assert.deepEqual(JSON.parse(captured.init.body), { title: "x" });
   } finally {
     globalThis.fetch = previousFetch;
   }

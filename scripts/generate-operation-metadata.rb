@@ -84,7 +84,6 @@ def query_parameters(operation, path_item, spec)
     .map do |param|
       {
         "name" => param.fetch("name"),
-        "explode" => param["explode"] == false ? false : true,
         "description" => collapse_whitespace(param["description"]),
       }.compact
     end

@@ -1,6 +1,6 @@
 import type { PlakyClient } from "./client.js";
 import { pathSegment } from "./path.js";
-import { newIdempotencyKey } from "../runtime/idempotency.js";
+import { resolveIdempotencyKey } from "../runtime/idempotency.js";
 import type { PlakyRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId, ItemId, CommentId } from "../runtime/ids.js";
 import type { components } from "../generated/types.js";
@@ -53,7 +53,7 @@ export class ReactionsResource {
    * ```
    */
   async replace(params: ReplaceReactionsParams, options?: PlakyRequestOverrides): Promise<ReactionReplaceResult> {
-    const idempotencyKey = params.idempotencyKey ?? options?.idempotencyKey ?? newIdempotencyKey("reactions");
+    const idempotencyKey = resolveIdempotencyKey(params, options, "reactions");
     return this.client.request<ReactionReplaceResult>(
       {
         method: "PUT",
