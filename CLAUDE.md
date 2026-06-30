@@ -108,7 +108,26 @@ sections and finish with cleanup scanning all item pages and leftover count `0`.
 - Node floor for SDK and MCP packages is `>=22.12`.
 - CI covers Node `22.12.0`, `24`, and `26`.
 - `CommentShape` intentionally includes both `content?: string` and
-  `text?: string`.
+  `text?: string`. Shapes mirror `sdk/src/generated/types.ts`; fields the API
+  does not emit are kept as `@deprecated` optionals, not removed.
+- `ItemExpand` is exactly the seven values the API accepts; passing others
+  (`subitems`, `subscribedUsers`, `subscribedTeams`) returns HTTP 400. A type
+  test pins `ItemExpand` to the generated `listItems` expand enum.
+- `comments.list` normalizes the non-paginated bare-array `listItemComments`
+  response into a `PagedResult` page, so `iterate`/`listAll` return comments.
+- The `listUsers` (`emails`/`status`/`type`) and `listItems`
+  (`boardViewId`/`parentId`/`subitemsBehaviour`) server-side filters are threaded
+  through the SDK, CLI raw, and MCP raw surfaces (`emails` as repeated keys).
+- `exportItems` / CLI `items-export` CSV expands `item.fields[]` into per-field
+  columns; the SDK and Go CLI emit byte-identical CSV for scalar field values
+  (a non-scalar value is JSON-encoded and may differ in object-key order). The
+  `searchItems` return type is `ItemShape[]` (refined from the older
+  `{id,title}` shape; richer and assignable to it).
+- Additive public exports: `asFieldKey`, `ItemFieldValueBody`,
+  `resolveSpaceAndBoard`, `PlakyDecodeError` (decode failures on a 2xx are not
+  retried and not mislabeled as connection errors).
+- The CLI reports `--version` (GoReleaser injects `main.version`/`main.buildTime`)
+  and sends a versioned `User-Agent`.
 - SDK runtime internals are intentionally private package subpaths.
 - The toolkit is unofficial and not affiliated with Plaky/CAKE.com; keep that
   notice prominent in the README, sub-package READMEs, CLI help, and the MCP

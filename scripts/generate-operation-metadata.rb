@@ -14,10 +14,11 @@ HTTP_METHODS = %w[get post put patch delete head options trace].freeze
 # they are excluded from the generic query-param list.
 PAGINATION_QUERY_PARAMS = %w[page pageSize limit offset].freeze
 
-# Non-pagination query params threaded onto the raw CLI/MCP surfaces. Scoped to
-# `expand` today (the highest-utility expandable-relationships parameter);
-# broaden this allow-list to thread more spec query params through codegen.
-THREADED_QUERY_PARAMS = %w[expand].freeze
+# Non-pagination query params threaded onto the raw CLI/MCP surfaces so the SDK,
+# CLI, and MCP reach the same server-side filters. Array params (emails) are
+# emitted with `array: true` and serialized as repeated keys; `expand` carries
+# `explode: false` so it stays comma-joined.
+THREADED_QUERY_PARAMS = %w[expand emails status type boardViewId parentId subitemsBehaviour].freeze
 
 def load_yaml(path)
   YAML.safe_load(File.read(path), aliases: true)
@@ -82,10 +83,14 @@ def query_parameters(operation, path_item, spec)
     .reject { |param| PAGINATION_QUERY_PARAMS.include?(param["name"]) }
     .select { |param| THREADED_QUERY_PARAMS.include?(param["name"]) }
     .map do |param|
-      {
+      schema = fetch_ref(param["schema"] || {}, spec)
+      entry = {
         "name" => param.fetch("name"),
         "description" => collapse_whitespace(param["description"]),
       }.compact
+      entry["array"] = true if schema.is_a?(Hash) && schema["type"] == "array"
+      entry["explode"] = false if param["explode"] == false
+      entry
     end
 end
 

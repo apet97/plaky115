@@ -25,16 +25,21 @@ export class ItemCommentsResource {
   constructor(private readonly client: PlakyClient) {}
 
   /**
-   * List a page of comments on an item.
+   * List the comments on an item. The `listItemComments` endpoint is
+   * non-paginated and returns a bare JSON array (live-confirmed); this method
+   * normalizes that array into the standard {@link PagedResult} envelope
+   * (`hasMore` is always `false`) so `iterate`/`listAll` work consistently with
+   * the other list resources. `page`/`pageSize` are accepted for signature
+   * symmetry but the endpoint ignores them.
    *
    * @param params - `spaceId`, `boardId`, `itemId`, optional `page`/`pageSize`.
    * @param options - Per-request overrides.
-   * @returns A page of comments. Each comment exposes `content` (API field) and
-   *   `text` (kept for compatibility).
+   * @returns A single page of comments. Each comment exposes `content` (API
+   *   field) and `text` (kept for compatibility).
    */
-  list(params: CommentScopeParams & { page?: number; pageSize?: number }, options?: PlakyRequestOverrides): Promise<PagedResult<CommentShape>> {
+  async list(params: CommentScopeParams & { page?: number; pageSize?: number }, options?: PlakyRequestOverrides): Promise<PagedResult<CommentShape>> {
     const { spaceId, boardId, itemId, ...query } = params;
-    return this.client.request<PagedResult<CommentShape>>(
+    const res = await this.client.request<PagedResult<CommentShape> | CommentShape[]>(
       {
         method: "GET",
         path: `/v1/public/spaces/${pathSegment(spaceId)}/boards/${pathSegment(boardId)}/items/${pathSegment(itemId)}/comments`,
@@ -43,6 +48,13 @@ export class ItemCommentsResource {
       },
       options,
     );
+    if (Array.isArray(res)) return { data: res, hasMore: false };
+    return {
+      data: res?.data ?? [],
+      hasMore: res?.hasMore === true,
+      ...(res?.page !== undefined ? { page: res.page } : {}),
+      ...(res?.pageSize !== undefined ? { pageSize: res.pageSize } : {}),
+    };
   }
 
   /**

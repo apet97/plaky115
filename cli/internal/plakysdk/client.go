@@ -39,7 +39,7 @@ func New(opts ClientOptions) (*Client, error) {
 		opts.Timeout = 30 * time.Second
 	}
 	if opts.UserAgent == "" {
-		opts.UserAgent = "plaky115-cli/0.1.0"
+		opts.UserAgent = "plaky115-cli"
 	}
 	hc := opts.HTTPClient
 	if hc == nil {

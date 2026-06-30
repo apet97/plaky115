@@ -54,6 +54,47 @@ func TestDoctorUsesPersistentFlagsAtExecutionTime(t *testing.T) {
 	}
 }
 
+func TestItemsExportCSV(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":1,"title":"A, comma","fields":[{"key":"status-1","name":"Status","value":"Blocked"},{"key":"number-1","name":"Estimate","value":3}]},{"id":2,"title":"B \"q\"","fields":[{"key":"status-1","name":"Status","value":"Done"}]}],"hasMore":false}`))
+	}))
+	defer server.Close()
+
+	out, err := executeRoot(t,
+		"--api-key", "from-flag",
+		"--server-url", server.URL,
+		"items-export",
+		"--space-id", "1",
+		"--board-id", "2",
+		"--format", "csv",
+	)
+	if err != nil {
+		t.Fatalf("items-export csv returned error: %v", err)
+	}
+	// Fields expand into per-field columns. This exact string is also asserted by
+	// the SDK workflows.test.mjs exportItems csv case for the same items: the two
+	// surfaces are byte-identical for scalar field values (sorted top keys, then
+	// sorted field labels, trailing newline included).
+	want := "id,title,Estimate,Status\n1,\"A, comma\",3,Blocked\n2,\"B \"\"q\"\"\",,Done\n"
+	if out != want {
+		t.Fatalf("csv output mismatch.\n got: %q\nwant: %q", out, want)
+	}
+}
+
+func TestVersionFlagReportsBuildInfo(t *testing.T) {
+	out, err := executeRoot(t, "--version")
+	if err != nil {
+		t.Fatalf("--version returned error: %v", err)
+	}
+	if !strings.Contains(out, "plaky115 version dev") {
+		t.Fatalf("--version did not report the version, output:\n%s", out)
+	}
+	if !strings.Contains(out, "built unknown") {
+		t.Fatalf("--version did not report the build time, output:\n%s", out)
+	}
+}
+
 func TestDoctorFallsBackToEnvironment(t *testing.T) {
 	t.Setenv("PLAKY115_API_KEY", "from-env")
 	t.Setenv("PLAKY115_API_KEY_AUTH", "")

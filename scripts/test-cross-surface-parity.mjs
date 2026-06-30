@@ -3,12 +3,14 @@
 // Drives all three Plaky115 surfaces — the TypeScript SDK (in-process), the MCP
 // raw tools (in-process), and the Go CLI raw commands (subprocess) — against
 // recording transports, then asserts that for every one of the 20 operations
-// the three surfaces emit the SAME HTTP method, path, and query-parameter keys,
-// and the SAME JSON body for writes. The operation metadata is the single
-// source of truth the expectations are derived from; the SDK is hand-written
-// (not generated from it), so this is the test that catches the SDK drifting
-// from the generated CLI/MCP surfaces — e.g. the `expand` serialization (F4) or
-// dropped raw params (F8).
+// the three surfaces emit the SAME HTTP method, path, and query-parameter keys
+// and values (including the threaded filter params: the `emails` array as
+// repeated keys and the scalar status/type/boardViewId/parentId/subitemsBehaviour
+// filters), and the SAME JSON body for writes. The operation metadata is the
+// single source of truth the expectations are derived from; the SDK is
+// hand-written (not generated from it), so this is the test that catches the SDK
+// drifting from the generated CLI/MCP surfaces — e.g. the `expand` serialization
+// (F4) or dropped raw params (F8).
 import assert from "node:assert/strict";
 import { test, before, after } from "node:test";
 import { execFile, execFileSync } from "node:child_process";
@@ -44,14 +46,21 @@ const BODIES = {
   replaceCommentReactions: { reactions: [{ value: "1f44d" }] },
 };
 
+// Server-side filter params threaded onto all three surfaces. Fed identically so
+// the array (`emails`, repeated keys) and scalar filters are compared end-to-end.
+const FILTERS = {
+  listUsers: { emails: ["ada@example.com", "ben@example.com"], status: "ACTIVE", type: "MEMBER" },
+  listItems: { boardViewId: "5", parentId: "9", subitemsBehaviour: "INCLUDE" },
+};
+
 // SDK invocation per operationId. The SDK method names do not map mechanically
 // from operationIds, so this table is the explicit hand-written SDK contract.
 const sdkInvokers = {
   listSpaces: (c) => c.spaces.list({ page: PAGE, pageSize: PAGE_SIZE, expand: ["space", "board"] }),
   listTeams: (c) => c.teams.list({ page: PAGE, pageSize: PAGE_SIZE }),
-  listUsers: (c) => c.users.list({ page: PAGE, pageSize: PAGE_SIZE }),
+  listUsers: (c) => c.users.list({ page: PAGE, pageSize: PAGE_SIZE, emails: ["ada@example.com", "ben@example.com"], status: "ACTIVE", type: "MEMBER" }),
   listBoards: (c) => c.boards.list({ spaceId: ID.spaceId, page: PAGE, pageSize: PAGE_SIZE }),
-  listItems: (c) => c.items.list({ spaceId: ID.spaceId, boardId: ID.boardId, page: PAGE, pageSize: PAGE_SIZE, expand: ["space", "board"] }),
+  listItems: (c) => c.items.list({ spaceId: ID.spaceId, boardId: ID.boardId, page: PAGE, pageSize: PAGE_SIZE, expand: ["space", "board"], boardViewId: 5, parentId: "9", subitemsBehaviour: "INCLUDE" }),
   createItem: (c) => c.items.create({ spaceId: ID.spaceId, boardId: ID.boardId, body: BODIES.createItem }),
   getSpace: (c) => c.spaces.get({ spaceId: ID.spaceId, expand: ["space", "board"] }),
   getTeam: (c) => c.teams.get(ID.teamId),
@@ -119,6 +128,26 @@ function describeOperation(op) {
   if (expectsExpand) cliFlags.push("--expand", EXPAND);
   if (isWrite) cliFlags.push("--body", JSON.stringify(BODIES[op.operationId]));
   if (isDelete) cliFlags.push("--confirm");
+
+  // Threaded filter params (array `emails` → repeated keys/flags; scalars → one).
+  const filters = FILTERS[op.operationId] ?? {};
+  for (const q of op.query ?? []) {
+    if (q.name === "expand") continue; // handled above
+    const value = filters[q.name];
+    if (value === undefined) continue;
+    if (q.array) {
+      for (const v of value) {
+        expectedQueryPairs.push(`${q.name}=${v}`);
+        cliFlags.push(`--${camelToKebab(q.name)}`, String(v));
+      }
+      mcpInput[q.name] = value;
+    } else {
+      expectedQueryPairs.push(`${q.name}=${value}`);
+      mcpInput[q.name] = String(value);
+      cliFlags.push(`--${camelToKebab(q.name)}`, String(value));
+    }
+  }
+  expectedQueryPairs.sort();
 
   return {
     operationId: op.operationId,

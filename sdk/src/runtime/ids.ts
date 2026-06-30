@@ -44,3 +44,4 @@ export const asItemId = (v: string | number): ItemId => ItemId(v);
 export const asCommentId = (v: string | number): CommentId => CommentId(v);
 export const asUserId = (v: string | number): UserId => UserId(v);
 export const asTeamId = (v: string | number): TeamId => TeamId(v);
+export const asFieldKey = (v: string): FieldKey => FieldKey(v);

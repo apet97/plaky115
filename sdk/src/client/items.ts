@@ -13,6 +13,11 @@ export type ItemCreateBody = components["schemas"]["ItemCreateRequest"];
 /** Request body for updating a single field, derived from the generated `FieldValueChangeRequest`. */
 export type ItemFieldValueBody = components["schemas"]["FieldValueChangeRequest"];
 
+// The Plaky API accepts exactly these seven expand values for item operations.
+// `subitems`/`subscribedUsers`/`subscribedTeams` are item *response* fields, not
+// expand flags — passing them returns HTTP 400 UNKNOWN_EXPAND_FIELD (live-confirmed).
+// `subscriptions` expands both subscribedUsers and subscribedTeams; subitem
+// objects are reachable via `items.listSubitems`. Mirrors the generated enum.
 export type ItemExpand =
   | "space"
   | "board"
@@ -20,10 +25,7 @@ export type ItemExpand =
   | "createdBy"
   | "parent"
   | "subscriptions"
-  | "fields"
-  | "subitems"
-  | "subscribedUsers"
-  | "subscribedTeams";
+  | "fields";
 export type SubitemsBehaviour = "INCLUDE" | "EXCLUDE" | "EMBED";
 
 export type ItemListParams = {

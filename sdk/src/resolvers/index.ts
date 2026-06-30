@@ -50,12 +50,24 @@ export async function resolveSpace(client: PlakyClient, ref: EntityRef): Promise
   return pick(all as WithId[], match, "space");
 }
 
-export async function resolveBoard(client: PlakyClient, params: { space: EntityRef; board: EntityRef }): Promise<WithId> {
+/**
+ * Resolve a space and one of its boards in a single pass. Resolves the space
+ * once and reuses it to list the board, avoiding the redundant second
+ * `spaces.listAll()` that calling `resolveSpace` and `resolveBoard` separately
+ * would incur.
+ */
+export async function resolveSpaceAndBoard(
+  client: PlakyClient,
+  params: { space: EntityRef; board: EntityRef },
+): Promise<{ space: WithId; board: WithId }> {
   const space = await resolveSpace(client, params.space);
-  const spaceId = space.id!;
   const match = asId(params.board);
-  const boards = await client.boards.listAll({ spaceId: asSpaceId(spaceId) });
-  return pick(boards as WithId[], match, "board");
+  const boards = await client.boards.listAll({ spaceId: asSpaceId(space.id!) });
+  return { space, board: pick(boards as WithId[], match, "board") };
+}
+
+export async function resolveBoard(client: PlakyClient, params: { space: EntityRef; board: EntityRef }): Promise<WithId> {
+  return (await resolveSpaceAndBoard(client, params)).board;
 }
 
 export async function resolveUser(client: PlakyClient, ref: EntityRef): Promise<WithId> {
@@ -71,9 +83,8 @@ export async function resolveTeam(client: PlakyClient, ref: EntityRef): Promise<
 }
 
 export async function resolveItem(client: PlakyClient, params: { space: EntityRef; board: EntityRef; item: EntityRef }): Promise<WithId> {
-  const board = await resolveBoard(client, { space: params.space, board: params.board });
-  const spaceRef = await resolveSpace(client, params.space);
+  const { space, board } = await resolveSpaceAndBoard(client, { space: params.space, board: params.board });
   const match = asId(params.item);
-  const items = await client.items.listAll({ spaceId: asSpaceId(spaceRef.id!), boardId: asBoardId(board.id!) });
+  const items = await client.items.listAll({ spaceId: asSpaceId(space.id!), boardId: asBoardId(board.id!) });
   return pick(items as WithId[], match, "item");
 }

@@ -26,7 +26,9 @@
       "query": [
         {
           "name": "expand",
-          "description": "Comma-separated list of relationships to be expanded into full objects."
+          "description": "Comma-separated list of relationships to be expanded into full objects.",
+          "array": true,
+          "explode": false
         }
       ]
     },
@@ -72,7 +74,22 @@
       "pagination": {
         "type": "offsetLimit",
         "results": "$.data"
-      }
+      },
+      "query": [
+        {
+          "name": "emails",
+          "description": "If provided, you will get list of users filtered for the provided emails",
+          "array": true
+        },
+        {
+          "name": "status",
+          "description": "If provided, you will get list of users filtered for the provided status"
+        },
+        {
+          "name": "type",
+          "description": "If provided, you will get list of users filtered for the provided type"
+        }
+      ]
     },
     {
       "operationId": "listBoards",
@@ -119,8 +136,22 @@
       },
       "query": [
         {
+          "name": "boardViewId",
+          "description": "Represents unique board view identifier across the system."
+        },
+        {
+          "name": "parentId",
+          "description": "Represents unique item identifier across the system."
+        },
+        {
+          "name": "subitemsBehaviour",
+          "description": "Indicates how subitems are treated in the response. By default subitems will be included. This flag is not applicable when **parentId** is set. **Options:** * **INCLUDE**: Includes subitems in the top level response. * **EXCLUDE**: Excludes subitems from the top level response. * **EMBED**: Excludes from top level and embeds into each parent with sorts and filters applied."
+        },
+        {
           "name": "expand",
-          "description": "Comma-separated list of relationships to expand into full objects instead of IDs."
+          "description": "Comma-separated list of relationships to expand into full objects instead of IDs.",
+          "array": true,
+          "explode": false
         }
       ]
     },
@@ -162,7 +193,9 @@
       "query": [
         {
           "name": "expand",
-          "description": "Comma-separated list of relationships to be expanded into full objects."
+          "description": "Comma-separated list of relationships to be expanded into full objects.",
+          "array": true,
+          "explode": false
         }
       ]
     },
@@ -244,7 +277,9 @@
       "query": [
         {
           "name": "expand",
-          "description": "Comma-separated list of relationships to expand into full objects instead of IDs."
+          "description": "Comma-separated list of relationships to expand into full objects instead of IDs.",
+          "array": true,
+          "explode": false
         }
       ]
     },
@@ -268,7 +303,9 @@
       "query": [
         {
           "name": "expand",
-          "description": "Comma-separated list of relationships to expand into full objects instead of IDs."
+          "description": "Comma-separated list of relationships to expand into full objects instead of IDs.",
+          "array": true,
+          "explode": false
         }
       ]
     },

@@ -39,7 +39,11 @@ export async function withRetries<T>(
       return await fn();
     } catch (err) {
       if (attempt >= opts.maxRetries || !isRetryable(err)) throw err;
-      const wait = err instanceof PlakyRateLimitError && err.retryAfterMs ? err.retryAfterMs : base * 2 ** attempt;
+      // Honor a server Retry-After but clamp it to [0, 60000] (same bound as the
+      // transport) so a hostile/buggy value can't overflow setTimeout's 2^31
+      // limit and fire immediately, or a negative value bypass the backoff.
+      const retryAfter = err instanceof PlakyRateLimitError ? err.retryAfterMs : undefined;
+      const wait = retryAfter !== undefined && retryAfter > 0 ? Math.min(retryAfter, 60_000) : base * 2 ** attempt;
       await new Promise((r) => setTimeout(r, wait + Math.random() * 100));
     }
   }

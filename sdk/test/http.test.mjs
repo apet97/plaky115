@@ -6,6 +6,7 @@ import {
   PlakyApiError,
   PlakyConflictError,
   PlakyConnectionError,
+  PlakyDecodeError,
   PlakyPermissionError,
   PlakyNotFoundError,
   PlakyRateLimitError,
@@ -432,4 +433,116 @@ test("maxRetries retries mutations when an idempotency key is present", async ()
 
   assert.deepEqual(result, { id: 123 });
   assert.equal(calls, 2);
+});
+
+test("malformed 2xx JSON throws PlakyDecodeError and is NOT retried", async () => {
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    return new Response("<html>not json</html>", { status: 200, headers: { "content-type": "application/json" } });
+  };
+
+  await assert.rejects(
+    request(
+      { method: "GET", path: "/v1/public/spaces", operationId: "listSpaces" },
+      { apiKey: "plk_test", serverURL: "https://example.test", maxRetries: 3 },
+    ),
+    (err) => err instanceof PlakyDecodeError && err.status === 200 && err.cause instanceof SyntaxError,
+  );
+  assert.equal(calls, 1, "a deterministic decode failure must not be retried");
+});
+
+test("a throwing success response interceptor propagates and is NOT retried", async () => {
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+
+  const boom = new Error("interceptor failed");
+  await assert.rejects(
+    request(
+      { method: "GET", path: "/v1/public/spaces", operationId: "listSpaces" },
+      {
+        apiKey: "plk_test",
+        serverURL: "https://example.test",
+        maxRetries: 3,
+        interceptors: { response: async () => { throw boom; } },
+      },
+    ),
+    (err) => err === boom,
+  );
+  assert.equal(calls, 1, "a throwing response interceptor must not trigger a retry of the successful request");
+});
+
+test("a thrown timeout is retried then succeeds (retry-on-thrown path)", async () => {
+  let calls = 0;
+  const fetchImpl = async (_url, init) => {
+    calls++;
+    if (calls === 1) {
+      return new Promise((_resolve, reject) => {
+        init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+      });
+    }
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+
+  const result = await request(
+    { method: "GET", path: "/v1/slow", operationId: "slow" },
+    { apiKey: "plk_test", serverURL: "https://example.test", timeoutMs: 5, maxRetries: 1, fetch: fetchImpl },
+  );
+  assert.deepEqual(result, { ok: true });
+  assert.equal(calls, 2);
+});
+
+test("a thrown connection error is retried then succeeds (retry-on-thrown path)", async () => {
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls++;
+    if (calls === 1) throw new TypeError("network down");
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+
+  const result = await request(
+    { method: "GET", path: "/v1/flaky", operationId: "flaky" },
+    { apiKey: "plk_test", serverURL: "https://example.test", maxRetries: 1, fetch: fetchImpl },
+  );
+  assert.deepEqual(result, { ok: true });
+  assert.equal(calls, 2);
+});
+
+test("a thrown connection error on a non-idempotent write is NOT retried", async () => {
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls++;
+    throw new TypeError("network down");
+  };
+
+  await assert.rejects(
+    request(
+      { method: "POST", path: "/v1/public/spaces/1/boards/2/items", body: { title: "x" }, operationId: "createItem" },
+      { apiKey: "plk_test", serverURL: "https://example.test", maxRetries: 2, fetch: fetchImpl },
+    ),
+    (err) => err instanceof PlakyConnectionError,
+  );
+  assert.equal(calls, 1, "a write without an idempotency key must not be retried after a thrown error");
+});
+
+test("aborting during retry backoff throws PlakyAbortError before the next attempt", async () => {
+  const controller = new AbortController();
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    setTimeout(() => controller.abort(), 5);
+    return new Response(JSON.stringify({ message: "temporary" }), { status: 500, headers: { "content-type": "application/json" } });
+  };
+
+  await assert.rejects(
+    request(
+      { method: "GET", path: "/v1/public/spaces", operationId: "listSpaces" },
+      { apiKey: "plk_test", serverURL: "https://example.test", maxRetries: 2, signal: controller.signal },
+    ),
+    (err) => err instanceof PlakyAbortError,
+  );
+  assert.equal(calls, 1, "abort during backoff must stop before the retry fetch");
 });

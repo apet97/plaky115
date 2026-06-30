@@ -33,6 +33,6 @@ export const updateItemCommentTool: McpToolDefinition = {
       body: parsed.body,
       operationId: "updateItemComment",
     }, ctx.requestOptions);
-    return ctx.respond(result, { compactKind: "board" });
+    return ctx.respond(result, { compactKind: "comment" });
   },
 };

@@ -1,7 +1,7 @@
 import type { PlakyClient } from "./client.js";
 import { paginate, type PaginatedIterator } from "../runtime/pagination.js";
 import type { PlakyRequestOverrides } from "../runtime/types.js";
-import type { PagedResult, UserShape, ShortUserShape } from "./shapes.js";
+import type { PagedResult, UserShape } from "./shapes.js";
 
 export type UserStatus = "ACTIVE" | "PENDING" | "INACTIVE";
 export type UserType = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
@@ -29,8 +29,8 @@ export class UsersResource {
    * @param options - Per-request overrides.
    * @returns A page of users with `data` and `hasMore`.
    */
-  list(query?: UserListParams, options?: PlakyRequestOverrides): Promise<PagedResult<ShortUserShape>> {
-    return this.client.request<PagedResult<ShortUserShape>>(
+  list(query?: UserListParams, options?: PlakyRequestOverrides): Promise<PagedResult<UserShape>> {
+    return this.client.request<PagedResult<UserShape>>(
       {
         method: "GET",
         path: "/v1/public/users",
@@ -66,12 +66,12 @@ export class UsersResource {
    * @param opts - Filters plus `pageSize` and optional client-side `limit`.
    * @returns An async iterator with `firstPage()` and `toArray()` helpers.
    */
-  iterate(opts: UserIteratorParams = {}): PaginatedIterator<ShortUserShape> {
+  iterate(opts: UserIteratorParams = {}): PaginatedIterator<UserShape> {
     const { limit, pageSize, ...query } = opts;
-    return paginate<ShortUserShape>(
+    return paginate<UserShape>(
       async ({ page, pageSize }) => {
         const res = await this.list({ ...query, page, pageSize });
-        return { data: (res.data ?? []) as ShortUserShape[], hasMore: res.hasMore === true, raw: res };
+        return { data: (res.data ?? []) as UserShape[], hasMore: res.hasMore === true, raw: res };
       },
       { pageSize, limit },
     );
@@ -83,8 +83,8 @@ export class UsersResource {
    * @param opts - Filters plus `pageSize` and optional client-side `limit`.
    * @returns Every matching user.
    */
-  async listAll(opts: UserIteratorParams = {}): Promise<ShortUserShape[]> {
-    const out: ShortUserShape[] = [];
+  async listAll(opts: UserIteratorParams = {}): Promise<UserShape[]> {
+    const out: UserShape[] = [];
     for await (const u of this.iterate(opts)) out.push(u);
     return out;
   }

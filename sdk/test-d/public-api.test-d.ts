@@ -79,11 +79,17 @@ await client.items.get({ spaceId: 1, boardId: 2, itemId: 3, expand: ["fields"] }
 await client.items.list({ spaceId: 1, boardId: 2, subitemsBehaviour: "INCLUDE", expand: ["fields"] });
 await client.items.listSubitems({ spaceId: 1, boardId: 2, itemId: 3, expand: ["fields"] });
 const itemExpand: ItemExpand = "fields";
-const goalItemExpand: ItemExpand = "subscribedUsers";
+const goalItemExpand: ItemExpand = "subscriptions";
 const subitemsBehaviour: SubitemsBehaviour = "INCLUDE";
 expectAssignable<ItemExpand>(itemExpand);
 expectAssignable<ItemExpand>(goalItemExpand);
 expectAssignable<SubitemsBehaviour>(subitemsBehaviour);
+
+// Drift guard: ItemExpand must stay equal to the generated listItems expand enum
+// (the API rejects any other value with HTTP 400 UNKNOWN_EXPAND_FIELD).
+type GeneratedItemExpand = NonNullable<NonNullable<PlakyOpenApiOperations["listItems"]["parameters"]["query"]>["expand"]>[number];
+expectAssignable<GeneratedItemExpand>(itemExpand);
+expectAssignable<ItemExpand>("subscriptions" as GeneratedItemExpand);
 
 type SpaceResponseSchema = PlakyOpenApiComponents["schemas"]["SpaceResponse"];
 expectAssignable<SpaceResponseSchema>({});

@@ -21,5 +21,8 @@ func newListUsersCmd(getClient ClientFactory) *cobra.Command {
 	}
 	cmd.Flags().Int("page", 0, "Page number (1-based)")
 	cmd.Flags().Int("page-size", 0, "Page size")
+	cmd.Flags().StringArray("emails", nil, "If provided, you will get list of users filtered for the provided emails")
+	cmd.Flags().String("status", "", "If provided, you will get list of users filtered for the provided status")
+	cmd.Flags().String("type", "", "If provided, you will get list of users filtered for the provided type")
 	return cmd
 }

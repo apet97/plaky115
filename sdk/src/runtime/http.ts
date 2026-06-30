@@ -1,4 +1,4 @@
-import { PlakyAbortError, PlakyApiError, PlakyConnectionError, PlakyTimeoutError, classify } from "./errors.js";
+import { PlakyAbortError, PlakyConnectionError, PlakyDecodeError, PlakyTimeoutError, classify } from "./errors.js";
 import { buildHeaders, buildUrl, serializeBody } from "./internal/request-builders.js";
 import { doFetch, getFetch } from "./internal/fetcher.js";
 import { getRequestId, parseErrorBody, parseResponse } from "./internal/responses.js";
@@ -101,58 +101,15 @@ export async function requestWithResponse<T>(req: RawRequest, opts: PlakyRequest
       ? await opts.interceptors.request({ url, init, operationId })
       : { url, init };
 
+    // Only the transport call (doFetch) is retry-eligible. Anything that throws
+    // *after* a successful response — JSON decode failures, a throwing response
+    // interceptor — is a deterministic error, so it must propagate as itself and
+    // never be re-wrapped as a connection error or retried.
+    let response: Response;
     try {
-      const response = await doFetch(fetchFn, intercepted.url, intercepted.init, opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
-      opts.rateLimitSink?.observe(response.headers);
-
-      if (shouldRetryResponse(req, opts, response, attempt, maxRetries)) {
-        await delay(retryDelay(response, attempt), opts.signal);
-        continue;
-      }
-
-      const requestId = getRequestId(response.headers);
-      const responseType = req.responseType ?? opts.responseType ?? "json";
-
-      if (!response.ok) {
-        const errorBody = await parseErrorBody(response);
-        await opts.interceptors?.response?.({
-          url: intercepted.url,
-          response,
-          body: errorBody,
-          operationId,
-        });
-
-        const errorInput = {
-          status: response.status,
-          method: req.method,
-          url: intercepted.url,
-          headers: response.headers,
-          body: errorBody,
-        };
-        const retryAfterMs = parseRetryAfter(response.headers.get("retry-after"));
-        throw classify({
-          ...errorInput,
-          ...(requestId !== undefined ? { requestId } : {}),
-          ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
-        });
-      }
-
-      const data = await parseResponse<T>(response, responseType);
-      await opts.interceptors?.response?.({
-        url: intercepted.url,
-        response,
-        body: data,
-        operationId,
-      });
-
-      return {
-        data,
-        status: response.status,
-        headers: response.headers,
-        ...(requestId !== undefined ? { requestId } : {}),
-      };
+      response = await doFetch(fetchFn, intercepted.url, intercepted.init, opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
     } catch (error) {
-      if (error instanceof PlakyAbortError || error instanceof PlakyApiError) throw error;
+      if (error instanceof PlakyAbortError) throw error;
 
       if (error instanceof PlakyTimeoutError) {
         if (canRetryError(req, opts, attempt, maxRetries)) {
@@ -174,6 +131,65 @@ export async function requestWithResponse<T>(req: RawRequest, opts: PlakyRequest
 
       throw connectionError;
     }
+
+    opts.rateLimitSink?.observe(response.headers);
+
+    if (shouldRetryResponse(req, opts, response, attempt, maxRetries)) {
+      await delay(retryDelay(response, attempt), opts.signal);
+      continue;
+    }
+
+    const requestId = getRequestId(response.headers);
+    const responseType = req.responseType ?? opts.responseType ?? "json";
+
+    if (!response.ok) {
+      const errorBody = await parseErrorBody(response);
+      await opts.interceptors?.response?.({
+        url: intercepted.url,
+        response,
+        body: errorBody,
+        operationId,
+      });
+
+      const errorInput = {
+        status: response.status,
+        method: req.method,
+        url: intercepted.url,
+        headers: response.headers,
+        body: errorBody,
+      };
+      const retryAfterMs = parseRetryAfter(response.headers.get("retry-after"));
+      throw classify({
+        ...errorInput,
+        ...(requestId !== undefined ? { requestId } : {}),
+        ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
+      });
+    }
+
+    let data: T;
+    try {
+      data = await parseResponse<T>(response, responseType);
+    } catch (error) {
+      throw new PlakyDecodeError("Failed to parse the Plaky API response body.", {
+        cause: error,
+        status: response.status,
+        ...(requestId !== undefined ? { requestId } : {}),
+      });
+    }
+
+    await opts.interceptors?.response?.({
+      url: intercepted.url,
+      response,
+      body: data,
+      operationId,
+    });
+
+    return {
+      data,
+      status: response.status,
+      headers: response.headers,
+      ...(requestId !== undefined ? { requestId } : {}),
+    };
   }
 }
 

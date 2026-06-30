@@ -33,6 +33,6 @@ export const replaceCommentReactionsTool: McpToolDefinition = {
       body: parsed.body,
       operationId: "replaceCommentReactions",
     }, ctx.requestOptions);
-    return ctx.respond(result, { compactKind: "board" });
+    return ctx.respond(result, { compactKind: "raw" });
   },
 };

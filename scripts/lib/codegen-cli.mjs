@@ -32,7 +32,10 @@ export function buildCobraCommand(op) {
     lines.push(`\tcmd.Flags().Int("page", 0, "Page number (1-based)")`);
     lines.push(`\tcmd.Flags().Int("page-size", 0, "Page size")`);
   }
-  for (const q of queryParams) lines.push(`\tcmd.Flags().String(${JSON.stringify(flagFor(q.name))}, "", ${JSON.stringify(queryFlagDescription(q))})`);
+  for (const q of queryParams) {
+    if (repeatedArray(q)) lines.push(`\tcmd.Flags().StringArray(${JSON.stringify(flagFor(q.name))}, nil, ${JSON.stringify(queryFlagDescription(q))})`);
+    else lines.push(`\tcmd.Flags().String(${JSON.stringify(flagFor(q.name))}, "", ${JSON.stringify(queryFlagDescription(q))})`);
+  }
   if (op.method !== "GET" && op.method !== "DELETE") {
     lines.push(`\tcmd.Flags().String("body", "", "Request body JSON, @file.json, or @- for stdin (required)")`);
     lines.push(`\tcmd.Flags().String("idempotency-key", "", "Idempotency-Key header for safe write retries")`);
@@ -105,9 +108,15 @@ export function buildGoOperations(ops) {
         lines.push(`\t}`);
       }
       for (const q of queryParams) {
-        lines.push(`\tif opts.${cap(q.name)} != "" {`);
-        lines.push(`\t\tquery.Set(${JSON.stringify(q.name)}, opts.${cap(q.name)})`);
-        lines.push(`\t}`);
+        if (repeatedArray(q)) {
+          lines.push(`\tfor _, v := range opts.${cap(q.name)} {`);
+          lines.push(`\t\tquery.Add(${JSON.stringify(q.name)}, v)`);
+          lines.push(`\t}`);
+        } else {
+          lines.push(`\tif opts.${cap(q.name)} != "" {`);
+          lines.push(`\t\tquery.Set(${JSON.stringify(q.name)}, opts.${cap(q.name)})`);
+          lines.push(`\t}`);
+        }
       }
     }
     lines.push(`\treq := Request{Method: ${JSON.stringify(op.method)}, Path: path}`);
@@ -127,7 +136,7 @@ export function buildGoOperations(ops) {
       lines.push(`\tPage int`);
       lines.push(`\tPageSize int`);
     }
-    for (const q of queryParams) lines.push(`\t${cap(q.name)} string`);
+    for (const q of queryParams) lines.push(`\t${cap(q.name)} ${repeatedArray(q) ? "[]string" : "string"}`);
     if (hasBody) lines.push(`\tBody any`);
     if (op.method !== "GET" && op.method !== "DELETE") lines.push(`\tIdempotencyKey string`);
     lines.push(`}`);
@@ -145,6 +154,9 @@ function formatGoPath(path, params) {
   return expr;
 }
 
+// A query param serialized as repeated keys (explode=true array, e.g. `emails`).
+// `expand` is an array but explode=false (comma-joined), so it stays a string.
+function repeatedArray(q) { return q.array === true && q.explode !== false; }
 function cap(s) { return s[0].toUpperCase() + s.slice(1); }
 function flagFor(p) { return p.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase(); }
 function queryFlagDescription(q) { return q.description ?? `${q.name} query parameter for this Plaky operation`; }

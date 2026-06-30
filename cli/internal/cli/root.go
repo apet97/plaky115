@@ -13,14 +13,23 @@ import (
 
 type clientFactory func(*cobra.Command) (*plakysdk.Client, error)
 
+// Version and BuildTime are set from main() at startup, which receives them via
+// GoReleaser ldflags. They default to dev values for `go run`/`go build`.
+var (
+	Version   = "dev"
+	BuildTime = "unknown"
+)
+
 func NewRootCommand() (*cobra.Command, error) {
 	root := &cobra.Command{
 		Use:           "plaky115",
 		Short:         "Unofficial Plaky115 CLI (hand-crafted toolkit).",
-		Long:          "Plaky115 CLI: hand-crafted Plaky API client with raw operations under `plaky115 raw <op>` and curated workflows at top level.",
+		Long:          "Plaky115 CLI: hand-crafted Plaky API client with raw operations under `plaky115 raw <op>` and curated workflows at top level. Not affiliated with Plaky or CAKE.com.",
+		Version:       Version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+	root.SetVersionTemplate("plaky115 version {{.Version}} (built " + BuildTime + ")\n")
 
 	root.PersistentFlags().String("server-url", "", "Override Plaky API base URL (default: https://api.plaky.com)")
 	root.PersistentFlags().String("api-key", "", "Plaky API key (or set PLAKY115_API_KEY / PLAKY115_API_KEY_AUTH)")
@@ -59,6 +68,9 @@ func buildClient(root *cobra.Command) (*plakysdk.Client, error) {
 	serverURL, _ := root.PersistentFlags().GetString("server-url")
 	timeoutText, _ := root.PersistentFlags().GetString("timeout")
 	userAgent, _ := root.PersistentFlags().GetString("user-agent")
+	if userAgent == "" {
+		userAgent = "plaky115-cli/" + Version
+	}
 	var timeout time.Duration
 	if timeoutText != "" {
 		parsed, err := time.ParseDuration(timeoutText)

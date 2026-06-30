@@ -15,6 +15,20 @@ test("retryDelay parses retry-after dates", () => {
   assert.ok(delay <= 60_000);
 });
 
+test("retryDelay applies capped full jitter to the exponential (no Retry-After) branch", () => {
+  const realRandom = Math.random;
+  try {
+    Math.random = () => 0; // jitter floor → capped/2
+    assert.equal(retryDelay(undefined, 0), 125); // min(60000, 250)/2
+    assert.equal(retryDelay(undefined, 40), 30_000); // capped at 60000 → 30000, no 2^31 overflow
+    Math.random = () => 1; // jitter ceiling → full capped
+    assert.ok(retryDelay(undefined, 0) <= 250);
+    assert.ok(retryDelay(undefined, 40) <= 60_000);
+  } finally {
+    Math.random = realRandom;
+  }
+});
+
 test("shouldRetryResponse retries GET 500 inside retry budget", () => {
   const response = new Response("{}", { status: 500 });
   assert.equal(shouldRetryResponse({ method: "GET", path: "/v1/x" }, {}, response, 0, 1), true);

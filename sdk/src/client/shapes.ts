@@ -32,6 +32,7 @@ export type FieldShape = {
 };
 
 export type ItemFieldShape = FieldShape & {
+  /** @deprecated Not emitted by the API; item fields are `{ key, title, type, value }`. */
   itemId?: ItemId | undefined;
 };
 
@@ -52,6 +53,7 @@ export type BoardShape = {
   fields?: FieldShape[] | undefined;
   groups?: ItemGroupShape[] | undefined;
   space?: SpaceId | undefined;
+  /** @deprecated The API emits `space` (a numeric space id); use {@link BoardShape.space}. */
   spaceId?: SpaceId | undefined;
   kind?: BoardKind | undefined;
   defaultBoard?: boolean | undefined;
@@ -79,23 +81,40 @@ export type ShortUserShape = {
   id?: UserId | undefined;
   name?: string | undefined;
   email?: string | undefined;
+  /** Workspace role/type, e.g. `OWNER` | `ADMIN` | `MEMBER` | `VIEWER`. Mirrors generated `ShortUserResponse.type`. */
+  type?: string | undefined;
+  /** @deprecated Not emitted by the API; the user's picture is `photoUrl` on the full {@link UserShape}. */
   avatarUrl?: string | null | undefined;
 };
 
 export type UserShape = ShortUserShape & {
-  role?: string | undefined;
-  timezone?: string | undefined;
-  createdAt?: string | undefined;
+  /** Profile picture URL; null when unset. Mirrors generated `UserResponse.photoUrl`. */
+  photoUrl?: string | null | undefined;
+  /** Account status, e.g. `ACTIVE` | `PENDING` | `INACTIVE`. */
   status?: string | undefined;
+  /** Additional profile details emitted by the API. Mirrors generated `UserResponse.details`. */
+  details?: Record<string, unknown> | undefined;
+  /** @deprecated Not emitted by the API; the role enum is {@link ShortUserShape.type}. */
+  role?: string | undefined;
+  /** @deprecated Not emitted by the API. */
+  timezone?: string | undefined;
+  /** @deprecated Not emitted by the API. */
+  createdAt?: string | undefined;
 };
 
 export type TeamShape = {
   id?: TeamId | undefined;
   title?: string | undefined;
-  name?: string | undefined;
-  description?: string | null | undefined;
+  /** Whether this is the auto-managed "all users" team. Mirrors generated `TeamResponse.allUsersTeam`. */
+  allUsersTeam?: boolean | undefined;
+  /** Team icon URL; null when unset. Mirrors generated `TeamResponse.iconUrl`. */
+  iconUrl?: string | null | undefined;
   /** User ids of the team's members. The API returns ids, not user objects. */
   members?: (ShortUserShape | number)[] | undefined;
+  /** @deprecated Not emitted by the API; teams use `title`. */
+  name?: string | undefined;
+  /** @deprecated Not emitted by the API. */
+  description?: string | null | undefined;
 };
 
 /** One user's reaction detail. Mirrors generated `ReactionDetails`. */

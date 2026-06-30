@@ -40,6 +40,22 @@ test("toArray respects the requested limit", async () => {
   assert.deepEqual(await iterator.toArray(3), [10, 11, 20]);
 });
 
+test("iterator limit caps items yielded by for-await and stops fetching", async () => {
+  let calls = 0;
+  const iterator = paginate(
+    async ({ page }) => {
+      calls++;
+      return { data: [page * 10, page * 10 + 1], hasMore: true, raw: { page } };
+    },
+    { pageSize: 2, limit: 3 },
+  );
+
+  const out = [];
+  for await (const item of iterator) out.push(item);
+  assert.deepEqual(out, [10, 11, 20]);
+  assert.ok(calls <= 2, `fetched ${calls} pages; should stop once the limit is reached`);
+});
+
 test("empty page with hasMore true stops instead of looping forever", async () => {
   let calls = 0;
   const iterator = paginate(async () => {

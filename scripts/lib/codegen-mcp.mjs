@@ -18,7 +18,10 @@ export function buildRawToolModule(op) {
     lines.push(`  page: z.number().int().min(1).describe("One-based result page to request.").optional(),`);
     lines.push(`  pageSize: z.number().int().min(1).max(200).describe("Maximum number of records to return for this page.").optional(),`);
   }
-  for (const q of queryParams) lines.push(`  ${q.name}: z.string().describe(${JSON.stringify(queryDescription(q))}).optional(),`);
+  for (const q of queryParams) {
+    const zodType = q.array === true && q.explode !== false ? "z.array(z.string())" : "z.string()";
+    lines.push(`  ${q.name}: ${zodType}.describe(${JSON.stringify(queryDescription(q))}).optional(),`);
+  }
   if (hasBody) lines.push(`  body: z.record(z.unknown()).describe("JSON request body for ${op.summary ?? op.operationId}.")${op.bodyRequired ? "" : ".optional()"},`);
   lines.push(`});`);
   lines.push(`const output = ${op.method === "DELETE" ? `z.object({ ok: z.boolean() })` : `z.object({}).passthrough()`};`);
@@ -80,10 +83,14 @@ function formatTsPath(path, params) {
 }
 
 function pickCompact(op) {
-  if (op.path.includes("/items") && !op.path.includes("/comments")) return `"item"`;
+  // Most specific path leaf wins. Comment and reaction paths also contain
+  // /items and /boards, so the deeper segments must be tested first. Reactions
+  // responses are a keyed map (not a comment), so they stay uncompacted ("raw").
+  if (op.path.includes("/reactions")) return `"raw"`;
+  if (op.path.includes("/comments")) return `"comment"`;
+  if (op.path.includes("/items")) return `"item"`;
   if (op.path.includes("/boards")) return `"board"`;
   if (op.path.includes("/spaces")) return `"space"`;
-  if (op.path.includes("/comments")) return `"comment"`;
   return `"raw"`;
 }
 

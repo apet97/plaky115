@@ -92,6 +92,9 @@ the user explicitly asked for live proof.
   payloads must match the spec shapes (object-map vs array `fields`, uppercase
   field-type enum) and every spec query param must be threaded
   (`THREADED_QUERY_PARAMS`) or explicitly listed in `KNOWN_UNTHREADED_QUERY_PARAMS`.
+  All current spec query params are threaded (`KNOWN_UNTHREADED_QUERY_PARAMS` is
+  empty). The generator marks array query params with `array`/`explode` so codegen
+  emits repeated-key serialization (`emails`) vs comma-joined (`expand`).
 - `npm run examples:check` syntax-gates the runnable `examples/` (offline; part of
   `verify`).
 
@@ -106,9 +109,14 @@ Keep these public contracts stable unless the user asks for a breaking change:
 - MCP curated tool names and generated raw tool names
 - SDK generated API operation modules remain private; the SDK exposes generated
   schema types plus hand-written resource methods.
+- The threaded server-side filters reach all three surfaces: `listUsers`
+  (`emails`/`status`/`type`) and `listItems`
+  (`boardViewId`/`parentId`/`subitemsBehaviour`). Keep them in sync across SDK,
+  CLI raw, and MCP raw; the cross-surface parity test exercises them.
 
 `CommentShape` exposes both `content?: string` for API response naming and
-`text?: string` for compatibility.
+`text?: string` for compatibility. Reconcile shapes additively against
+`sdk/src/generated/types.ts`; keep non-emitted fields as `@deprecated` optionals.
 
 ## SDK Runtime Boundaries
 

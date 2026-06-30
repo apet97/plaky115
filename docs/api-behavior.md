@@ -60,6 +60,28 @@ The SDK serializes `expand` as the comma form. When unexpanded, relationship
 fields (for example `createdBy`, `board`, `space`, `group`) are numeric ids;
 when expanded, `createdBy` becomes `{ id, email, name, type }`.
 
+Item operations accept exactly seven expand values: `space`, `board`, `group`,
+`createdBy`, `parent`, `subscriptions`, `fields` (`subscriptions` covers
+subscribed users and teams). Any other value, including `subitems`,
+`subscribedUsers`, or `subscribedTeams`, returns HTTP 400
+`UNKNOWN_EXPAND_FIELD`. `ItemExpand` mirrors this enum; subitem objects are
+reachable via `items.listSubitems`.
+
+## Server-side filters
+
+`listUsers` accepts `emails` (array, repeated keys: `?emails=a&emails=b`),
+`status`, and `type`; `listItems` accepts `boardViewId`, `parentId`, and
+`subitemsBehaviour`. These are threaded through the SDK, the CLI raw commands,
+and the MCP raw tools (`emails` is a repeatable `--emails` flag / `z.array`
+input). Confirmed live: `?emails=<address>` narrows the user list to the match.
+
+## Comments listing
+
+`listItemComments` is non-paginated and returns a bare JSON array of comments,
+not a `{ data, hasMore }` envelope. `comments.list` normalizes that array into a
+single `PagedResult` page so `iterate`/`listAll` behave like the other list
+resources.
+
 ## Reactions contract
 
 `replaceCommentReactions` is `PUT
@@ -88,10 +110,10 @@ key sets and types are from live responses.
 
 ### createItem (HTTP 201)
 
-Request:
+Request (`fields` is an object map keyed by field key or title, not an array):
 
 ```json
-{ "title": "smoke: item", "fields": [] }
+{ "title": "smoke: item", "fields": { "string-2": "hi" } }
 ```
 
 Response keys: `archived`, `board`, `commentCount`, `createdAt`, `createdBy`,

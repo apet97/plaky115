@@ -81,6 +81,16 @@ func expandFlag(cmd *cobra.Command) string {
 	return v
 }
 
+func optString(cmd *cobra.Command, name string) string {
+	v, _ := cmd.Flags().GetString(name)
+	return v
+}
+
+func optStringArray(cmd *cobra.Command, name string) []string {
+	v, _ := cmd.Flags().GetStringArray(name)
+	return v
+}
+
 func confirmDestructive(cmd *cobra.Command) error {
 	confirmed, _ := cmd.Flags().GetBool("confirm")
 	if !confirmed {
@@ -111,7 +121,13 @@ func RunListTeams(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) e
 
 func RunListUsers(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
 	p, ps := pageOpts(cmd)
-	out, err := c.ListUsers(ctx, plakysdk.ListUsersOptions{Page: p, PageSize: ps})
+	out, err := c.ListUsers(ctx, plakysdk.ListUsersOptions{
+		Page:     p,
+		PageSize: ps,
+		Emails:   optStringArray(cmd, "emails"),
+		Status:   optString(cmd, "status"),
+		Type:     optString(cmd, "type"),
+	})
 	if err != nil {
 		return err
 	}
@@ -141,7 +157,16 @@ func RunListItems(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) e
 		return err
 	}
 	p, ps := pageOpts(cmd)
-	out, err := c.ListItems(ctx, plakysdk.ListItemsOptions{SpaceId: spaceID, BoardId: boardID, Page: p, PageSize: ps, Expand: expandFlag(cmd)})
+	out, err := c.ListItems(ctx, plakysdk.ListItemsOptions{
+		SpaceId:           spaceID,
+		BoardId:           boardID,
+		Page:              p,
+		PageSize:          ps,
+		Expand:            expandFlag(cmd),
+		BoardViewId:       optString(cmd, "board-view-id"),
+		ParentId:          optString(cmd, "parent-id"),
+		SubitemsBehaviour: optString(cmd, "subitems-behaviour"),
+	})
 	if err != nil {
 		return err
 	}

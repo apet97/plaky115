@@ -52,8 +52,12 @@ export function compactComment(value: unknown, options: McpRespondOptions = {}):
   const c = asRecord(value);
   const out: Record_ = {};
   copyIfPresent(c, out, "id");
+  // `content`/`createdBy` are the real API response fields; `text`/`author` are
+  // the request-only / deprecated compatibility aliases (kept if present).
+  copyIfPresent(c, out, "content");
   copyIfPresent(c, out, "text");
   copyIfPresent(c, out, "createdAt");
+  copyIfPresent(c, out, "createdBy");
   copyIfPresent(c, out, "author");
   if (options.includeRaw === true) out["raw"] = value;
   return out;
@@ -71,6 +75,16 @@ export function compactList(value: unknown, kind: CompactKind, options: McpRespo
 }
 
 export function compactByKind(value: unknown, kind: CompactKind, options: McpRespondOptions = {}): unknown {
+  // Some endpoints (notably listItemComments) return a bare JSON array rather
+  // than a { data, hasMore } envelope. Normalize it to the same paged shape so
+  // each element is compacted and the result stays a schema-valid object.
+  if (Array.isArray(value)) {
+    return {
+      data: value.map((it) => compactByKind(it, kind, options)),
+      hasMore: false,
+      ...(options.includeRaw === true ? { raw: value } : {}),
+    };
+  }
   if (value !== null && typeof value === "object" && "data" in value && Array.isArray((value as Record_)["data"])) {
     return compactList(value, kind, options);
   }

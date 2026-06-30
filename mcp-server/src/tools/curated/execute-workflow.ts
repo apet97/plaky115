@@ -26,7 +26,7 @@ type WorkflowId = (typeof WORKFLOW_IDS)[number];
 export const executeWorkflowTool: McpToolDefinition = {
   name: "plaky_execute_workflow",
   title: "Execute a Plaky workflow",
-  description: "Run a named curated workflow. Defaults to dryRun=true for mutation workflows.",
+  description: "Run a named curated workflow. Defaults to dryRun=true for mutation workflows. Entity inputs accept either spelling: `space`/`board`/`item` or `spaceId`/`boardId`/`itemId`.",
   scopes: ["read", "write"],
   annotations: {
     readOnlyHint: false,
@@ -47,6 +47,18 @@ export const executeWorkflowTool: McpToolDefinition = {
       dryRun?: boolean;
     };
     const args = payload ?? {};
+    // Accept either spelling for entity references (`space`/`board`/`item` or
+    // `spaceId`/`boardId`/`itemId`) so a key learned from one workflow works in
+    // all of them. `reqId` fails fast with a clear message instead of letting an
+    // undefined id reach the API as `/spaces/undefined`.
+    const ref = (k: "space" | "board" | "item"): unknown => args[k] ?? args[`${k}Id`];
+    const reqId = (k: "space" | "board" | "item"): string | number => {
+      const v = ref(k);
+      if (v === undefined || v === null || v === "") {
+        throw new Error(`${workflowId}: missing required input "${k}Id" (or "${k}")`);
+      }
+      return v as string | number;
+    };
     switch (workflowId) {
       case "workspace.map": {
         const result = await workspaceMap(ctx.client);
@@ -54,8 +66,8 @@ export const executeWorkflowTool: McpToolDefinition = {
       }
       case "items.search": {
         const result = await searchItems(ctx.client, {
-          space: args["space"] as EntityRef,
-          board: args["board"] as EntityRef,
+          space: ref("space") as EntityRef,
+          board: ref("board") as EntityRef,
           query: String(args["query"] ?? ""),
           ...(args["limit"] !== undefined ? { limit: Number(args["limit"]) } : {}),
         });
@@ -65,21 +77,18 @@ export const executeWorkflowTool: McpToolDefinition = {
         if (dryRun !== false) {
           return ctx.respond({ workflowId, dryRun: true, input: args });
         }
-        const space = args["space"] as EntityRef;
-        const board = args["board"] as EntityRef;
-        const body = args["body"] as Record<string, unknown>;
         const result = await ctx.client.items.create({
-          spaceId: asSpaceId(space as string | number),
-          boardId: asBoardId(board as string | number),
-          body,
+          spaceId: asSpaceId(reqId("space")),
+          boardId: asBoardId(reqId("board")),
+          body: args["body"] as Record<string, unknown>,
         });
         return ctx.respond(result, { compactKind: "item" });
       }
       case "items.updateFields": {
         const updates = (args["updates"] as Array<{ itemId: number | string; body: Record<string, unknown> }>) ?? [];
         const result = await bulkUpdateItems(ctx.client, {
-          space: args["space"] as EntityRef,
-          board: args["board"] as EntityRef,
+          space: ref("space") as EntityRef,
+          board: ref("board") as EntityRef,
           updates,
           dryRun: dryRun !== false,
         });
@@ -90,26 +99,26 @@ export const executeWorkflowTool: McpToolDefinition = {
           return ctx.respond({ workflowId, dryRun: true, input: args });
         }
         const result = await ctx.client.comments.create({
-          spaceId: asSpaceId(args["spaceId"] as string | number),
-          boardId: asBoardId(args["boardId"] as string | number),
-          itemId: asItemId(args["itemId"] as string | number),
+          spaceId: asSpaceId(reqId("space")),
+          boardId: asBoardId(reqId("board")),
+          itemId: asItemId(reqId("item")),
           body: { text: String(args["text"] ?? "") },
         });
         return ctx.respond(result, { compactKind: "comment" });
       }
       case "comments.thread": {
         const result = await ctx.client.comments.listAll({
-          spaceId: asSpaceId(args["spaceId"] as string | number),
-          boardId: asBoardId(args["boardId"] as string | number),
-          itemId: asItemId(args["itemId"] as string | number),
+          spaceId: asSpaceId(reqId("space")),
+          boardId: asBoardId(reqId("board")),
+          itemId: asItemId(reqId("item")),
           ...(args["limit"] !== undefined ? { limit: Number(args["limit"]) } : {}),
         });
         return ctx.respond({ data: result, hasMore: false }, { compactKind: "comment" });
       }
       case "export.items": {
         const out = await exportItems(ctx.client, {
-          space: args["space"] as EntityRef,
-          board: args["board"] as EntityRef,
+          space: ref("space") as EntityRef,
+          board: ref("board") as EntityRef,
           format: (args["format"] as "jsonl" | "csv") ?? "jsonl",
         });
         return ctx.respond({ format: args["format"] ?? "jsonl", body: out });

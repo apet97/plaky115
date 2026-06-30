@@ -13,6 +13,7 @@ export type {
   ItemListSubitemsParams,
   ItemCreateParams,
   ItemCreateBody,
+  ItemFieldValueBody,
   ItemUpdateFieldParams,
   ItemUpdateFieldsParams,
   ItemDeleteParams,
@@ -31,6 +32,7 @@ export {
   PlakyConnectionError,
   PlakyTimeoutError,
   PlakyAbortError,
+  PlakyDecodeError,
   PlakyApiError,
   PlakyAuthError,
   PlakyPermissionError,
@@ -81,6 +83,7 @@ export {
   asBoardId,
   asItemId,
   asCommentId,
+  asFieldKey,
   asUserId,
   asTeamId,
 } from "./runtime/ids.js";
@@ -136,7 +139,7 @@ export type {
   LinkFieldInput,
 } from "./fields/builders.js";
 
-export { resolveSpace, resolveBoard, resolveUser, resolveTeam, resolveItem } from "./resolvers/index.js";
+export { resolveSpace, resolveBoard, resolveSpaceAndBoard, resolveUser, resolveTeam, resolveItem } from "./resolvers/index.js";
 export type { EntityRef } from "./resolvers/index.js";
 
 export { workspaceMap, searchItems, bulkUpdateItems, exportItems } from "./workflows/index.js";

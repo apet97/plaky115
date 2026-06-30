@@ -500,36 +500,90 @@ func drainItems(cmd *cobra.Command, c *plakysdk.Client, spaceID, boardID string)
 	})
 }
 
+// writeCSV expands each item's fields[] into real per-field columns (labeled by
+// the first non-empty string among name/title/key) and keeps other top-level
+// scalars as their own columns. Column order matches the SDK exportItems: sorted
+// top-level keys (excluding `fields`), then sorted field labels; a field label
+// equal to a top-level key shares that column (field value wins). For scalar
+// field values the output is byte-identical to the SDK exportItems csv; a
+// non-scalar value is JSON-marshalled and may differ in object-key order from the
+// SDK (encoding/json sorts keys, JSON.stringify preserves insertion order).
 func writeCSV(cmd *cobra.Command, items []map[string]any) error {
 	w := csv.NewWriter(cmd.OutOrStdout())
 	defer w.Flush()
 	if len(items) == 0 {
 		return nil
 	}
-	keys := map[string]struct{}{}
-	for _, it := range items {
-		for k := range it {
-			keys[k] = struct{}{}
+	topSet := map[string]struct{}{}
+	labelSet := map[string]struct{}{}
+	rows := make([]map[string]any, len(items))
+	for idx, it := range items {
+		row := map[string]any{}
+		for k, v := range it {
+			if k == "fields" {
+				continue
+			}
+			topSet[k] = struct{}{}
+			row[k] = v
+		}
+		if fields, ok := it["fields"].([]any); ok {
+			for _, f := range fields {
+				fm, ok := f.(map[string]any)
+				if !ok {
+					continue
+				}
+				label := csvFieldLabel(fm)
+				if label == "" {
+					continue
+				}
+				labelSet[label] = struct{}{}
+				row[label] = fm["value"]
+			}
+		}
+		rows[idx] = row
+	}
+	header := sortedSetKeys(topSet)
+	seen := map[string]struct{}{}
+	for _, k := range header {
+		seen[k] = struct{}{}
+	}
+	for _, label := range sortedSetKeys(labelSet) {
+		if _, dup := seen[label]; !dup {
+			header = append(header, label)
+			seen[label] = struct{}{}
 		}
 	}
-	header := make([]string, 0, len(keys))
-	for k := range keys {
-		header = append(header, k)
-	}
-	sort.Strings(header)
 	if err := w.Write(header); err != nil {
 		return err
 	}
-	for _, it := range items {
-		row := make([]string, len(header))
-		for i, k := range header {
-			row[i] = stringify(it[k])
+	for _, row := range rows {
+		out := make([]string, len(header))
+		for i, col := range header {
+			out[i] = stringify(row[col])
 		}
-		if err := w.Write(row); err != nil {
+		if err := w.Write(out); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func csvFieldLabel(f map[string]any) string {
+	for _, key := range []string{"name", "title", "key"} {
+		if s, ok := f[key].(string); ok && s != "" {
+			return s
+		}
+	}
+	return ""
+}
+
+func sortedSetKeys(set map[string]struct{}) []string {
+	out := make([]string, 0, len(set))
+	for k := range set {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func stringify(v any) string {

@@ -32,8 +32,8 @@ class OperationMetadataTest < Minitest::Test
   # here explicitly, so a NEW spec query param fails this test until it is either
   # threaded (THREADED_QUERY_PARAMS in the generator) or ignored on purpose here.
   PAGINATION_QUERY_PARAMS = %w[page pageSize limit offset].freeze
-  THREADED_QUERY_PARAMS = %w[expand].freeze
-  KNOWN_UNTHREADED_QUERY_PARAMS = %w[emails status type boardViewId parentId subitemsBehaviour].freeze
+  THREADED_QUERY_PARAMS = %w[expand emails status type boardViewId parentId subitemsBehaviour].freeze
+  KNOWN_UNTHREADED_QUERY_PARAMS = %w[].freeze
 
   # Uppercase item-field type enum (ItemFieldResponse.type). Example payloads must
   # use these, not lowercase JSON-schema primitive names like "string".

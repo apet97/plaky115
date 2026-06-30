@@ -33,7 +33,14 @@ export function retryDelay(response: Response | undefined, attempt: number): num
     if (parsed !== undefined) return clamp(parsed, 0, 60_000);
   }
 
-  return 250 * 2 ** attempt;
+  // Equal jitter (half-to-full: range [capped/2, capped)) on an exponential
+  // backoff capped at 60s. The cap keeps the delay under setTimeout's 2^31 ms
+  // ceiling for large retry budgets, and the jitter avoids a thundering herd of
+  // clients retrying the same 5xx in lockstep. The capped/2 floor is deliberate
+  // (keeps a minimum backoff so retries don't collapse toward 0) — do not
+  // "simplify" to Math.random()*capped (true full jitter), which can return ~0.
+  const capped = Math.min(60_000, 250 * 2 ** attempt);
+  return capped / 2 + Math.random() * (capped / 2);
 }
 
 export function parseRetryAfter(header: string | null): number | undefined {

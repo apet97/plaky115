@@ -93,6 +93,42 @@ test("raw delete tools return structured ok receipts", async () => {
   }
 });
 
+test("execute_workflow accepts both space/board/item and spaceId/boardId/itemId spellings", async () => {
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify([{ id: 1, content: "hi", createdAt: "t", createdBy: 7 }]), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  try {
+    const { server } = buildServer({ apiKey: "plk_test", serverURL: "https://example.test", mode: "all", scopes: ["read", "write"] });
+    const tool = server._registeredTools.plaky_execute_workflow;
+    const canonical = await tool.handler({ workflowId: "comments.thread", input: { spaceId: 1, boardId: 2, itemId: 3 } });
+    assert.equal(canonical.structuredContent.data.length, 1);
+    const alternate = await tool.handler({ workflowId: "comments.thread", input: { space: 1, board: 2, item: 3 } });
+    assert.equal(alternate.structuredContent.data.length, 1);
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("execute_workflow fails fast with a clear message when a required entity id is missing", async () => {
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error("fetch should not be called when an id is missing");
+  };
+  try {
+    const { server } = buildServer({ apiKey: "plk_test", serverURL: "https://example.test", mode: "all", scopes: ["read", "write"] });
+    const tool = server._registeredTools.plaky_execute_workflow;
+    await assert.rejects(
+      () => tool.handler({ workflowId: "comments.thread", input: { boardId: 2, itemId: 3 } }),
+      (error) => /missing required input "spaceId"/.test(String(error.message ?? error)),
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
 test("raw write tool rejects a missing body", async () => {
   const previousFetch = globalThis.fetch;
   // Fail loudly if the tool ever reaches the network: a missing required body

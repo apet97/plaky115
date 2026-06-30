@@ -30,6 +30,6 @@ export const listItemCommentsTool: McpToolDefinition = {
       path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/comments`,
       operationId: "listItemComments",
     }, ctx.requestOptions);
-    return ctx.respond(result, { compactKind: "board" });
+    return ctx.respond(result, { compactKind: "comment" });
   },
 };

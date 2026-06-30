@@ -76,6 +76,15 @@ func (c *Client) ListUsers(ctx context.Context, opts ListUsersOptions) (any, err
 	if opts.PageSize > 0 {
 		query.Set("pageSize", fmt.Sprintf("%d", opts.PageSize))
 	}
+	for _, v := range opts.Emails {
+		query.Add("emails", v)
+	}
+	if opts.Status != "" {
+		query.Set("status", opts.Status)
+	}
+	if opts.Type != "" {
+		query.Set("type", opts.Type)
+	}
 	req := Request{Method: "GET", Path: path}
 	req.Query = query
 	var out any
@@ -88,6 +97,9 @@ func (c *Client) ListUsers(ctx context.Context, opts ListUsersOptions) (any, err
 type ListUsersOptions struct {
 	Page     int
 	PageSize int
+	Emails   []string
+	Status   string
+	Type     string
 }
 
 // ListBoards executes the listBoards operation: GET /v1/public/spaces/{spaceId}/boards
@@ -125,6 +137,15 @@ func (c *Client) ListItems(ctx context.Context, opts ListItemsOptions) (any, err
 	if opts.PageSize > 0 {
 		query.Set("pageSize", fmt.Sprintf("%d", opts.PageSize))
 	}
+	if opts.BoardViewId != "" {
+		query.Set("boardViewId", opts.BoardViewId)
+	}
+	if opts.ParentId != "" {
+		query.Set("parentId", opts.ParentId)
+	}
+	if opts.SubitemsBehaviour != "" {
+		query.Set("subitemsBehaviour", opts.SubitemsBehaviour)
+	}
 	if opts.Expand != "" {
 		query.Set("expand", opts.Expand)
 	}
@@ -138,11 +159,14 @@ func (c *Client) ListItems(ctx context.Context, opts ListItemsOptions) (any, err
 }
 
 type ListItemsOptions struct {
-	SpaceId  string
-	BoardId  string
-	Page     int
-	PageSize int
-	Expand   string
+	SpaceId           string
+	BoardId           string
+	Page              int
+	PageSize          int
+	BoardViewId       string
+	ParentId          string
+	SubitemsBehaviour string
+	Expand            string
 }
 
 // CreateItem executes the createItem operation: POST /v1/public/spaces/{spaceId}/boards/{boardId}/items

@@ -19,7 +19,7 @@ if [ -n "${PLAKY115_BASE_URL:-}" ]; then
   SERVER_ARGS=(--server-url "$PLAKY115_BASE_URL")
 fi
 
-echo "## doctor (config + connectivity)"
+echo "## doctor (config)"
 plaky115 "${SERVER_ARGS[@]}" doctor
 
 echo "## workspace-map (spaces with boards)"

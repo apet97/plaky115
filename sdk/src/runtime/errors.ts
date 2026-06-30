@@ -29,6 +29,26 @@ export class PlakyAbortError extends PlakyError {
   }
 }
 
+/**
+ * Thrown when a 2xx response body cannot be parsed (for example malformed JSON
+ * from a proxy/gateway, a truncated payload, or a charset mishap). This is a
+ * deterministic decode failure, not a transport failure, so it is **not**
+ * retried and is never misreported as a {@link PlakyConnectionError}. The
+ * underlying error is preserved as `cause`.
+ */
+export class PlakyDecodeError extends PlakyError {
+  /** HTTP status of the response that failed to parse, when known. */
+  readonly status?: number;
+  /** Correlation id from the response, when present. */
+  readonly requestId?: string;
+
+  constructor(message: string, options?: { cause?: unknown; status?: number; requestId?: string }) {
+    super(message, options);
+    if (options?.status !== undefined) this.status = options.status;
+    if (options?.requestId !== undefined) this.requestId = options.requestId;
+  }
+}
+
 export type ApiErrorInput = {
   status: number;
   method: string;
