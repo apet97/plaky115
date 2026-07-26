@@ -77,6 +77,9 @@ func buildClient(root *cobra.Command) (*plakysdk.Client, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid --timeout: %w", err)
 		}
+		if parsed < 0 {
+			return nil, fmt.Errorf("--timeout must be non-negative")
+		}
 		timeout = parsed
 	}
 

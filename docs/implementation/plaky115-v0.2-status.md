@@ -28,7 +28,7 @@
 - [x] `G006` | Phase 3 — Generators | DONE | Delete stale outputs deterministically and make parity count dynamic
 - [x] `GO001` | Phase 4 — Go transport | DONE | Propagate body read errors and preserve generic JSON numbers
 - [x] `GO002` | Phase 4 — Go transport | DONE | Stream multipart bodies through `io.Pipe`, preserve exact JSON bytes, and propagate copy/cancellation failures
-- [ ] `GO003` | Phase 4 — Go transport | NOT STARTED | Harden Go client option and URL validation
+- [x] `GO003` | Phase 4 — Go transport | DONE | Validate API keys, timeouts, and absolute server URLs before use while preserving base paths and custom clients
 - [ ] `O001` | Phase 5 — Official contract | NOT STARTED | Fetch and validate a current 32-operation candidate
 - [ ] `O002` | Phase 5 — Official contract | NOT STARTED | Overlay all six Item Group operations against the candidate
 - [ ] `O003` | Phase 5 — Official contract | NOT STARTED | Overlay all six Item file operations against the candidate

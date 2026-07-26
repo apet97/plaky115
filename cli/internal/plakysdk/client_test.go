@@ -253,6 +253,85 @@ func TestJSONBodylessRequestHasNoContentType(t *testing.T) {
 	}
 }
 
+func TestNewRejectsInvalidOptionsBeforeNetworkAccess(t *testing.T) {
+	tests := []struct {
+		name string
+		opts ClientOptions
+	}{
+		{name: "whitespace API key", opts: ClientOptions{APIKey: " \t\n"}},
+		{name: "negative timeout", opts: ClientOptions{APIKey: "fixture", Timeout: -time.Second}},
+		{name: "malformed URL", opts: ClientOptions{APIKey: "fixture", ServerURL: "https://[::1"}},
+		{name: "relative URL", opts: ClientOptions{APIKey: "fixture", ServerURL: "/api"}},
+		{name: "non-http URL", opts: ClientOptions{APIKey: "fixture", ServerURL: "ftp://example.test/api"}},
+		{name: "URL without host", opts: ClientOptions{APIKey: "fixture", ServerURL: "https:///api"}},
+		{name: "URL with query", opts: ClientOptions{APIKey: "fixture", ServerURL: "https://example.test/api?token=bad"}},
+		{name: "URL with fragment", opts: ClientOptions{APIKey: "fixture", ServerURL: "https://example.test/api#fragment"}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := New(test.opts); err == nil {
+				t.Fatal("New() succeeded")
+			}
+		})
+	}
+}
+
+func TestNewPreservesAPIKeyAndCustomHTTPClient(t *testing.T) {
+	custom := &http.Client{Timeout: 91 * time.Second}
+	client, err := New(ClientOptions{
+		APIKey:     "  exact-key  ",
+		ServerURL:  "https://example.test/base/",
+		Timeout:    7 * time.Second,
+		HTTPClient: custom,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if client.APIKey() != "  exact-key  " {
+		t.Fatalf("API key = %q", client.APIKey())
+	}
+	if client.http != custom || client.http.Timeout != 91*time.Second {
+		t.Fatal("custom HTTP client was replaced or modified")
+	}
+	if client.Timeout() != 7*time.Second {
+		t.Fatalf("reported timeout = %s", client.Timeout())
+	}
+	if client.ServerURL() != "https://example.test/base" {
+		t.Fatalf("server URL = %q", client.ServerURL())
+	}
+}
+
+func TestDoJoinsConfiguredBasePath(t *testing.T) {
+	var gotPath string
+	client, err := New(ClientOptions{
+		APIKey:    "fixture",
+		ServerURL: "https://example.test/proxy/plaky/",
+		HTTPClient: &http.Client{Transport: roundTripperFunc(func(request *http.Request) (*http.Response, error) {
+			gotPath = request.URL.EscapedPath()
+			return jsonResponse(http.StatusOK, `{}`), nil
+		})},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := client.Do(t.Context(), Request{Method: http.MethodGet, Path: "/v1/public/items/a%2Fb"}, new(any)); err != nil {
+		t.Fatal(err)
+	}
+	if gotPath != "/proxy/plaky/v1/public/items/a%2Fb" {
+		t.Fatalf("request path = %q", gotPath)
+	}
+}
+
+func TestDefaultServerURLRemainsUnchanged(t *testing.T) {
+	client, err := New(ClientOptions{APIKey: "fixture"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if client.ServerURL() != DefaultServerURL {
+		t.Fatalf("server URL = %q", client.ServerURL())
+	}
+}
+
 func serverClient(t *testing.T, status int, body string, requestID string) *Client {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {

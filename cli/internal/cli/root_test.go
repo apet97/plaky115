@@ -388,6 +388,17 @@ func TestPersistentTimeoutAndUserAgentFlagsConfigureClient(t *testing.T) {
 	}
 }
 
+func TestNegativeTimeoutFlagFailsBeforeClientConstruction(t *testing.T) {
+	t.Setenv("PLAKY115_API_KEY", "fixture")
+	out, err := executeRoot(t, "--timeout", "-1s", "doctor")
+	if err == nil {
+		t.Fatalf("negative --timeout succeeded, output:\n%s", out)
+	}
+	if err.Error() != "--timeout must be non-negative" {
+		t.Fatalf("error = %q", err)
+	}
+}
+
 func TestFormatErrorRedactsAPIKeyShapedValues(t *testing.T) {
 	key := "plk_" + strings.Repeat("A", 16) + "_SECRET-ABC123"
 	var out bytes.Buffer

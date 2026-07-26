@@ -29,17 +29,34 @@ type ClientOptions struct {
 }
 
 type Client struct {
-	opts ClientOptions
-	http *http.Client
+	opts    ClientOptions
+	http    *http.Client
+	baseURL *url.URL
 }
 
 func New(opts ClientOptions) (*Client, error) {
-	if opts.APIKey == "" {
+	if strings.TrimSpace(opts.APIKey) == "" {
 		return nil, fmt.Errorf("plakysdk: APIKey required")
+	}
+	if opts.Timeout < 0 {
+		return nil, fmt.Errorf("plakysdk: Timeout must be non-negative")
 	}
 	if opts.ServerURL == "" {
 		opts.ServerURL = DefaultServerURL
 	}
+	baseURL, err := url.Parse(opts.ServerURL)
+	if err != nil {
+		return nil, fmt.Errorf("plakysdk: invalid ServerURL: %w", err)
+	}
+	if (baseURL.Scheme != "http" && baseURL.Scheme != "https") || baseURL.Host == "" || !baseURL.IsAbs() {
+		return nil, fmt.Errorf("plakysdk: ServerURL must be an absolute http or https URL")
+	}
+	if baseURL.RawQuery != "" || baseURL.ForceQuery || baseURL.Fragment != "" {
+		return nil, fmt.Errorf("plakysdk: ServerURL must not include a query or fragment")
+	}
+	baseURL.Path = strings.TrimRight(baseURL.Path, "/")
+	baseURL.RawPath = strings.TrimRight(baseURL.RawPath, "/")
+	opts.ServerURL = baseURL.String()
 	if opts.Timeout == 0 {
 		opts.Timeout = 30 * time.Second
 	}
@@ -50,7 +67,7 @@ func New(opts ClientOptions) (*Client, error) {
 	if hc == nil {
 		hc = &http.Client{Timeout: opts.Timeout}
 	}
-	return &Client{opts: opts, http: hc}, nil
+	return &Client{opts: opts, http: hc, baseURL: baseURL}, nil
 }
 
 type Request struct {
@@ -73,9 +90,9 @@ type MultipartFileBody struct {
 }
 
 func (c *Client) Do(ctx context.Context, req Request, out any) error {
-	u, err := url.Parse(strings.TrimRight(c.opts.ServerURL, "/") + req.Path)
+	u, err := c.requestURL(req.Path)
 	if err != nil {
-		return err
+		return operationError(req, "build request URL", err)
 	}
 	if req.Query != nil {
 		u.RawQuery = req.Query.Encode()
@@ -130,6 +147,29 @@ func (c *Client) Do(ctx context.Context, req Request, out any) error {
 		return operationError(req, "decode response body", err)
 	}
 	return nil
+}
+
+func (c *Client) requestURL(operationPath string) (*url.URL, error) {
+	operationURL, err := url.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+	if operationURL.IsAbs() || operationURL.Host != "" || operationURL.RawQuery != "" || operationURL.ForceQuery || operationURL.Fragment != "" {
+		return nil, fmt.Errorf("operation path must not be an absolute URL, query, or fragment")
+	}
+
+	joinedEscapedPath := strings.TrimRight(c.baseURL.EscapedPath(), "/") + "/" + strings.TrimLeft(operationURL.EscapedPath(), "/")
+	joinedPath, err := url.PathUnescape(joinedEscapedPath)
+	if err != nil {
+		return nil, fmt.Errorf("invalid operation path: %w", err)
+	}
+	target := *c.baseURL
+	target.Path = joinedPath
+	target.RawPath = ""
+	if joinedEscapedPath != joinedPath {
+		target.RawPath = joinedEscapedPath
+	}
+	return &target, nil
 }
 
 func prepareRequestBody(
