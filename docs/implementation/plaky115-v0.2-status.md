@@ -36,7 +36,7 @@
 - [x] `S001` | Phase 6 — TypeScript SDK | DONE | Remove automatic mutation retries and resource-generated idempotency keys
 - [x] `S002` | Phase 6 — TypeScript SDK | DONE | Validate dynamic API keys and server URL at the runtime boundary
 - [x] `S003` | Phase 6 — TypeScript SDK | DONE | Add IDs/file/group shapes and correct existing generated unions
-- [ ] `S004` | Phase 6 — TypeScript SDK | NOT STARTED | Implement the typed Item Groups SDK resource
+- [x] `S004` | Phase 6 — TypeScript SDK | DONE | Implement the typed Item Groups SDK resource
 - [ ] `S005` | Phase 6 — TypeScript SDK | NOT STARTED | Implement the typed Item files SDK resource
 - [ ] `S006` | Phase 6 — TypeScript SDK | NOT STARTED | Lock SDK public surface, package exports, and consumer behavior
 - [ ] `MCP001` | Phase 7 — MCP | NOT STARTED | Add dedicated compactors and response envelopes for new resource kinds
@@ -282,3 +282,10 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Item Group, Item file, download, folder, and short-team response shapes now derive from the accepted generated schemas, with branded IDs overlaid where applicable.
 - Board folder/space expansions, numeric team members, and short-team item subscriptions now match the generated 32-operation contract while deprecated compatibility fields remain intact.
 - Public type tests pin every new brand/shape and expanded/unexpanded union; SDK build, type tests, typecheck, the 20-test client suite, and `git diff --check` exited 0. No generated file changed.
+
+### S004
+
+- Added the typed `client.itemGroups` resource with paged `list`/`iterate`/`listAll`, `get`, JSON `create`/`update`, and bodyless void `delete`/`archive` methods over the six official operations.
+- Request body aliases derive directly from generated schemas; public parameter types accept branded or raw IDs and are exported from the package root.
+- All mutation methods forward only caller-supplied idempotency keys and remain single-attempt. Archive/delete tests prove no body and no content type; encoded paths preserve a configured URL base path.
+- SDK build, public type tests, and typecheck exited 0; the focused 8-test Item Groups suite covered all six wire shapes, pagination, explicit headers, path encoding, and retry prohibition; `git diff --check` exited 0.

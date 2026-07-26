@@ -16,7 +16,15 @@ import {
   type ItemFileIdType,
   type ItemFileShape,
   type ItemGroupIdType,
+  type ItemGroupCreateBody,
+  type ItemGroupCreateParams,
+  type ItemGroupGetParams,
+  type ItemGroupIteratorParams,
+  type ItemGroupListParams,
   type ItemGroupShape,
+  type ItemGroupUpdateBody,
+  type ItemGroupUpdateParams,
+  type ItemGroupDeleteParams,
   type ItemShape,
   type PlakyOpenApiComponents,
   type PlakyOpenApiOperations,
@@ -156,3 +164,18 @@ expectType<number[] | undefined>(teamShape.members);
 
 const itemShape = {} as ItemShape;
 expectType<(TeamShortShape | number)[] | null | undefined>(itemShape.subscribedTeams);
+
+const groupListParams = { spaceId: 1, boardId: 2, pageSize: 50 } satisfies ItemGroupListParams;
+const groupIteratorParams = { ...groupListParams, limit: 10 } satisfies ItemGroupIteratorParams;
+const groupGetParams = { spaceId: 1, boardId: 2, itemGroupId } satisfies ItemGroupGetParams;
+const groupCreateBody = { title: "Backlog", color: "#123456" } satisfies ItemGroupCreateBody;
+const groupUpdateBody = { title: "Doing", ranking: "m" } satisfies ItemGroupUpdateBody;
+const groupCreateParams = { spaceId: 1, boardId: 2, body: groupCreateBody } satisfies ItemGroupCreateParams;
+const groupUpdateParams = { ...groupGetParams, body: groupUpdateBody } satisfies ItemGroupUpdateParams;
+const groupDeleteParams = { ...groupGetParams, idempotencyKey: "key" } satisfies ItemGroupDeleteParams;
+expectType<Promise<ItemGroupShape>>(client.itemGroups.get(groupGetParams));
+expectType<Promise<ItemGroupShape>>(client.itemGroups.create(groupCreateParams));
+expectType<Promise<ItemGroupShape>>(client.itemGroups.update(groupUpdateParams));
+expectType<Promise<void>>(client.itemGroups.delete(groupDeleteParams));
+expectType<Promise<void>>(client.itemGroups.archive(groupDeleteParams));
+expectType<Promise<ItemGroupShape[]>>(client.itemGroups.listAll(groupIteratorParams));

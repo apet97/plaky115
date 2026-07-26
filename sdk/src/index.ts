@@ -26,6 +26,17 @@ export type { ReplaceReactionsParams, ReactionReplaceBody, ReactionReplaceResult
 export { UsersResource } from "./client/users.js";
 export type { UserIteratorParams, UserListParams, UserStatus, UserType } from "./client/users.js";
 export { TeamsResource } from "./client/teams.js";
+export { ItemGroupsResource } from "./client/item-groups.js";
+export type {
+  ItemGroupCreateBody,
+  ItemGroupUpdateBody,
+  ItemGroupListParams,
+  ItemGroupIteratorParams,
+  ItemGroupGetParams,
+  ItemGroupCreateParams,
+  ItemGroupUpdateParams,
+  ItemGroupDeleteParams,
+} from "./client/item-groups.js";
 
 export {
   PlakyError,

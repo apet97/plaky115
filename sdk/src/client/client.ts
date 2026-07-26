@@ -16,6 +16,7 @@ import { ItemCommentsResource } from "./item-comments.js";
 import { ReactionsResource } from "./reactions.js";
 import { UsersResource } from "./users.js";
 import { TeamsResource } from "./teams.js";
+import { ItemGroupsResource } from "./item-groups.js";
 
 /**
  * Constructor options for {@link PlakyClient}.
@@ -87,6 +88,7 @@ export class PlakyClient {
   readonly reactions: ReactionsResource;
   readonly users: UsersResource;
   readonly teams: TeamsResource;
+  readonly itemGroups: ItemGroupsResource;
 
   /**
    * @param opts - See {@link PlakyClientOptions}.
@@ -117,6 +119,7 @@ export class PlakyClient {
     this.reactions = new ReactionsResource(this);
     this.users = new UsersResource(this);
     this.teams = new TeamsResource(this);
+    this.itemGroups = new ItemGroupsResource(this);
   }
 
   /**
