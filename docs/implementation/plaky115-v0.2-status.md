@@ -21,7 +21,7 @@
 - [x] `M004` | Phase 2 — Metadata | DONE | Derive primary success status and response kind
 - [x] `M005` | Phase 2 — Metadata | DONE | Annotate the existing 20 operations with explicit semantics and regenerate rich metadata
 - [x] `G001` | Phase 3 — Generators | DONE | Add one shared metadata loader and validator for JavaScript generators
-- [ ] `G002` | Phase 3 — Generators | NOT STARTED | Make MCP generator use request/success/parameter metadata
+- [x] `G002` | Phase 3 — Generators | DONE | Make MCP generator use request/success/parameter metadata
 - [ ] `G003` | Phase 3 — Generators | NOT STARTED | Generate safe MCP multipart upload tools
 - [ ] `G004` | Phase 3 — Generators | NOT STARTED | Make Cobra command generation transport- and confirmation-aware
 - [ ] `G005` | Phase 3 — Generators | NOT STARTED | Generate Go operation methods and runner functions from one descriptor
@@ -160,3 +160,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Optional parameter/query/pagination input collections normalize once without changing operation order.
 - Loader suite: 5 tests passed, including identical entry-point rejection of malformed metadata.
 - `npm run generate:docs-index` and `git diff --check` exited 0 with no generated output diff.
+
+### G002
+
+- MCP raw-tool generation now derives path/query Zod schemas, JSON bodies, void handling, array envelopes, and compaction directly from validated metadata.
+- Removed method-based body/response rules, path-based parameter discovery, and path-based compaction selection.
+- Five exact-text goldens cover typed enum/integer/array inputs, required JSON, bodyless PUT void, bare-array output, and destructive annotations.
+- MCP v2 suite: 6 tests passed. The full 4-test determinism suite passed in an isolated real checkout so production generated tools remained untouched.
+- `git diff --check` exited 0.

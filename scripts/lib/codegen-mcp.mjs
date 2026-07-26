@@ -1,10 +1,15 @@
-import { slug, pathParams } from "./codegen-common.mjs";
+import { slug } from "./codegen-common.mjs";
 
 export function buildRawToolModule(op) {
-  const params = pathParams(op.path);
-  const hasBody = op.method !== "GET" && op.method !== "DELETE";
-  const queryParams = op.query ?? [];
-  const hasQuery = Boolean(op.pagination) || queryParams.length > 0;
+  const pathParameters = op.parameters.filter((parameter) => parameter.in === "path");
+  const queryParameters = uniqueParameters([
+    ...op.parameters.filter((parameter) => parameter.in === "query"),
+    ...(op.pagination?.inputs ?? []),
+  ]);
+  const hasJsonBody = op.request.kind === "json";
+  const hasQuery = queryParameters.length > 0;
+  const isVoid = op.success.kind === "void";
+  const isArray = op.success.kind === "json-array";
   const camelOp = op.operationId;
   const lines = [];
   lines.push(`// AUTO-GENERATED. Source: openapi/plaky115-operation-metadata.json operationId=${camelOp}`);
@@ -13,18 +18,20 @@ export function buildRawToolModule(op) {
   lines.push(`import type { McpToolDefinition } from "../../runtime/types.js";`);
   lines.push(``);
   lines.push(`const args = z.object({`);
-  for (const p of params) lines.push(`  ${p}: z.union([z.string(), z.number()]).describe(${JSON.stringify(paramDescription(p))}),`);
-  if (op.pagination) {
-    lines.push(`  page: z.number().int().min(1).describe("One-based result page to request.").optional(),`);
-    lines.push(`  pageSize: z.number().int().min(1).max(200).describe("Maximum number of records to return for this page.").optional(),`);
+  for (const parameter of [...pathParameters, ...queryParameters]) {
+    lines.push(`  ${propertyKey(parameter.name)}: ${zodParameter(parameter)},`);
   }
-  for (const q of queryParams) {
-    const zodType = q.array === true && q.explode !== false ? "z.array(z.string())" : "z.string()";
-    lines.push(`  ${q.name}: ${zodType}.describe(${JSON.stringify(queryDescription(q))}).optional(),`);
+  if (hasJsonBody) {
+    const optional = op.request.required ? "" : ".optional()";
+    lines.push(`  body: z.record(z.unknown()).describe("JSON request body for ${op.summary ?? op.operationId}.")${optional},`);
   }
-  if (hasBody) lines.push(`  body: z.record(z.unknown()).describe("JSON request body for ${op.summary ?? op.operationId}.")${op.bodyRequired ? "" : ".optional()"},`);
   lines.push(`});`);
-  lines.push(`const output = ${op.method === "DELETE" ? `z.object({ ok: z.boolean() })` : `z.object({}).passthrough()`};`);
+  const outputSchema = isVoid
+    ? `z.object({ ok: z.boolean() })`
+    : isArray
+      ? `z.object({ data: z.array(z.unknown()) })`
+      : `z.object({}).passthrough()`;
+  lines.push(`const output = ${outputSchema};`);
   lines.push(``);
   lines.push(`export const ${camelOp}Tool: McpToolDefinition = {`);
   lines.push(`  name: "${op.mcpName}",`);
@@ -39,34 +46,32 @@ export function buildRawToolModule(op) {
   lines.push(`  },`);
   lines.push(`  inputSchema: args,`);
   lines.push(`  outputSchema: output,`);
-  const usesInput = params.length > 0 || hasQuery || hasBody;
+  const usesInput = pathParameters.length > 0 || hasQuery || hasJsonBody;
   lines.push(`  async handler(${usesInput ? "input" : "_input"}, ctx) {`);
   if (usesInput) lines.push(`    const parsed = args.parse(input);`);
   if (hasQuery) {
     lines.push(`    const query = {`);
-    if (op.pagination) {
-      lines.push(`      ...(parsed.page !== undefined ? { page: parsed.page } : {}),`);
-      lines.push(`      ...(parsed.pageSize !== undefined ? { pageSize: parsed.pageSize } : {}),`);
+    for (const parameter of queryParameters) {
+      const access = propertyAccess("parsed", parameter.name);
+      lines.push(`      ...(${access} !== undefined ? { ${propertyKey(parameter.name)}: ${access} } : {}),`);
     }
-    for (const q of queryParams) lines.push(`      ...(parsed.${q.name} !== undefined ? { ${q.name}: parsed.${q.name} } : {}),`);
     lines.push(`    };`);
   }
-  if (op.method === "DELETE") {
-    lines.push(`    await request({`);
-  } else {
-    lines.push(`    const result = await request({`);
-  }
+  const requestType = isArray ? "<unknown[]>" : isVoid ? "<void>" : "<Record<string, unknown>>";
+  lines.push(isVoid ? `    await request${requestType}({` : `    const result = await request${requestType}({`);
   lines.push(`      method: "${op.method}",`);
-  lines.push(`      path: ${formatTsPath(op.path, params)},`);
+  lines.push(`      path: ${formatTsPath(op.path, pathParameters)},`);
   if (hasQuery) lines.push(`      query,`);
-  if (hasBody) lines.push(`      body: parsed.body,`);
-  if (op.method === "DELETE") lines.push(`      responseType: "void",`);
+  if (hasJsonBody) lines.push(`      body: parsed.body,`);
+  if (isVoid) lines.push(`      responseType: "void",`);
   lines.push(`      operationId: "${camelOp}",`);
   lines.push(`    }, ctx.requestOptions);`);
-  if (op.method === "DELETE") {
-    lines.push(`    return ctx.respond({ ok: true }, { compactKind: "raw" });`);
+  if (isVoid) {
+    lines.push(`    return ctx.respond({ ok: true }, { compactKind: ${JSON.stringify(op.compactKind)} });`);
+  } else if (isArray) {
+    lines.push(`    return ctx.respond({ data: result }, { compactKind: ${JSON.stringify(op.compactKind)} });`);
   } else {
-    lines.push(`    return ctx.respond(result, { compactKind: ${pickCompact(op)} });`);
+    lines.push(`    return ctx.respond(result, { compactKind: ${JSON.stringify(op.compactKind)} });`);
   }
   lines.push(`  },`);
   lines.push(`};`);
@@ -74,40 +79,56 @@ export function buildRawToolModule(op) {
   return lines.join("\n");
 }
 
-function formatTsPath(path, params) {
-  if (params.length === 0) return JSON.stringify(path);
+function formatTsPath(path, parameters) {
+  if (parameters.length === 0) return JSON.stringify(path);
+  const parameterNames = new Set(parameters.map(({ name }) => name));
   const escaped = path
     .replace(/`/g, "\\`")
-    .replace(/\{([^}]+)\}/g, (_, key) => `\${encodeURIComponent(String(parsed.${key}))}`);
+    .replace(/\{([^}]+)\}/g, (_, key) => {
+      if (!parameterNames.has(key)) throw new Error(`path placeholder ${key} has no path parameter metadata`);
+      return `\${encodeURIComponent(String(${propertyAccess("parsed", key)}))}`;
+    });
   return `\`${escaped}\``;
 }
 
-function pickCompact(op) {
-  // Most specific path leaf wins. Comment and reaction paths also contain
-  // /items and /boards, so the deeper segments must be tested first. Reactions
-  // responses are a keyed map (not a comment), so they stay uncompacted ("raw").
-  if (op.path.includes("/reactions")) return `"raw"`;
-  if (op.path.includes("/comments")) return `"comment"`;
-  if (op.path.includes("/items")) return `"item"`;
-  if (op.path.includes("/boards")) return `"board"`;
-  if (op.path.includes("/spaces")) return `"space"`;
-  return `"raw"`;
+function uniqueParameters(parameters) {
+  const seen = new Set();
+  return parameters.filter(({ name }) => {
+    if (seen.has(name)) return false;
+    seen.add(name);
+    return true;
+  });
 }
 
-function queryDescription(q) {
-  return q.description ?? `${q.name} query parameter for this Plaky operation.`;
+function zodParameter(parameter) {
+  let schema = zodSchema(parameter.schema);
+  const description = parameter.description ?? `${parameter.name} ${parameter.in} parameter for this Plaky operation.`;
+  schema += `.describe(${JSON.stringify(description)})`;
+  if (!parameter.required) schema += ".optional()";
+  return schema;
 }
 
-function paramDescription(param) {
-  const descriptions = {
-    spaceId: "Plaky space ID for the target workspace area.",
-    boardId: "Plaky board ID within the selected space.",
-    itemId: "Plaky item ID within the selected board.",
-    itemFieldKey: "Field key to update, such as status-1 or string-2.",
-    itemCommentId: "Plaky comment ID on the selected item.",
-    teamId: "Plaky team ID to retrieve.",
-  };
-  return descriptions[param] ?? `${param} path parameter for this Plaky operation.`;
+function zodSchema(schema) {
+  if (Array.isArray(schema.enum)) {
+    if (schema.enum.every((value) => typeof value === "string")) return `z.enum(${JSON.stringify(schema.enum)})`;
+    return `z.union([${schema.enum.map((value) => `z.literal(${JSON.stringify(value)})`).join(", ")}])`;
+  }
+  switch (schema.type) {
+    case "string": return "z.string()";
+    case "integer": return "z.number().int()";
+    case "number": return "z.number()";
+    case "boolean": return "z.boolean()";
+    case "array": return `z.array(${zodSchema(schema.items)})`;
+    default: throw new Error(`unsupported parameter schema type: ${schema.type}`);
+  }
+}
+
+function propertyKey(name) {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : JSON.stringify(name);
+}
+
+function propertyAccess(object, name) {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? `${object}.${name}` : `${object}[${JSON.stringify(name)}]`;
 }
 
 export function buildRawToolIndex(ops) {
