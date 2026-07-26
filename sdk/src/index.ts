@@ -37,6 +37,15 @@ export type {
   ItemGroupUpdateParams,
   ItemGroupDeleteParams,
 } from "./client/item-groups.js";
+export { ItemFilesResource } from "./client/item-files.js";
+export type {
+  ItemFileUpdateBody,
+  ItemFileListParams,
+  ItemFileGetParams,
+  ItemFileUploadParams,
+  ItemFileUpdateParams,
+  ItemFileDeleteParams,
+} from "./client/item-files.js";
 
 export {
   PlakyError,

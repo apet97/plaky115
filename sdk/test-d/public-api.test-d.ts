@@ -13,8 +13,14 @@ import {
   type FolderShape,
   type ItemExpand,
   type ItemFileDownloadShape,
+  type ItemFileDeleteParams,
+  type ItemFileGetParams,
   type ItemFileIdType,
+  type ItemFileListParams,
   type ItemFileShape,
+  type ItemFileUpdateBody,
+  type ItemFileUpdateParams,
+  type ItemFileUploadParams,
   type ItemGroupIdType,
   type ItemGroupCreateBody,
   type ItemGroupCreateParams,
@@ -179,3 +185,16 @@ expectType<Promise<ItemGroupShape>>(client.itemGroups.update(groupUpdateParams))
 expectType<Promise<void>>(client.itemGroups.delete(groupDeleteParams));
 expectType<Promise<void>>(client.itemGroups.archive(groupDeleteParams));
 expectType<Promise<ItemGroupShape[]>>(client.itemGroups.listAll(groupIteratorParams));
+
+const fileListParams = { spaceId: 1, boardId: 2, itemId: 3 } satisfies ItemFileListParams;
+const fileGetParams = { ...fileListParams, itemFileId } satisfies ItemFileGetParams;
+const fileUploadParams = { ...fileListParams, file: new Blob(["x"]), fileName: "x.txt" } satisfies ItemFileUploadParams;
+const fileUpdateBody = { name: "renamed.txt", description: "Current" } satisfies ItemFileUpdateBody;
+const fileUpdateParams = { ...fileGetParams, body: fileUpdateBody } satisfies ItemFileUpdateParams;
+const fileDeleteParams = { ...fileGetParams, idempotencyKey: "key" } satisfies ItemFileDeleteParams;
+expectType<Promise<ItemFileShape[]>>(client.itemFiles.list(fileListParams));
+expectType<Promise<ItemFileShape>>(client.itemFiles.upload(fileUploadParams));
+expectType<Promise<ItemFileShape>>(client.itemFiles.get(fileGetParams));
+expectType<Promise<ItemFileDownloadShape>>(client.itemFiles.getDownload(fileGetParams));
+expectType<Promise<ItemFileShape>>(client.itemFiles.update(fileUpdateParams));
+expectType<Promise<void>>(client.itemFiles.delete(fileDeleteParams));
