@@ -9,3 +9,5 @@ docs/superpowers/
 **/.remember/
 .worktrees/
 worktrees/
+.contract-candidate/
+.live-artifacts/
