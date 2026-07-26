@@ -12,6 +12,14 @@ esm/client/item-comments.d.ts
 esm/client/item-comments.d.ts.map
 esm/client/item-comments.js
 esm/client/item-comments.js.map
+esm/client/item-files.d.ts
+esm/client/item-files.d.ts.map
+esm/client/item-files.js
+esm/client/item-files.js.map
+esm/client/item-groups.d.ts
+esm/client/item-groups.d.ts.map
+esm/client/item-groups.js
+esm/client/item-groups.js.map
 esm/client/items.d.ts
 esm/client/items.d.ts.map
 esm/client/items.js

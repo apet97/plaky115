@@ -198,3 +198,12 @@ expectType<Promise<ItemFileShape>>(client.itemFiles.get(fileGetParams));
 expectType<Promise<ItemFileDownloadShape>>(client.itemFiles.getDownload(fileGetParams));
 expectType<Promise<ItemFileShape>>(client.itemFiles.update(fileUpdateParams));
 expectType<Promise<void>>(client.itemFiles.delete(fileDeleteParams));
+
+const returnedGroup = await client.itemGroups.get(groupGetParams);
+if (returnedGroup.id !== undefined) {
+  expectType<Promise<ItemGroupShape>>(client.itemGroups.get({ ...groupListParams, itemGroupId: returnedGroup.id }));
+}
+const returnedFile = await client.itemFiles.get(fileGetParams);
+if (returnedFile.id !== undefined) {
+  expectType<Promise<ItemFileShape>>(client.itemFiles.get({ ...fileListParams, itemFileId: returnedFile.id }));
+}

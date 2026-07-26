@@ -38,7 +38,7 @@
 - [x] `S003` | Phase 6 — TypeScript SDK | DONE | Add IDs/file/group shapes and correct existing generated unions
 - [x] `S004` | Phase 6 — TypeScript SDK | DONE | Implement the typed Item Groups SDK resource
 - [x] `S005` | Phase 6 — TypeScript SDK | DONE | Implement the typed Item files SDK resource
-- [ ] `S006` | Phase 6 — TypeScript SDK | NOT STARTED | Lock SDK public surface, package exports, and consumer behavior
+- [x] `S006` | Phase 6 — TypeScript SDK | DONE | Lock SDK public surface, package exports, and consumer behavior
 - [ ] `MCP001` | Phase 7 — MCP | NOT STARTED | Add dedicated compactors and response envelopes for new resource kinds
 - [ ] `MCP002` | Phase 7 — MCP | NOT STARTED | Make modes, scopes, and argument parsing fail closed
 - [ ] `MCP003` | Phase 7 — MCP | NOT STARTED | Remove private MCP SDK access and pin the dependency
@@ -296,3 +296,13 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Upload appends exactly one `file` part, optionally names it, preserves its bytes/media type, and leaves the multipart boundary to fetch; the SDK accepts no filesystem path.
 - Download returns only `url` and `expiresInSeconds`, performs one API fetch, never follows the signed URL, and emits no console output. All mutations pass only explicit idempotency keys and remain single-attempt.
 - SDK build, public type tests, and typecheck exited 0; the focused 7-test Item files suite covered all wire shapes, encoded paths, multipart details, no-follow/no-log handling, void deletion, and retry prohibition; `git diff --check` exited 0.
+
+### S006
+
+- Installed-tarball smoke now imports both resource classes, their public types/shapes, and all new ID constructors; it builds a FormData upload through an injected fetch and rejects client, generated-operation, and runtime-internal package paths.
+- Public type tests chain branded IDs returned by Item Group and Item file responses. SDK README examples document both resources, explicit-only write keys, GET-only retries, and one-shot signed-link behavior.
+- The explicit SDK parity invoker set now equals all 32 metadata operation IDs exactly. Each new operation compares method, encoded path sentinels, query, request kind/body, and success handling across SDK, generated MCP, and generated CLI.
+- Multipart parity normalizes each constructed upload to exactly `partName`, `fileName`, `contentType`, `size`, and `sha256`; it rejects missing/extra parts and ignores only boundary/raw-byte representation.
+- Package audit rejects private SDK export prefixes and requires both built resource artifacts. Reviewed pack drift contains only eight new SDK resource artifacts and the 52 MCP artifacts generated in O004; no fixtures, secrets, or build junk are present.
+- The owning `packsnapshot:write` command always refreshes both package baselines, but this task packet listed only `sdk/.packsnapshot`. Scope expanded only to `mcp-server/.packsnapshot` so the mandated command and drift gate could record the already-accepted O004 MCP artifacts without hand-editing either snapshot.
+- SDK typecheck/type tests and all 163 SDK tests passed; installed consumer smoke, 33-test exact parity, artifact audit, package dry-run, snapshot write/drift, and `git diff --check` exited 0.

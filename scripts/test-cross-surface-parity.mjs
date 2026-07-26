@@ -14,6 +14,7 @@
 import assert from "node:assert/strict";
 import { test, before, after } from "node:test";
 import { execFile, execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -38,8 +39,11 @@ const ID = {
 };
 const PAGE = 1;
 const PAGE_SIZE = 2;
-const EXPAND = "space,board";
 const EXPAND_VALUES = ["space", "board"];
+const EXPAND_VALUES_BY_OPERATION = {
+  listSpaces: ["board"],
+  getSpace: ["board"],
+};
 const BODIES = {
   createItem: { title: "Parity" },
   updateItemField: { value: "x" },
@@ -47,6 +51,9 @@ const BODIES = {
   createItemComment: { text: "hi" },
   updateItemComment: { text: "hi2" },
   replaceCommentReactions: { reactions: [{ value: "1f44d" }] },
+  createItemGroup: { title: "Parity Group", color: "#123456", ranking: "m" },
+  updateItemGroup: { title: "Parity Group Updated", color: "#654321", ranking: "n" },
+  updateItemFile: { name: "parity-renamed.txt", description: "Parity file" },
 };
 
 // Server-side filter params threaded onto all three surfaces. Fed identically so
@@ -59,13 +66,13 @@ const FILTERS = {
 // SDK invocation per operationId. The SDK method names do not map mechanically
 // from operationIds, so this table is the explicit hand-written SDK contract.
 const sdkInvokers = {
-  listSpaces: (c) => c.spaces.list({ page: PAGE, pageSize: PAGE_SIZE, expand: ["space", "board"] }),
+  listSpaces: (c) => c.spaces.list({ page: PAGE, pageSize: PAGE_SIZE, expand: ["board"] }),
   listTeams: (c) => c.teams.list({ page: PAGE, pageSize: PAGE_SIZE }),
   listUsers: (c) => c.users.list({ page: PAGE, pageSize: PAGE_SIZE, emails: ["ada@example.com", "ben@example.com"], status: "ACTIVE", type: "MEMBER" }),
   listBoards: (c) => c.boards.list({ spaceId: ID.spaceId, page: PAGE, pageSize: PAGE_SIZE }),
   listItems: (c) => c.items.list({ spaceId: ID.spaceId, boardId: ID.boardId, page: PAGE, pageSize: PAGE_SIZE, expand: ["space", "board"], boardViewId: 5, parentId: "9", subitemsBehaviour: "INCLUDE" }),
   createItem: (c) => c.items.create({ spaceId: ID.spaceId, boardId: ID.boardId, body: BODIES.createItem }),
-  getSpace: (c) => c.spaces.get({ spaceId: ID.spaceId, expand: ["space", "board"] }),
+  getSpace: (c) => c.spaces.get({ spaceId: ID.spaceId, expand: ["board"] }),
   getTeam: (c) => c.teams.get(ID.teamId),
   getCurrentUser: (c) => c.users.me(),
   getBoard: (c) => c.boards.get({ spaceId: ID.spaceId, boardId: ID.boardId }),
@@ -79,6 +86,18 @@ const sdkInvokers = {
   updateItemComment: (c) => c.comments.update({ spaceId: ID.spaceId, boardId: ID.boardId, itemId: ID.itemId, itemCommentId: ID.itemCommentId, body: BODIES.updateItemComment }),
   deleteItemComment: (c) => c.comments.delete({ spaceId: ID.spaceId, boardId: ID.boardId, itemId: ID.itemId, itemCommentId: ID.itemCommentId }),
   replaceCommentReactions: (c) => c.reactions.replace({ spaceId: ID.spaceId, boardId: ID.boardId, itemId: ID.itemId, itemCommentId: ID.itemCommentId, body: BODIES.replaceCommentReactions }),
+  listItemGroups: (c) => c.itemGroups.list({ spaceId: ID.spaceId, boardId: ID.boardId, page: PAGE, pageSize: PAGE_SIZE }),
+  createItemGroup: (c) => c.itemGroups.create({ spaceId: ID.spaceId, boardId: ID.boardId, body: BODIES.createItemGroup }),
+  getItemGroup: (c) => c.itemGroups.get({ spaceId: ID.spaceId, boardId: ID.boardId, itemGroupId: ID.itemGroupId }),
+  updateItemGroup: (c) => c.itemGroups.update({ spaceId: ID.spaceId, boardId: ID.boardId, itemGroupId: ID.itemGroupId, body: BODIES.updateItemGroup }),
+  deleteItemGroup: (c) => c.itemGroups.delete({ spaceId: ID.spaceId, boardId: ID.boardId, itemGroupId: ID.itemGroupId }),
+  archiveItemGroup: (c) => c.itemGroups.archive({ spaceId: ID.spaceId, boardId: ID.boardId, itemGroupId: ID.itemGroupId }),
+  listItemFiles: (c) => c.itemFiles.list({ spaceId: ID.spaceId, boardId: ID.boardId, itemId: ID.itemId }),
+  uploadItemFile: (c) => c.itemFiles.upload({ spaceId: ID.spaceId, boardId: ID.boardId, itemId: ID.itemId, file: new Blob(["parity"], { type: "text/plain" }), fileName: "parity.txt" }),
+  getItemFile: (c) => c.itemFiles.get({ spaceId: ID.spaceId, boardId: ID.boardId, itemId: ID.itemId, itemFileId: ID.itemFileId }),
+  updateItemFile: (c) => c.itemFiles.update({ spaceId: ID.spaceId, boardId: ID.boardId, itemId: ID.itemId, itemFileId: ID.itemFileId, body: BODIES.updateItemFile }),
+  deleteItemFile: (c) => c.itemFiles.delete({ spaceId: ID.spaceId, boardId: ID.boardId, itemId: ID.itemId, itemFileId: ID.itemFileId }),
+  getItemFileDownload: (c) => c.itemFiles.getDownload({ spaceId: ID.spaceId, boardId: ID.boardId, itemId: ID.itemId, itemFileId: ID.itemFileId }),
 };
 
 function camelToKebab(value) {
@@ -184,7 +203,7 @@ function uniqueParameters(parameters) {
 function queryValue(operationId, parameter) {
   if (parameter.name === "page") return PAGE;
   if (parameter.name === "pageSize") return PAGE_SIZE;
-  if (parameter.name === "expand") return EXPAND_VALUES;
+  if (parameter.name === "expand") return EXPAND_VALUES_BY_OPERATION[operationId] ?? EXPAND_VALUES;
   const filtered = FILTERS[operationId]?.[parameter.name];
   if (filtered !== undefined) return filtered;
   if (parameter.schema.default !== undefined) return parameter.schema.default;
@@ -230,11 +249,8 @@ function recordingFetch(store) {
 async function normalizeFetchBody(rawBody) {
   if (rawBody === undefined || rawBody === null || rawBody === "") return { body: undefined, bodyKind: "none" };
   if (rawBody instanceof FormData) {
-    const file = rawBody.get("file");
     return {
-      body: file && typeof file !== "string"
-        ? { name: file.name, type: file.type, bytes: Buffer.from(await file.arrayBuffer()).toString("base64") }
-        : undefined,
+      body: await normalizeMultipart(rawBody),
       bodyKind: "multipart",
     };
   }
@@ -243,6 +259,21 @@ async function normalizeFetchBody(rawBody) {
   } catch {
     return { body: rawBody, bodyKind: "other" };
   }
+}
+
+async function normalizeMultipart(formData) {
+  const entries = [...formData.entries()];
+  assert.equal(entries.length, 1, `multipart request must contain exactly one part, received ${entries.length}`);
+  const [[partName, file]] = entries;
+  assert.notEqual(typeof file, "string", "multipart file part must be binary");
+  const bytes = Buffer.from(await file.arrayBuffer());
+  return {
+    partName,
+    fileName: file.name,
+    contentType: file.type,
+    size: bytes.length,
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+  };
 }
 
 function responseStub(method, url) {
@@ -315,13 +346,20 @@ before(async () => {
   recorder = createServer((req, res) => {
     const chunks = [];
     req.on("data", (c) => chunks.push(c));
-    req.on("end", () => {
-      const raw = Buffer.concat(chunks).toString("utf8");
+    req.on("end", async () => {
+      const rawBytes = Buffer.concat(chunks);
+      const raw = rawBytes.toString("utf8");
       const contentType = req.headers["content-type"] ?? "";
       let body;
       let bodyKind = "none";
       if (contentType.startsWith("multipart/form-data")) {
         bodyKind = "multipart";
+        const formData = await new Request("http://parity.local", {
+          method: req.method,
+          headers: { "content-type": contentType },
+          body: rawBytes,
+        }).formData();
+        body = await normalizeMultipart(formData);
       } else if (raw) {
         try {
           body = JSON.parse(raw);
@@ -400,10 +438,8 @@ async function captureCli(op) {
 
 test("metadata operation set is unique and drives the parity matrix", () => {
   assert.equal(new Set(operations.map(({ operationId }) => operationId)).size, operations.length);
-  assert.deepEqual(
-    Object.keys(sdkInvokers).filter((operationId) => !operations.some((operation) => operation.operationId === operationId)),
-    [],
-  );
+  assert.equal(operations.length, 32);
+  assert.deepEqual(Object.keys(sdkInvokers).sort(), operations.map(({ operationId }) => operationId).sort());
 });
 
 for (const op of operations) {
@@ -440,6 +476,9 @@ for (const op of operations) {
       assert.equal(sdk.bodyKind, "multipart", `SDK multipart body for ${op.operationId}`);
       assert.equal(mcp.bodyKind, "multipart", `MCP multipart body for ${op.operationId}`);
       assert.equal(cli.bodyKind, "multipart", `CLI multipart body for ${op.operationId}`);
+      assert.deepEqual(sdk.body, mcp.body, `SDK/MCP multipart semantics for ${op.operationId}`);
+      assert.deepEqual(sdk.body, cli.body, `SDK/CLI multipart semantics for ${op.operationId}`);
+      assert.deepEqual(Object.keys(sdk.body).sort(), ["contentType", "fileName", "partName", "sha256", "size"]);
     } else {
       assert.equal(sdk.body, undefined, `SDK ${op.operationId} should send no body`);
       assert.equal(mcp.body, undefined, `MCP ${op.operationId} should send no body`);
@@ -454,7 +493,7 @@ for (const op of operations) {
       for (const [label, cap] of [["SDK", sdk], ["MCP", mcp], ["CLI", cli]]) {
         const expandValues = [...new URLSearchParams(cap.queryPairs.join("&")).getAll("expand")];
         assert.equal(expandValues.length, 1, `${label} ${op.operationId} should emit a single expand param`);
-        assert.equal(expandValues[0], EXPAND, `${label} ${op.operationId} expand value`);
+        assert.equal(expandValues[0], op.sdkQuery.expand.join(","), `${label} ${op.operationId} expand value`);
       }
     }
 

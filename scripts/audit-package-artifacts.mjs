@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -37,6 +37,24 @@ const sdkGeneratedOps = join(root, "sdk", "esm", "generated", "operations");
 if (existsSync(sdkGeneratedOps)) {
   console.log("sdk: generated operation artifacts present");
   bad = true;
+}
+const sdkPackage = JSON.parse(readFileSync(join(root, "sdk", "package.json"), "utf8"));
+const privateExportPrefixes = ["./client/", "./generated/", "./runtime/internal/"];
+const privateExports = Object.keys(sdkPackage.exports ?? {}).filter((key) =>
+  privateExportPrefixes.some((prefix) => key.startsWith(prefix))
+);
+if (privateExports.length > 0) {
+  console.log(`sdk: private package exports present: ${privateExports.join(", ")}`);
+  bad = true;
+}
+for (const resource of ["item-groups", "item-files"]) {
+  for (const extension of ["js", "d.ts"]) {
+    const artifact = join(root, "sdk", "esm", "client", `${resource}.${extension}`);
+    if (!existsSync(artifact)) {
+      console.log(`sdk: missing built resource artifact esm/client/${resource}.${extension}`);
+      bad = true;
+    }
+  }
 }
 for (const r of reports) {
   console.log(`${r.pkg}: src=${r.srcCount} built=${r.builtCount} legacy=${r.legacyCount} missing=${r.missing.length} stale=${r.stale.length}`);

@@ -67,6 +67,42 @@ const item = await client.items.get({ spaceId: 123, boardId: 456, itemId: 789 })
 const users = await client.users.list({ emails: ["teammate@example.com"], status: "ACTIVE", type: "MEMBER" });
 ```
 
+Item Groups are paged and expose typed helpers for all six public operations:
+
+```ts
+const createdGroup = await client.itemGroups.create({
+  spaceId: 123,
+  boardId: 456,
+  body: { title: "In review", color: "#7B61FF" },
+});
+
+if (createdGroup.id !== undefined) {
+  await client.itemGroups.archive({ spaceId: 123, boardId: 456, itemGroupId: createdGroup.id });
+}
+```
+
+Item files use `Blob`/`FormData`; the SDK does not accept filesystem paths:
+
+```ts
+const uploadedFile = await client.itemFiles.upload({
+  spaceId: 123,
+  boardId: 456,
+  itemId: 789,
+  file: new Blob(["report contents"], { type: "text/plain" }),
+  fileName: "report.txt",
+});
+
+if (uploadedFile.id !== undefined) {
+  const download = await client.itemFiles.getDownload({
+    spaceId: 123,
+    boardId: 456,
+    itemId: 789,
+    itemFileId: uploadedFile.id,
+  });
+  // `download.url` is returned once. The SDK does not follow or log it.
+}
+```
+
 Generated OpenAPI schema types are exported as type-only escape hatches:
 
 ```ts
@@ -75,7 +111,8 @@ import type { PlakyOpenApiComponents } from "plaky115";
 type SpaceResponse = PlakyOpenApiComponents["schemas"]["SpaceResponse"];
 ```
 
-Writes attach idempotency keys by default. You can still pass one explicitly.
+Writes never generate idempotency keys or retry automatically. Pass a stable key
+explicitly when your application needs a request identifier.
 
 ```ts
 await client.items.create(
@@ -103,9 +140,9 @@ const all = await client.spaces.iterate({ limit: 500 }).toArray();
 
 ## Retries
 
-Retries are conservative. `GET` requests can retry. Write requests retry only
-when an idempotency key is present. `Retry-After` is respected for rate limits
-and server retry responses.
+Retries are conservative. Only `GET` requests can retry; writes remain
+single-attempt even when an idempotency key is present. `Retry-After` is
+respected for rate limits and retryable server responses.
 
 ```ts
 const client = new PlakyClient({

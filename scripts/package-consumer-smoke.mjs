@@ -25,7 +25,17 @@ try {
   run("node", [
     "--input-type=module",
     "-e",
-    "import { PlakyClient, SpaceId } from 'plaky115'; const c = new PlakyClient({ apiKey: 'test' }); if (typeof c.spaces.list !== 'function') throw new Error('missing spaces.list'); if (SpaceId(1) !== 1) throw new Error('bad SpaceId');",
+    [
+      "import { PlakyClient, ItemFilesResource, ItemGroupsResource, FolderId, ItemFileId, ItemGroupId, SpaceId } from 'plaky115';",
+      "let fetchCalls = 0;",
+      "const c = new PlakyClient({ apiKey: 'test', fetch: async (_url, init) => { fetchCalls++; if (!(init.body instanceof FormData)) throw new Error('upload is not FormData'); const parts = init.body.getAll('file'); if (parts.length !== 1 || await parts[0].text() !== 'payload') throw new Error('bad upload part'); return new Response(JSON.stringify({ id: 2, name: 'x.txt' }), { status: 201, headers: { 'content-type': 'application/json' } }); } });",
+      "if (typeof c.spaces.list !== 'function') throw new Error('missing spaces.list');",
+      "if (!(c.itemGroups instanceof ItemGroupsResource)) throw new Error('missing ItemGroupsResource');",
+      "if (!(c.itemFiles instanceof ItemFilesResource)) throw new Error('missing ItemFilesResource');",
+      "if (SpaceId(1) !== 1 || ItemGroupId(2) !== 2 || ItemFileId(3) !== 3 || FolderId(4) !== 4) throw new Error('bad ID constructor');",
+      "await c.itemFiles.upload({ spaceId: 1, boardId: 1, itemId: 1, file: new Blob(['payload']), fileName: 'x.txt' });",
+      "if (fetchCalls !== 1) throw new Error('upload should make one injected fetch');",
+    ].join(" "),
   ], { cwd: consumer });
 
   run("node", [
@@ -38,12 +48,23 @@ try {
     join(consumer, "type-smoke.ts"),
     [
       "import type { PlakyOpenApiComponents, PlakyOpenApiOperations } from 'plaky115';",
+      "import type { FolderIdType, FolderShape, ItemFileDownloadShape, ItemFileIdType, ItemFileShape, ItemFileUploadParams, ItemGroupCreateBody, ItemGroupIdType, ItemGroupShape } from 'plaky115';",
       "type Space = PlakyOpenApiComponents['schemas']['SpaceResponse'];",
       "const space: Space = {};",
       "type ListSpaces = PlakyOpenApiOperations['listSpaces'];",
       "const query: ListSpaces['parameters']['query'] = { expand: ['board'] };",
       "void space;",
       "void query;",
+      "const groupId: ItemGroupIdType = 1 as ItemGroupIdType;",
+      "const fileId: ItemFileIdType = 2 as ItemFileIdType;",
+      "const folderId: FolderIdType = 3 as FolderIdType;",
+      "const group: ItemGroupShape = { id: groupId };",
+      "const file: ItemFileShape = { id: fileId };",
+      "const folder: FolderShape = { id: folderId };",
+      "const download: ItemFileDownloadShape = { url: 'https://example.test/file', expiresInSeconds: 60 };",
+      "const body: ItemGroupCreateBody = { title: 'Backlog' };",
+      "const upload: ItemFileUploadParams = { spaceId: 1, boardId: 2, itemId: 3, file: new Blob(['x']) };",
+      "void group; void file; void folder; void download; void body; void upload;",
     ].join("\n"),
   );
   run(join(root, "sdk/node_modules/.bin/tsc"), [
@@ -60,6 +81,8 @@ try {
 
   assertImportFails(consumer, "plaky115/operations/list-spaces.js");
   assertImportFails(consumer, "plaky115/generated/operations/list-spaces.js");
+  assertImportFails(consumer, "plaky115/generated/operations/upload-item-file.js");
+  assertImportFails(consumer, "plaky115/client/item-files.js");
   assertImportFails(consumer, "plaky115/runtime/internal/request-builders.js");
 
   run("node", [
