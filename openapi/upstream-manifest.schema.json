@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/apet97/plaky115/openapi/upstream-manifest.schema.json",
+  "title": "Plaky115 accepted upstream OpenAPI provenance",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sourceUrl",
+    "fetchedAt",
+    "httpStatus",
+    "contentType",
+    "rawSha256",
+    "canonicalSha256",
+    "info",
+    "operationCount",
+    "methodPathKeys",
+    "acceptedAt",
+    "acceptedSha256"
+  ],
+  "properties": {
+    "sourceUrl": { "type": "string", "minLength": 1 },
+    "fetchedAt": { "type": "string", "format": "date-time" },
+    "httpStatus": { "type": "integer", "minimum": 200, "maximum": 299 },
+    "contentType": { "type": "string", "minLength": 1 },
+    "rawSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "canonicalSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "info": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "version"],
+      "properties": {
+        "title": { "type": ["string", "null"] },
+        "version": { "type": ["string", "null"] }
+      }
+    },
+    "operationCount": { "type": "integer", "minimum": 0 },
+    "methodPathKeys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^(GET|PUT|POST|DELETE|PATCH|OPTIONS|HEAD|TRACE) /" }
+    },
+    "acceptedAt": { "type": "string", "format": "date-time" },
+    "acceptedSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

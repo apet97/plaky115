@@ -14,7 +14,7 @@
 - [x] `B003` | Phase 0 — Baseline | DONE | Add the intentional 32-operation expected manifest
 - [x] `C001` | Phase 1 — Contract acquisition | DONE | Create official-source parser fixtures and a deterministic YAML helper
 - [x] `C002` | Phase 1 — Contract acquisition | DONE | Implement candidate fetch, parsing, canonicalization, and provenance
-- [ ] `C003` | Phase 1 — Contract acquisition | NOT STARTED | Add semantic contract diff, manifest checks, and freshness workflow
+- [x] `C003` | Phase 1 — Contract acquisition | DONE | Add semantic contract diff, manifest checks, and freshness workflow
 - [ ] `M001` | Phase 2 — Metadata | NOT STARTED | Create and validate transport-quadrant OpenAPI fixtures
 - [ ] `M002` | Phase 2 — Metadata | NOT STARTED | Make parameter metadata contract-derived
 - [ ] `M003` | Phase 2 — Metadata | NOT STARTED | Derive explicit request kind and multipart parts
@@ -102,3 +102,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Provenance includes hashes, source/status/content type, fetch time, info, operation count, and sorted method/path keys.
 - Missing any of the 12 required new method/path keys preserves evidence and returns exit code 3.
 - Parser/fetch suite: 13 tests passed across JSON, YAML, HTML, escaped/braced strings, malformed input, redirect, timeout, invalid contract, atomic replacement, and hold-point behavior.
+
+### C003
+
+- Added deterministic semantic diff classification for none, documentation, additive, transport, and breaking drift.
+- Added explicit candidate acceptance plus offline upstream manifest hash/inventory validation; tracked contract acceptance remains deferred to O004.
+- Schema and runtime validation require complete fetch and acceptance provenance.
+- Added a read-only scheduled/manual freshness workflow with concurrency cancellation, ignored evidence upload, and no commit/PR/token path.
+- Semantic/acceptance suite: 11 tests passed, covering descriptions, additions/removals, location, media/response kinds, required fields, enum widening/narrowing, explicit consent, hashes, expected operations, and manifest verification.

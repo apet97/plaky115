@@ -1,10 +1,39 @@
 # API Evolution Playbook
 
-What to do when the Plaky API changes. The workflow is fully local and repeatable.
+What to do when the Plaky API changes. Normal verification is offline. Network
+freshness and local acceptance are separate, explicit operations.
+
+## Official source freshness
+
+Fetch and compare an ignored candidate without changing the tracked contract:
+
+```bash
+npm run contract:fetch-candidate
+npm run contract:diff-candidate
+```
+
+The fetch stores raw source, canonical JSON, deterministic YAML, and provenance
+under `.contract-candidate/current/`. The semantic diff classifies description,
+additive, breaking, and transport drift. The scheduled/manual `OpenAPI freshness`
+workflow uploads those ignored files as evidence and fails on drift. It has
+read-only repository permissions and never commits, opens a pull request, or
+accepts a contract.
+
+After reviewing the source hashes, operation inventory, semantic diff, rendered
+official documentation, and overlay compatibility, acceptance is local and
+manual:
+
+```bash
+npm run contract:accept-candidate -- --yes
+npm run contract:manifest:check
+```
+
+Acceptance writes the selected upstream YAML and its checked-in provenance
+manifest atomically. Do not run it from the freshness workflow.
 
 ## New endpoint added
 
-1. Update `api-1.yaml` (upstream mirror).
+1. Fetch, review, and explicitly accept the official candidate as described above.
 2. Add an action under `overlays/plaky115-dx.overlay.yaml` with `operationId`, `summary`, `x-plaky115-mcp` annotations (scope, idempotent, destructive), and `x-plaky115-pagination` if it returns a list.
 3. `npm run overlay:apply && npm run lint:openapi`.
 4. `npm run metadata:generate && npm run metadata:test`.

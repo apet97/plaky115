@@ -1,0 +1,57 @@
+name: OpenAPI freshness
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openapi-freshness
+  cancel-in-progress: true
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.12.0"
+
+      - name: Fetch official candidate
+        id: fetch
+        continue-on-error: true
+        run: npm run contract:fetch-candidate
+
+      - name: Build semantic diff
+        id: diff
+        if: always() && steps.fetch.outcome != 'cancelled'
+        continue-on-error: true
+        run: npm run contract:diff-candidate
+
+      - name: Upload freshness evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: plaky-openapi-freshness
+          path: .contract-candidate/current/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce no drift
+        if: always()
+        env:
+          FETCH_OUTCOME: ${{ steps.fetch.outcome }}
+          DIFF_OUTCOME: ${{ steps.diff.outcome }}
+        run: |
+          test "$FETCH_OUTCOME" = success
+          test "$DIFF_OUTCOME" = success
