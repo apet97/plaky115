@@ -31,7 +31,7 @@
 - [x] `GO003` | Phase 4 — Go transport | DONE | Validate API keys, timeouts, and absolute server URLs before use while preserving base paths and custom clients
 - [x] `O001` | Phase 5 — Official contract | DONE | Fetch and validate a current 32-operation candidate
 - [x] `O002` | Phase 5 — Official contract | DONE | Overlay all six Item Group operations against the candidate
-- [ ] `O003` | Phase 5 — Official contract | NOT STARTED | Overlay all six Item file operations against the candidate
+- [x] `O003` | Phase 5 — Official contract | DONE | Overlay all six Item file operations against the candidate
 - [ ] `O004` | Phase 5 — Official contract | NOT STARTED | Accept the official candidate, regenerate all surfaces, and review the complete diff
 - [ ] `S001` | Phase 6 — TypeScript SDK | NOT STARTED | Remove automatic mutation retries and resource-generated idempotency keys
 - [ ] `S002` | Phase 6 — TypeScript SDK | NOT STARTED | Validate dynamic API keys and server URL at the runtime boundary
@@ -241,3 +241,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Delete and archive are bodyless 200 operations with destructive confirmation, `[write, destructive]` scopes, and `raw` compaction.
 - Request/response examples use non-empty titles/rankings and valid object shapes from the official schemas.
 - Candidate overlay apply, source/DX lint, metadata generation, and the complete six-operation annotation assertion exited 0.
+
+### O003
+
+- Added six exact Item file actions to the ignored candidate overlay without changing tracked contracts or generated outputs.
+- Upload metadata selects the official multipart request with one required binary `file` part and a 201 object response; list remains a bare JSON array; update remains required JSON; delete remains bodyless 200.
+- Stable MCP names, read/write scopes, `itemFile`/`downloadLink`/`raw` compaction, and destructive confirmation were asserted across all six operations.
+- Download-link output is marked sensitive. Its only example URL uses `https://example.com/`; the candidate overlay contains no API key, token, or real signed URL.
+- Candidate overlay apply, source/DX lint, metadata generation, and the complete six-operation transport/annotation assertion exited 0.
