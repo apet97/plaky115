@@ -30,7 +30,7 @@
 - [x] `GO002` | Phase 4 — Go transport | DONE | Stream multipart bodies through `io.Pipe`, preserve exact JSON bytes, and propagate copy/cancellation failures
 - [x] `GO003` | Phase 4 — Go transport | DONE | Validate API keys, timeouts, and absolute server URLs before use while preserving base paths and custom clients
 - [x] `O001` | Phase 5 — Official contract | DONE | Fetch and validate a current 32-operation candidate
-- [ ] `O002` | Phase 5 — Official contract | NOT STARTED | Overlay all six Item Group operations against the candidate
+- [x] `O002` | Phase 5 — Official contract | DONE | Overlay all six Item Group operations against the candidate
 - [ ] `O003` | Phase 5 — Official contract | NOT STARTED | Overlay all six Item file operations against the candidate
 - [ ] `O004` | Phase 5 — Official contract | NOT STARTED | Accept the official candidate, regenerate all surfaces, and review the complete diff
 - [ ] `S001` | Phase 6 — TypeScript SDK | NOT STARTED | Remove automatic mutation retries and resource-generated idempotency keys
@@ -232,3 +232,12 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Source transport review confirmed: paged Item Group list; object get/create/update responses; required JSON create/update bodies; bodyless 200 delete/archive; binary multipart part `file` with 201 object response; bare-array file list; object details/update; `{ url, expiresInSeconds }` download link; and bodyless 200 file delete.
 - A Chrome rendering of the official docs exposed the same 12 endpoint labels. Expanded rendered sections independently confirmed multipart `file`, bare-array listing, download-link fields, and the three bodyless 200 archive/delete operations.
 - The taskbook's diagnostic example names an unsupported `--source` option; an equivalent source-derived method/path exact-set diagnostic was used without changing tracked tooling in this hold-point task.
+
+### O002
+
+- Copied the accepted 20-operation overlay into ignored candidate evidence and added six exact Item Group actions without changing tracked contracts or generated outputs.
+- The official candidate already includes the `Item Groups` tag, so no tag or official endpoint description was duplicated.
+- Candidate metadata contains the exact six stable operation IDs and MCP names; list pagination resolves `$.data`, read/write scopes match intent, and object responses use `itemGroup` compaction.
+- Delete and archive are bodyless 200 operations with destructive confirmation, `[write, destructive]` scopes, and `raw` compaction.
+- Request/response examples use non-empty titles/rankings and valid object shapes from the official schemas.
+- Candidate overlay apply, source/DX lint, metadata generation, and the complete six-operation annotation assertion exited 0.
