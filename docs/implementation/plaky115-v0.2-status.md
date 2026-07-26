@@ -24,7 +24,7 @@
 - [x] `G002` | Phase 3 — Generators | DONE | Make MCP generator use request/success/parameter metadata
 - [x] `G003` | Phase 3 — Generators | DONE | Generate safe MCP multipart upload tools
 - [x] `G004` | Phase 3 — Generators | DONE | Make Cobra command generation transport- and confirmation-aware
-- [ ] `G005` | Phase 3 — Generators | NOT STARTED | Generate Go operation methods and runner functions from one descriptor
+- [x] `G005` | Phase 3 — Generators | DONE | Generate Go operation methods and runner functions from one descriptor
 - [ ] `G006` | Phase 3 — Generators | NOT STARTED | Delete stale outputs deterministically and make parity count dynamic
 - [ ] `GO001` | Phase 4 — Go transport | NOT STARTED | Propagate body read errors and preserve generic JSON numbers
 - [ ] `GO002` | Phase 4 — Go transport | NOT STARTED | Add explicit JSON/multipart body forms and streaming upload
@@ -184,3 +184,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Destructive confirmation derives only from explicit confirmation metadata, so the bodyless archive and void delete goldens require `--confirm` while non-destructive writes do not.
 - Whitespace is collapsed in generated one-line help while existing operation command names and `RunX` calls remain stable.
 - CLI v2 suite: 6 exact-text/heuristic tests passed; `git diff --check` exited 0.
+
+### G005
+
+- Cobra flags, Go client methods/options, and `RunX` functions now derive from one operation descriptor covering parameters, request kind, response kind, and idempotency support.
+- Exact Go goldens cover typed queries, JSON, bodyless void, streaming multipart, and destructive void operations; both generated files are already `gofmt`-stable.
+- Reusable flag, JSON, confirmation, upload-stream, and receipt helpers moved out of the hand-written operation runners, which remain in place until O004 replaces them atomically.
+- `--file -` requires a filename and never closes stdin; regular files default to their basename and are closed. No generated runner buffers upload bytes.
+- Helper tests and the full CLI Go suite exited 0; CLI codegen suite passed 8 tests; `git diff --check` exited 0.

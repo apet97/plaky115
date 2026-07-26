@@ -1,11 +1,8 @@
-import { pathParams } from "./codegen-common.mjs";
+import { spawnSync } from "node:child_process";
 
 export function buildCobraCommand(op) {
-  const pathParameters = op.parameters.filter((parameter) => parameter.in === "path");
-  const queryParameters = uniqueParameters([
-    ...op.parameters.filter((parameter) => parameter.in === "query"),
-    ...(op.pagination?.inputs ?? []),
-  ]);
+  const descriptor = describeOperation(op);
+  const { pathParameters, queryParameters } = descriptor;
   const useSlug = goSlug(op.operationId);
   const fnName = `new${cap(op.operationId)}Cmd`;
   const lines = [];
@@ -36,16 +33,16 @@ export function buildCobraCommand(op) {
   for (const parameter of queryParameters) {
     lines.push(cobraFlagLine(parameter));
   }
-  if (op.request.kind === "json") {
+  if (descriptor.requestKind === "json") {
     const required = op.request.required ? " (required)" : "";
     lines.push(`\tcmd.Flags().String("body", "", "Request body JSON, @file.json, or @- for stdin${required}")`);
-  } else if (op.request.kind === "multipart") {
+  } else if (descriptor.requestKind === "multipart") {
     validateMultipartRequest(op);
     lines.push(`\tcmd.Flags().String("file", "", "File to upload; use - for stdin (required)")`);
     lines.push(`\tcmd.Flags().String("filename", "", "Multipart filename; required with --file - and otherwise defaults to the path basename")`);
     lines.push(`\tcmd.Flags().String("content-type", "", "Optional file media type, such as application/pdf")`);
   }
-  if (op.mutation && op.request.kind !== "none") {
+  if (descriptor.acceptsIdempotencyKey) {
     lines.push(`\tcmd.Flags().String("idempotency-key", "", "Idempotency-Key header for safe write retries")`);
   }
   if (op.confirmation === "destructive") {
@@ -54,7 +51,7 @@ export function buildCobraCommand(op) {
   lines.push(`\treturn cmd`);
   lines.push(`}`);
   lines.push(``);
-  return lines.join("\n");
+  return formatGo(lines.join("\n"));
 }
 
 export function buildRawRoot(ops) {
@@ -75,7 +72,7 @@ export function buildRawRoot(ops) {
   lines.push(`\treturn root`);
   lines.push(`}`);
   lines.push(``);
-  return lines.join("\n");
+  return formatGo(lines.join("\n"));
 }
 
 export function buildGoOperations(ops) {
@@ -97,60 +94,131 @@ export function buildGoOperations(ops) {
   lines.push(`var _ = strings.NewReader`);
   lines.push(``);
   for (const op of ops) {
-    const params = pathParams(op.path);
-    const hasBody = op.method !== "GET" && op.method !== "DELETE";
-    const queryParams = op.query ?? [];
-    const hasQuery = Boolean(op.pagination) || queryParams.length > 0;
+    const descriptor = describeOperation(op);
+    const { pathParameters, queryParameters } = descriptor;
+    const hasQuery = queryParameters.length > 0;
     const fn = cap(op.operationId);
     lines.push(`// ${fn} executes the ${op.operationId} operation: ${op.method} ${op.path}`);
-    lines.push(`func (c *Client) ${fn}(ctx context.Context, opts ${fn}Options) (any, error) {`);
-    lines.push(`\tpath := ${formatGoPath(op.path, params)}`);
+    const returnType = descriptor.isVoid ? "error" : "(any, error)";
+    lines.push(`func (c *Client) ${fn}(ctx context.Context, opts ${fn}Options) ${returnType} {`);
+    lines.push(`\tpath := ${formatGoPath(op.path, pathParameters.map(({ name }) => name))}`);
     if (hasQuery) {
       lines.push(`\tquery := url.Values{}`);
-      if (op.pagination) {
-        lines.push(`\tif opts.Page > 0 {`);
-        lines.push(`\t\tquery.Set("page", fmt.Sprintf("%d", opts.Page))`);
-        lines.push(`\t}`);
-        lines.push(`\tif opts.PageSize > 0 {`);
-        lines.push(`\t\tquery.Set("pageSize", fmt.Sprintf("%d", opts.PageSize))`);
-        lines.push(`\t}`);
-      }
-      for (const q of queryParams) {
-        if (repeatedArray(q)) {
-          lines.push(`\tfor _, v := range opts.${cap(q.name)} {`);
-          lines.push(`\t\tquery.Add(${JSON.stringify(q.name)}, v)`);
-          lines.push(`\t}`);
-        } else {
-          lines.push(`\tif opts.${cap(q.name)} != "" {`);
-          lines.push(`\t\tquery.Set(${JSON.stringify(q.name)}, opts.${cap(q.name)})`);
-          lines.push(`\t}`);
-        }
-      }
+      for (const parameter of queryParameters) lines.push(...goQueryLines(parameter));
     }
     lines.push(`\treq := Request{Method: ${JSON.stringify(op.method)}, Path: path}`);
     if (hasQuery) lines.push(`\treq.Query = query`);
-    if (hasBody) lines.push(`\treq.Body = opts.Body`);
-    if (op.method !== "GET" && op.method !== "DELETE") lines.push(`\treq.Idempotency = opts.IdempotencyKey`);
-    lines.push(`\tvar out any`);
-    lines.push(`\tif err := c.Do(ctx, req, &out); err != nil {`);
-    lines.push(`\t\treturn nil, err`);
-    lines.push(`\t}`);
-    lines.push(`\treturn out, nil`);
+    if (descriptor.requestKind === "json") lines.push(`\treq.Body = opts.JSONBody`);
+    if (descriptor.requestKind === "multipart") lines.push(`\treq.Body = opts.Multipart`);
+    if (descriptor.acceptsIdempotencyKey) lines.push(`\treq.Idempotency = opts.IdempotencyKey`);
+    if (descriptor.isVoid) {
+      lines.push(`\treturn c.Do(ctx, req, nil)`);
+    } else {
+      lines.push(`\tvar out any`);
+      lines.push(`\tif err := c.Do(ctx, req, &out); err != nil {`);
+      lines.push(`\t\treturn nil, err`);
+      lines.push(`\t}`);
+      lines.push(`\treturn out, nil`);
+    }
     lines.push(`}`);
     lines.push(``);
     lines.push(`type ${fn}Options struct {`);
-    for (const p of params) lines.push(`\t${cap(p)} string`);
-    if (op.pagination) {
-      lines.push(`\tPage int`);
-      lines.push(`\tPageSize int`);
-    }
-    for (const q of queryParams) lines.push(`\t${cap(q.name)} ${repeatedArray(q) ? "[]string" : "string"}`);
-    if (hasBody) lines.push(`\tBody any`);
-    if (op.method !== "GET" && op.method !== "DELETE") lines.push(`\tIdempotencyKey string`);
+    for (const parameter of pathParameters) lines.push(`\t${cap(parameter.name)} string`);
+    for (const parameter of queryParameters) lines.push(`\t${cap(parameter.name)} ${goOptionType(parameter)}`);
+    if (descriptor.requestKind === "json") lines.push(`\tJSONBody any`);
+    if (descriptor.requestKind === "multipart") lines.push(`\tMultipart *MultipartFileBody`);
+    if (descriptor.acceptsIdempotencyKey) lines.push(`\tIdempotencyKey string`);
     lines.push(`}`);
     lines.push(``);
   }
-  return lines.join("\n");
+  return formatGo(lines.join("\n"));
+}
+
+export function buildGoRunners(ops) {
+  const lines = [];
+  lines.push(`// AUTO-GENERATED. Source: openapi/plaky115-operation-metadata.json`);
+  lines.push(`// Regenerate: npm run generate:cli`);
+  lines.push(`package plakydx`);
+  lines.push(``);
+  lines.push(`import (`);
+  lines.push(`\t"context"`);
+  lines.push(``);
+  lines.push(`\t"github.com/apet97/plaky115-cli/internal/plakysdk"`);
+  lines.push(`\t"github.com/spf13/cobra"`);
+  lines.push(`)`);
+  lines.push(``);
+  for (const op of ops) lines.push(...goRunnerLines(op));
+  return formatGo(lines.join("\n"));
+}
+
+function goRunnerLines(op) {
+  const descriptor = describeOperation(op);
+  const fn = cap(op.operationId);
+  const lines = [];
+  lines.push(`// Run${fn} reads raw flags and executes ${op.operationId}.`);
+  lines.push(`func Run${fn}(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {`);
+  if (op.confirmation === "destructive") {
+    lines.push(`\tif err := confirmationFlag(cmd); err != nil {`);
+    lines.push(`\t\treturn err`);
+    lines.push(`\t}`);
+  }
+  for (const parameter of descriptor.pathParameters) {
+    lines.push(...runnerFlagRead(parameter, true));
+  }
+  for (const parameter of descriptor.queryParameters) {
+    lines.push(...runnerFlagRead(parameter, false));
+  }
+  if (descriptor.requestKind === "json") {
+    lines.push(`\tjsonBody, err := jsonBodyFlag(cmd, ${op.request.required === true})`);
+    lines.push(`\tif err != nil {`);
+    lines.push(`\t\treturn err`);
+    lines.push(`\t}`);
+  }
+  if (descriptor.requestKind === "multipart") {
+    lines.push(`\tupload, err := openUploadFlag(cmd)`);
+    lines.push(`\tif err != nil {`);
+    lines.push(`\t\treturn err`);
+    lines.push(`\t}`);
+    lines.push(`\tdefer upload.Close()`);
+  }
+  if (descriptor.acceptsIdempotencyKey) {
+    lines.push(`\tidempotencyKey, err := optionalStringFlag(cmd, "idempotency-key")`);
+    lines.push(`\tif err != nil {`);
+    lines.push(`\t\treturn err`);
+    lines.push(`\t}`);
+  }
+  lines.push(`\topts := plakysdk.${fn}Options{`);
+  for (const parameter of descriptor.pathParameters) {
+    lines.push(`\t\t${cap(parameter.name)}: ${localName(parameter.name)},`);
+  }
+  for (const parameter of descriptor.queryParameters) {
+    lines.push(`\t\t${cap(parameter.name)}: ${localName(parameter.name)},`);
+  }
+  if (descriptor.requestKind === "json") lines.push(`\t\tJSONBody: jsonBody,`);
+  if (descriptor.requestKind === "multipart") {
+    lines.push(`\t\tMultipart: &plakysdk.MultipartFileBody{`);
+    lines.push(`\t\t\tReader: upload.Reader,`);
+    lines.push(`\t\t\tFileName: upload.FileName,`);
+    lines.push(`\t\t\tContentType: upload.ContentType,`);
+    lines.push(`\t\t},`);
+  }
+  if (descriptor.acceptsIdempotencyKey) lines.push(`\t\tIdempotencyKey: idempotencyKey,`);
+  lines.push(`\t}`);
+  if (descriptor.isVoid) {
+    lines.push(`\tif err := c.${fn}(ctx, opts); err != nil {`);
+    lines.push(`\t\treturn err`);
+    lines.push(`\t}`);
+    lines.push(`\treturn emitVoid(cmd)`);
+  } else {
+    lines.push(`\tout, err := c.${fn}(ctx, opts)`);
+    lines.push(`\tif err != nil {`);
+    lines.push(`\t\treturn err`);
+    lines.push(`\t}`);
+    lines.push(`\treturn EmitJSON(cmd, out)`);
+  }
+  lines.push(`}`);
+  lines.push(``);
+  return lines;
 }
 
 function formatGoPath(path, params) {
@@ -160,6 +228,86 @@ function formatGoPath(path, params) {
     expr = `strings.ReplaceAll(${expr}, "{${p}}", url.PathEscape(opts.${cap(p)}))`;
   }
   return expr;
+}
+
+function describeOperation(op) {
+  const parameters = op.parameters ?? [];
+  return {
+    pathParameters: parameters.filter((parameter) => parameter.in === "path"),
+    queryParameters: uniqueParameters([
+      ...parameters.filter((parameter) => parameter.in === "query"),
+      ...(op.pagination?.inputs ?? []),
+    ]),
+    requestKind: op.request.kind,
+    isVoid: op.success.kind === "void",
+    acceptsIdempotencyKey: op.mutation === true && op.request.kind !== "none",
+  };
+}
+
+function goQueryLines(parameter) {
+  const field = `opts.${cap(parameter.name)}`;
+  const name = JSON.stringify(parameter.name);
+  switch (parameter.schema.type) {
+    case "string":
+      return [`\tif ${field} != "" {`, `\t\tquery.Set(${name}, ${field})`, `\t}`];
+    case "integer":
+      return [`\tif ${field} != 0 {`, `\t\tquery.Set(${name}, fmt.Sprintf("%d", ${field}))`, `\t}`];
+    case "number":
+      return [`\tif ${field} != nil {`, `\t\tquery.Set(${name}, fmt.Sprintf("%g", *${field}))`, `\t}`];
+    case "boolean":
+      return [`\tif ${field} != nil {`, `\t\tquery.Set(${name}, fmt.Sprintf("%t", *${field}))`, `\t}`];
+    case "array":
+      if (parameter.schema.items?.type !== "string") {
+        throw new Error(`${parameter.name}: only string-array Go query options are supported`);
+      }
+      if (parameter.explode === false) {
+        return [`\tif len(${field}) > 0 {`, `\t\tquery.Set(${name}, strings.Join(${field}, ","))`, `\t}`];
+      }
+      return [`\tfor _, value := range ${field} {`, `\t\tquery.Add(${name}, value)`, `\t}`];
+    default: throw new Error(`${parameter.name}: unsupported Go query type ${parameter.schema.type}`);
+  }
+}
+
+function goOptionType(parameter) {
+  switch (parameter.schema.type) {
+    case "string": return "string";
+    case "integer": return parameter.schema.format === "int64" ? "int64" : "int";
+    case "number": return "*float64";
+    case "boolean": return "*bool";
+    case "array":
+      if (parameter.schema.items?.type !== "string") {
+        throw new Error(`${parameter.name}: only string-array Go query options are supported`);
+      }
+      return "[]string";
+    default: throw new Error(`${parameter.name}: unsupported Go option type ${parameter.schema.type}`);
+  }
+}
+
+function runnerFlagRead(parameter, required) {
+  const variable = localName(parameter.name);
+  const flag = JSON.stringify(flagFor(parameter.name));
+  let helper;
+  if (required) helper = "requiredStringFlag";
+  else {
+    switch (parameter.schema.type) {
+      case "string": helper = "optionalStringFlag"; break;
+      case "integer": helper = parameter.schema.format === "int64" ? "optionalInt64Flag" : "optionalIntFlag"; break;
+      case "number": helper = "optionalFloat64Flag"; break;
+      case "boolean": helper = "optionalBoolFlag"; break;
+      case "array": helper = "optionalStringArrayFlag"; break;
+      default: throw new Error(`${parameter.name}: unsupported runner flag type ${parameter.schema.type}`);
+    }
+  }
+  return [
+    `\t${variable}, err := ${helper}(cmd, ${flag})`,
+    `\tif err != nil {`,
+    `\t\treturn err`,
+    `\t}`,
+  ];
+}
+
+function localName(name) {
+  return name[0].toLowerCase() + name.slice(1);
 }
 
 // A query param serialized as repeated keys (explode=true array, e.g. `emails`).
@@ -217,4 +365,10 @@ function validateMultipartRequest(op) {
     && parts[0].type === "string"
     && parts[0].format === "binary";
   if (!valid) throw new Error(`${op.operationId}: expected a single required binary multipart part named file`);
+}
+
+function formatGo(source) {
+  const result = spawnSync("gofmt", { input: source, encoding: "utf8" });
+  if (result.status !== 0) throw new Error(`gofmt failed: ${result.stderr}`);
+  return result.stdout;
 }

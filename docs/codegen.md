@@ -28,6 +28,7 @@ openapi/plaky115-operation-metadata.json
     +-- generate-mcp.mjs        -> mcp-server/src/tools/raw/*.ts + index.ts
     +-- generate-cli.mjs        -> cli/internal/cli/raw/*.go + raw.go
     |                            -> cli/internal/plakysdk/operations.go
+    |                            -> cli/internal/plakydx/runners_generated.go
     +-- generate-docs-index.mjs -> mcp-server/src/runtime/docs-index.ts
 ```
 
@@ -35,7 +36,11 @@ openapi/plaky115-operation-metadata.json
 
 - `scripts/generate-types.mjs` - runs `openapi-typescript` against the dx overlay and prepends an `AUTO-GENERATED` header.
 - `scripts/generate-mcp.mjs` - one MCP raw tool definition per operation, scope/annotation-aware. `index.ts` exports `rawTools[]`.
-- `scripts/generate-cli.mjs` - one cobra command per operation, one Go method on `*Client` per operation, plus `raw.go` registering them all.
+- `scripts/generate-cli.mjs` - one Cobra command, Go client method/options type,
+  and flag-to-client runner per operation, plus `raw.go` registering them all.
+  All three outputs use the same validated transport descriptor. Hand-written
+  helpers parse JSON, open streaming multipart input, enforce confirmation, and
+  emit result receipts.
 - `scripts/generate-docs-index.mjs` - corpus of operation, workflow, and guide entries consumed by `plaky_search_docs`.
 - `scripts/apply-overlay.rb` - applies the DX overlay using Ruby standard library YAML support.
 - `scripts/lint-openapi.rb` - validates local OpenAPI files without external CLI dependencies.
@@ -96,4 +101,4 @@ The hand-written layer is in separate files:
 - `mcp-server/src/server/`
 - `mcp-server/src/tools/curated/`
 - `cli/internal/cli/dx.go`
-- `cli/internal/plakydx/`
+- `cli/internal/plakydx/` except `runners_generated.go`

@@ -5,99 +5,10 @@ package plakydx
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"io"
-	"os"
-	"strings"
 
 	"github.com/apet97/plaky115-cli/internal/plakysdk"
 	"github.com/spf13/cobra"
 )
-
-func emit(cmd *cobra.Command, value any) error {
-	enc := json.NewEncoder(cmd.OutOrStdout())
-	enc.SetIndent("", "  ")
-	return enc.Encode(value)
-}
-
-func mustString(cmd *cobra.Command, name string) (string, error) {
-	v, err := cmd.Flags().GetString(name)
-	if err != nil {
-		return "", err
-	}
-	if v == "" {
-		return "", fmt.Errorf("--%s is required", name)
-	}
-	return v, nil
-}
-
-func pageOpts(cmd *cobra.Command) (page int, pageSize int) {
-	page, _ = cmd.Flags().GetInt("page")
-	pageSize, _ = cmd.Flags().GetInt("page-size")
-	return
-}
-
-func bodyRequired(cmd *cobra.Command) (any, error) {
-	raw, _ := cmd.Flags().GetString("body")
-	if raw == "" {
-		return nil, fmt.Errorf("--body is required")
-	}
-	return ParseBody(cmd, raw)
-}
-
-// ParseBody resolves a raw --body value into JSON: "@-" reads stdin, "@file"
-// reads a file, and anything else is parsed as inline JSON. This is the single
-// home for --body semantics shared by the generated raw runners and the curated
-// commands.
-func ParseBody(cmd *cobra.Command, raw string) (any, error) {
-	if raw == "@-" {
-		b, err := io.ReadAll(cmd.InOrStdin())
-		if err != nil {
-			return nil, fmt.Errorf("read --body @-: %w", err)
-		}
-		raw = string(b)
-	} else if file, ok := strings.CutPrefix(raw, "@"); ok {
-		b, err := os.ReadFile(file)
-		if err != nil {
-			return nil, fmt.Errorf("read --body file: %w", err)
-		}
-		raw = string(b)
-	}
-	var v any
-	if err := json.Unmarshal([]byte(raw), &v); err != nil {
-		return nil, fmt.Errorf("invalid --body JSON: %w", err)
-	}
-	return v, nil
-}
-
-func idempotencyKey(cmd *cobra.Command) string {
-	key, _ := cmd.Flags().GetString("idempotency-key")
-	return key
-}
-
-func expandFlag(cmd *cobra.Command) string {
-	v, _ := cmd.Flags().GetString("expand")
-	return v
-}
-
-func optString(cmd *cobra.Command, name string) string {
-	v, _ := cmd.Flags().GetString(name)
-	return v
-}
-
-func optStringArray(cmd *cobra.Command, name string) []string {
-	v, _ := cmd.Flags().GetStringArray(name)
-	return v
-}
-
-func confirmDestructive(cmd *cobra.Command) error {
-	confirmed, _ := cmd.Flags().GetBool("confirm")
-	if !confirmed {
-		return fmt.Errorf("--confirm is required for destructive raw DELETE operations")
-	}
-	return nil
-}
 
 // ---- generated mapping (one per operation) ----
 

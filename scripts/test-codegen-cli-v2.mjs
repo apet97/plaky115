@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 import { test } from "node:test";
 
-import { buildCobraCommand } from "./lib/codegen-cli.mjs";
+import { buildCobraCommand, buildGoOperations, buildGoRunners } from "./lib/codegen-cli.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 
@@ -87,6 +88,29 @@ test("CLI transport and confirmation flags do not use HTTP method heuristics", (
   assert.doesNotMatch(cobraSource, /op\.method\s*[!=]==?\s*["'](?:GET|DELETE)["']/);
   assert.doesNotMatch(cobraSource, /pathParams\(op\.path\)/);
 });
+
+test("Go operation methods are an exact golden and valid gofmt input", () => {
+  const generated = buildGoOperations(cases.map(([, metadata]) => metadata));
+  const expected = readFileSync(join(root, "test/fixtures/codegen/cli-operations-v2.go"), "utf8");
+  assert.equal(generated, expected);
+  assertGofmt(generated);
+});
+
+test("Go runners are an exact golden and valid gofmt input", () => {
+  const generated = buildGoRunners(cases.map(([, metadata]) => metadata));
+  const expected = readFileSync(join(root, "test/fixtures/codegen/cli-runners-v2.go"), "utf8");
+  assert.equal(generated, expected);
+  assertGofmt(generated);
+  assert.match(generated, /RunUploadWidgetFile/);
+  assert.match(generated, /defer upload\.Close\(\)/);
+  assert.doesNotMatch(generated, /io\.ReadAll/);
+});
+
+function assertGofmt(source) {
+  const result = spawnSync("gofmt", { input: source, encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, source, "generated Go must already be gofmt formatted");
+}
 
 function operation(overrides = {}) {
   const operationId = overrides.operationId ?? "getWidget";
