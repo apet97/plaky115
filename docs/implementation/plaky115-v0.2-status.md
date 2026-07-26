@@ -45,7 +45,7 @@
 - [x] `MCP004` | Phase 7 — MCP | DONE | Replace generic workflow records with exact read/mutation schemas
 - [x] `MCP005` | Phase 7 — MCP | DONE | Standardize structured errors and sensitive-output test handling
 - [x] `CLI001` | Phase 8 — CLI | DONE | Validate all generated raw request kinds and new operation behavior
-- [ ] `CLI002` | Phase 8 — CLI | NOT STARTED | Add minimal curated Item Group and Item file commands
+- [x] `CLI002` | Phase 8 — CLI | DONE | Add minimal curated Item Group and Item file commands
 - [ ] `CLI003` | Phase 8 — CLI | NOT STARTED | Repair monorepo CLI release and installer targets
 - [ ] `SEC001` | Phase 9 — Security hygiene | NOT STARTED | Unify API-key redaction, test fixtures, and repository secret scanning
 - [ ] `W001` | Phase 10 — Workflow correctness | NOT STARTED | Remove avoidable workspace-map N+1 requests and keep a fallback
@@ -352,3 +352,12 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - All JSON operations reject both missing and invalid `--body` before transport. All five destructive delete/archive operations reject missing `--confirm`, then send no body or content type and print one void receipt when confirmed.
 - Dedicated probes cover multipart file/stdin bytes, missing file, missing stdin filename, unreadable file, filename/content-type overrides, bare-array Item file listing, and a download-link response containing exactly one JSON document and one URL occurrence. Raw help is deterministic and lists every metadata operation.
 - The focused raw/upload/archive command passed, the full Go suite passed, `go vet ./...` exited 0, and `git diff --check` exited 0. No generated or curated production file changed.
+
+### CLI002
+
+- Added exactly six top-level curated commands: `item-groups-list`, `item-groups-create`, `item-groups-archive`, `item-files-list`, `item-files-upload`, and `item-files-download-link`. All accept exact IDs and call generated `plakysdk` methods rather than duplicating HTTP logic.
+- Group listing drains all pages. Group creation builds a minimal title/color/ranking body, supports dry-run, and sends an idempotency key only when explicitly provided. Group archive dry-run is non-mutating; a live archive fails before transport unless `--confirm` is present.
+- File listing preserves the API's bare array. Upload streams a file or stdin with raw-compatible filename/content-type behavior and no automatic retry. Download-link performs one metadata request, prints the signed URL and expiry once, and never follows it.
+- CLI README and shell recipes document the new safe read/dry-run flows, confirmation boundary, streaming inputs, and signed-link handling.
+- The task packet omitted `cli/internal/cli/root.go`, but the six top-level commands cannot be reachable without root registration. Scope expanded only to those six `AddCommand` calls; no generated raw/client file changed.
+- All focused Item Group/Item file tests and the full Go suite passed; `bash -n examples/cli/recipes.sh` and `git diff --check` exited 0.

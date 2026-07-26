@@ -34,6 +34,24 @@ if [ -n "${PLAKY115_SPACE_ID:-}" ] && [ -n "${PLAKY115_BOARD_ID:-}" ]; then
   plaky115 "${SERVER_ARGS[@]}" fields-list \
     --space-id "$PLAKY115_SPACE_ID" --board-id "$PLAKY115_BOARD_ID"
 
+  echo "## item-groups-list"
+  plaky115 "${SERVER_ARGS[@]}" item-groups-list \
+    --space-id "$PLAKY115_SPACE_ID" --board-id "$PLAKY115_BOARD_ID"
+
+  echo "## item-groups-create (dry-run; writes nothing)"
+  plaky115 "${SERVER_ARGS[@]}" item-groups-create \
+    --space-id "$PLAKY115_SPACE_ID" --board-id "$PLAKY115_BOARD_ID" \
+    --title "Recipe group" --dry-run
+
+  echo "## item-groups-archive (dry-run; writes nothing)"
+  plaky115 "${SERVER_ARGS[@]}" item-groups-archive \
+    --space-id "$PLAKY115_SPACE_ID" --board-id "$PLAKY115_BOARD_ID" \
+    --item-group-id 1 --dry-run
+
+  echo "## item-files-list"
+  plaky115 "${SERVER_ARGS[@]}" item-files-list \
+    --space-id "$PLAKY115_SPACE_ID" --board-id "$PLAKY115_BOARD_ID" --item-id 1
+
   echo "## items-export as JSONL"
   plaky115 "${SERVER_ARGS[@]}" items-export \
     --space-id "$PLAKY115_SPACE_ID" --board-id "$PLAKY115_BOARD_ID" --format jsonl

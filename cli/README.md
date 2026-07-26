@@ -31,10 +31,27 @@ plaky115 comments-add --space-id 123 --board-id 456 --item-id 789 --text "Note" 
 plaky115 comments-thread --space-id 123 --board-id 456 --item-id 789
 plaky115 reactions-replace --space-id 123 --board-id 456 --item-id 789 --comment-id 321 --body '{"reactions":[{"value":"1f44d"}]}' --dry-run
 plaky115 items-bulk-update --file updates.json --dry-run
+
+# Item Groups: exact IDs only; list drains every page.
+plaky115 item-groups-list --space-id 123 --board-id 456
+plaky115 item-groups-create --space-id 123 --board-id 456 --title "Backlog" --color '#5b8def' --ranking m --dry-run
+plaky115 item-groups-archive --space-id 123 --board-id 456 --item-group-id 321 --dry-run
+plaky115 item-groups-archive --space-id 123 --board-id 456 --item-group-id 321 --confirm
+
+# Item files: upload streams a path or stdin; download-link returns metadata only.
+plaky115 item-files-list --space-id 123 --board-id 456 --item-id 789
+plaky115 item-files-upload --space-id 123 --board-id 456 --item-id 789 --file ./report.pdf --content-type application/pdf
+printf 'contents' | plaky115 item-files-upload --space-id 123 --board-id 456 --item-id 789 --file - --filename note.txt --content-type text/plain
+plaky115 item-files-download-link --space-id 123 --board-id 456 --item-id 789 --item-file-id 654
 ```
 
 `workspace-map`, `find`, and `items-export` drain all pages instead of returning
-only the first API page.
+only the first API page. `item-groups-list` also drains all pages. A real item
+group archive requires `--confirm`; `--dry-run` prints its plan without writing.
+File uploads are single-attempt and accept an optional explicit
+`--idempotency-key`. The download-link command prints the API's short-lived URL
+and expiry metadata but never follows or downloads the remote bytes; handle the
+URL as a bearer capability and do not persist it in logs.
 
 ## Raw Commands
 

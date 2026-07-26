@@ -7,7 +7,9 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -111,6 +113,248 @@ func newItemsCreateSimpleCommand(getClient clientFactory) *cobra.Command {
 	cmd.Flags().Bool("dry-run", false, "Print the plan without calling the API")
 	markRequired(cmd, "space-id", "board-id", "title")
 	return cmd
+}
+
+func newItemGroupsListCommand(getClient clientFactory) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "item-groups-list",
+		Short: "List every item group on a board.",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			c, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
+			spaceID, _ := cmd.Flags().GetString("space-id")
+			boardID, _ := cmd.Flags().GetString("board-id")
+			groups, err := drainPaged(200, func(page, pageSize int) (any, error) {
+				return c.ListItemGroups(cmd.Context(), plakysdk.ListItemGroupsOptions{
+					SpaceId: spaceID, BoardId: boardID, Page: page, PageSize: pageSize,
+				})
+			})
+			if err != nil {
+				return err
+			}
+			return plakydx.EmitJSON(cmd, groups)
+		},
+	}
+	cmd.Flags().String("space-id", "", "Space ID (required)")
+	cmd.Flags().String("board-id", "", "Board ID (required)")
+	markRequired(cmd, "space-id", "board-id")
+	return cmd
+}
+
+func newItemGroupsCreateCommand(getClient clientFactory) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "item-groups-create",
+		Short: "Create an item group from friendly flags.",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			c, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
+			spaceID, _ := cmd.Flags().GetString("space-id")
+			boardID, _ := cmd.Flags().GetString("board-id")
+			title, _ := cmd.Flags().GetString("title")
+			color, _ := cmd.Flags().GetString("color")
+			ranking, _ := cmd.Flags().GetString("ranking")
+			idempotencyKey, _ := cmd.Flags().GetString("idempotency-key")
+			dryRun, _ := cmd.Flags().GetBool("dry-run")
+			body := map[string]any{"title": title}
+			if color != "" {
+				body["color"] = color
+			}
+			if ranking != "" {
+				body["ranking"] = ranking
+			}
+			payload := map[string]any{"spaceId": spaceID, "boardId": boardID, "body": body}
+			if dryRun {
+				return plakydx.EmitJSON(cmd, map[string]any{"dryRun": true, "operation": "createItemGroup", "payload": payload})
+			}
+			out, err := c.CreateItemGroup(cmd.Context(), plakysdk.CreateItemGroupOptions{
+				SpaceId: spaceID, BoardId: boardID, JSONBody: body, IdempotencyKey: idempotencyKey,
+			})
+			if err != nil {
+				return err
+			}
+			return plakydx.EmitJSON(cmd, out)
+		},
+	}
+	cmd.Flags().String("space-id", "", "Space ID (required)")
+	cmd.Flags().String("board-id", "", "Board ID (required)")
+	cmd.Flags().String("title", "", "Item group title (required)")
+	cmd.Flags().String("color", "", "Optional item group color")
+	cmd.Flags().String("ranking", "", "Optional item group ranking")
+	cmd.Flags().String("idempotency-key", "", "Optional Idempotency-Key header")
+	cmd.Flags().Bool("dry-run", false, "Print the plan without calling the API")
+	markRequired(cmd, "space-id", "board-id", "title")
+	return cmd
+}
+
+func newItemGroupsArchiveCommand(getClient clientFactory) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "item-groups-archive",
+		Short: "Archive an item group by exact ID.",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			c, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
+			spaceID, _ := cmd.Flags().GetString("space-id")
+			boardID, _ := cmd.Flags().GetString("board-id")
+			itemGroupID, _ := cmd.Flags().GetString("item-group-id")
+			dryRun, _ := cmd.Flags().GetBool("dry-run")
+			payload := map[string]any{"spaceId": spaceID, "boardId": boardID, "itemGroupId": itemGroupID}
+			if dryRun {
+				return plakydx.EmitJSON(cmd, map[string]any{"dryRun": true, "operation": "archiveItemGroup", "payload": payload})
+			}
+			confirmed, _ := cmd.Flags().GetBool("confirm")
+			if !confirmed {
+				return fmt.Errorf("--confirm is required to archive an item group")
+			}
+			if err := c.ArchiveItemGroup(cmd.Context(), plakysdk.ArchiveItemGroupOptions{
+				SpaceId: spaceID, BoardId: boardID, ItemGroupId: itemGroupID,
+			}); err != nil {
+				return err
+			}
+			return plakydx.EmitJSON(cmd, map[string]any{"ok": true})
+		},
+	}
+	cmd.Flags().String("space-id", "", "Space ID (required)")
+	cmd.Flags().String("board-id", "", "Board ID (required)")
+	cmd.Flags().String("item-group-id", "", "Item group ID (required)")
+	cmd.Flags().Bool("dry-run", false, "Print the plan without calling the API")
+	cmd.Flags().Bool("confirm", false, "Confirm the archive mutation")
+	markRequired(cmd, "space-id", "board-id", "item-group-id")
+	return cmd
+}
+
+func newItemFilesListCommand(getClient clientFactory) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "item-files-list",
+		Short: "List files attached to an item.",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			c, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
+			spaceID, _ := cmd.Flags().GetString("space-id")
+			boardID, _ := cmd.Flags().GetString("board-id")
+			itemID, _ := cmd.Flags().GetString("item-id")
+			out, err := c.ListItemFiles(cmd.Context(), plakysdk.ListItemFilesOptions{SpaceId: spaceID, BoardId: boardID, ItemId: itemID})
+			if err != nil {
+				return err
+			}
+			return plakydx.EmitJSON(cmd, out)
+		},
+	}
+	addItemFileIDFlags(cmd, false)
+	return cmd
+}
+
+func newItemFilesUploadCommand(getClient clientFactory) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "item-files-upload",
+		Short: "Upload one file to an item.",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			c, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
+			spaceID, _ := cmd.Flags().GetString("space-id")
+			boardID, _ := cmd.Flags().GetString("board-id")
+			itemID, _ := cmd.Flags().GetString("item-id")
+			idempotencyKey, _ := cmd.Flags().GetString("idempotency-key")
+			upload, err := curatedUpload(cmd)
+			if err != nil {
+				return err
+			}
+			defer upload.close()
+			out, err := c.UploadItemFile(cmd.Context(), plakysdk.UploadItemFileOptions{
+				SpaceId: spaceID, BoardId: boardID, ItemId: itemID,
+				Multipart:      &plakysdk.MultipartFileBody{Reader: upload.reader, FileName: upload.fileName, ContentType: upload.contentType},
+				IdempotencyKey: idempotencyKey,
+			})
+			if err != nil {
+				return err
+			}
+			return plakydx.EmitJSON(cmd, out)
+		},
+	}
+	addItemFileIDFlags(cmd, false)
+	cmd.Flags().String("file", "", "File to upload; use - for stdin (required)")
+	cmd.Flags().String("filename", "", "Filename; required with --file - and otherwise defaults to the path basename")
+	cmd.Flags().String("content-type", "", "Optional file media type")
+	cmd.Flags().String("idempotency-key", "", "Optional Idempotency-Key header")
+	markRequired(cmd, "file")
+	return cmd
+}
+
+func newItemFilesDownloadLinkCommand(getClient clientFactory) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "item-files-download-link",
+		Short: "Return signed download-link metadata without downloading bytes.",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			c, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
+			spaceID, _ := cmd.Flags().GetString("space-id")
+			boardID, _ := cmd.Flags().GetString("board-id")
+			itemID, _ := cmd.Flags().GetString("item-id")
+			itemFileID, _ := cmd.Flags().GetString("item-file-id")
+			out, err := c.GetItemFileDownload(cmd.Context(), plakysdk.GetItemFileDownloadOptions{
+				SpaceId: spaceID, BoardId: boardID, ItemId: itemID, ItemFileId: itemFileID,
+			})
+			if err != nil {
+				return err
+			}
+			return plakydx.EmitJSON(cmd, out)
+		},
+	}
+	addItemFileIDFlags(cmd, true)
+	return cmd
+}
+
+func addItemFileIDFlags(cmd *cobra.Command, includeFileID bool) {
+	cmd.Flags().String("space-id", "", "Space ID (required)")
+	cmd.Flags().String("board-id", "", "Board ID (required)")
+	cmd.Flags().String("item-id", "", "Item ID (required)")
+	required := []string{"space-id", "board-id", "item-id"}
+	if includeFileID {
+		cmd.Flags().String("item-file-id", "", "Item file ID (required)")
+		required = append(required, "item-file-id")
+	}
+	markRequired(cmd, required...)
+}
+
+type curatedUploadInput struct {
+	reader      io.Reader
+	fileName    string
+	contentType string
+	close       func() error
+}
+
+func curatedUpload(cmd *cobra.Command) (*curatedUploadInput, error) {
+	source, _ := cmd.Flags().GetString("file")
+	fileName, _ := cmd.Flags().GetString("filename")
+	contentType, _ := cmd.Flags().GetString("content-type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	if source == "-" {
+		if fileName == "" {
+			return nil, fmt.Errorf("--filename is required with --file -")
+		}
+		return &curatedUploadInput{reader: cmd.InOrStdin(), fileName: fileName, contentType: contentType, close: func() error { return nil }}, nil
+	}
+	file, err := os.Open(source)
+	if err != nil {
+		return nil, fmt.Errorf("open --file: %w", err)
+	}
+	if fileName == "" {
+		fileName = filepath.Base(source)
+	}
+	return &curatedUploadInput{reader: file, fileName: fileName, contentType: contentType, close: file.Close}, nil
 }
 
 func newCommentsAddCommand(getClient clientFactory) *cobra.Command {
