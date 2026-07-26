@@ -1,8 +1,17 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import { buildServer } from "../esm/server/index.js";
-import { selectTools } from "../esm/server/modes.js";
-import { filterByScopes } from "../esm/server/scopes.js";
+import { parseMode, selectTools } from "../esm/server/modes.js";
+import { filterByScopes, parseScopes } from "../esm/server/scopes.js";
+
+const binPath = fileURLToPath(new URL("../bin/mcp-server.js", import.meta.url));
+
+function runBin(args, env = {}) {
+  const cleanEnv = { ...process.env, PLAKY115_API_KEY: "", PLAKY115_API_KEY_AUTH: "", ...env };
+  return spawnSync(process.execPath, [binPath, ...args], { encoding: "utf8", env: cleanEnv, timeout: 5_000 });
+}
 
 test("buildServer creates an MCP server with at least one tool", () => {
   const { server, tools } = buildServer({
@@ -189,16 +198,16 @@ test("raw write tool accepts a provided body and forwards it to the transport", 
   }
 });
 
-test("--mode generated returns 20 raw tools", () => {
-  assert.equal(selectTools("generated").length, 20);
+test("--mode generated returns 32 raw tools", () => {
+  assert.equal(selectTools("generated").length, 32);
 });
 
 test("--mode curated returns 5 curated tools", () => {
   assert.equal(selectTools("curated").length, 5);
 });
 
-test("--mode all returns 25 tools total", () => {
-  assert.equal(selectTools("all").length, 25);
+test("--mode all returns 37 tools total", () => {
+  assert.equal(selectTools("all").length, 37);
 });
 
 test("--scope read filters out write/destructive tools", () => {
@@ -220,4 +229,55 @@ test("read-only excludes plaky_execute_workflow (write scope)", () => {
 test("destructive scope includes deleteItem raw tool", () => {
   const tools = filterByScopes(selectTools("all"), new Set(["read", "write", "destructive"]));
   assert.ok(tools.some((t) => t.name === "plaky_delete_item"));
+});
+
+test("mode and scope parsers default to curated read-only", () => {
+  assert.equal(parseMode(undefined), "curated");
+  assert.deepEqual(parseScopes([]), ["read"]);
+});
+
+test("scope parsing dedupes repeated values while preserving order", () => {
+  assert.deepEqual(parseScopes(["write", "read", "write", "destructive", "read"]), ["write", "read", "destructive"]);
+});
+
+test("invalid mode and scope values fail closed", () => {
+  assert.throws(() => parseMode("typo"), /invalid mode/i);
+  assert.throws(() => parseScopes(["read", "typo"]), /invalid scope/i);
+});
+
+test("help succeeds without an API key and documents safe defaults", () => {
+  const result = runBin(["--help"]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /curated.*default/i);
+  assert.match(result.stdout, /Scopes default to read/i);
+});
+
+for (const [label, args] of [
+  ["invalid mode", ["--mode", "typo"]],
+  ["invalid scope", ["--scope", "typo"]],
+  ["unknown flag", ["--unknown"]],
+  ["positional argument", ["unexpected"]],
+]) {
+  test(`${label} exits 2 without starting transport`, () => {
+    const result = runBin(args);
+    assert.equal(result.status, 2, `${result.stdout}\n${result.stderr}`);
+    assert.match(result.stderr, /invalid|unknown|unexpected|usage/i);
+  });
+}
+
+test("missing key exits 1 after valid safe-default parsing", () => {
+  const result = runBin([]);
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /PLAKY115_API_KEY/);
+});
+
+test("explicit broad mode and scopes remain valid", () => {
+  assert.equal(parseMode("all"), "all");
+  const scopes = parseScopes(["read", "write", "destructive"]);
+  assert.deepEqual(scopes, ["read", "write", "destructive"]);
+  assert.equal(filterByScopes(selectTools("all"), new Set(scopes)).length, 37);
+
+  const result = runBin(["--mode", "all", "--scope", "read", "--scope", "write", "--scope", "destructive"]);
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /PLAKY115_API_KEY/);
 });

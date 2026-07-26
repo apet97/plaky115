@@ -40,7 +40,7 @@
 - [x] `S005` | Phase 6 — TypeScript SDK | DONE | Implement the typed Item files SDK resource
 - [x] `S006` | Phase 6 — TypeScript SDK | DONE | Lock SDK public surface, package exports, and consumer behavior
 - [x] `MCP001` | Phase 7 — MCP | DONE | Add dedicated compactors and response envelopes for new resource kinds
-- [ ] `MCP002` | Phase 7 — MCP | NOT STARTED | Make modes, scopes, and argument parsing fail closed
+- [x] `MCP002` | Phase 7 — MCP | DONE | Make modes, scopes, and argument parsing fail closed
 - [ ] `MCP003` | Phase 7 — MCP | NOT STARTED | Remove private MCP SDK access and pin the dependency
 - [ ] `MCP004` | Phase 7 — MCP | NOT STARTED | Replace generic workflow records with exact read/mutation schemas
 - [ ] `MCP005` | Phase 7 — MCP | NOT STARTED | Standardize structured errors and sensitive-output test handling
@@ -313,3 +313,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Bare arrays normalize to `{data,hasMore:false}` at the MCP response boundary. `includeRaw` is attached once to the outer list and no longer duplicated recursively on elements.
 - Download compaction preserves the requested URL and expiry, while final structured serialization continues centralized API-key redaction without logging or storing links.
 - MCP build and `git diff --check` exited 0; 11 focused compaction tests and all 33 exact cross-surface parity tests passed.
+
+### MCP002
+
+- MCP stdio now uses strict argument parsing with no positionals: unknown flags, invalid modes, and invalid scopes raise `UsageError` and exit 2 before transport starts.
+- Omitted configuration defaults to curated mode and read scope. Repeated scopes dedupe in caller order; explicit `all` plus read/write/destructive preserves the prior broad surface.
+- Help is processed before API-key lookup and succeeds without secrets. Missing credentials after valid parsing still exit 1 with the existing key guidance.
+- README/install snippets now use the positional-free invocation and state safe defaults; broad Cursor configuration requests every mode/scope explicitly.
+- MCP build, help command, and `git diff --check` exited 0; all 30 focused server/protocol tests passed, including subprocess exit-code gates.

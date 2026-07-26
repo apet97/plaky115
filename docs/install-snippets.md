@@ -12,7 +12,7 @@ The SDK and MCP packages require Node.js `>=22.12`.
   "mcpServers": {
     "plaky115": {
       "command": "npx",
-      "args": ["--yes", "--package", "/absolute/path/to/mcp-server", "--", "mcp", "start", "--mode", "curated"],
+      "args": ["--yes", "--package", "/absolute/path/to/mcp-server", "--", "mcp"],
       "env": {
         "PLAKY115_API_KEY": "set-this-in-your-secret-store"
       }
@@ -24,7 +24,7 @@ The SDK and MCP packages require Node.js `>=22.12`.
 ## Claude Code
 
 ```bash
-claude mcp add plaky115 -- npx --yes --package /absolute/path/to/mcp-server -- mcp start --mode curated
+claude mcp add plaky115 -- npx --yes --package /absolute/path/to/mcp-server -- mcp
 ```
 
 Set `PLAKY115_API_KEY` in the shell or Claude Code environment configuration.
@@ -36,7 +36,7 @@ Set `PLAKY115_API_KEY` in the shell or Claude Code environment configuration.
   "mcpServers": {
     "plaky115": {
       "command": "npx",
-      "args": ["--yes", "--package", "/absolute/path/to/mcp-server", "--", "mcp", "start", "--mode", "all"],
+      "args": ["--yes", "--package", "/absolute/path/to/mcp-server", "--", "mcp", "--mode", "all", "--scope", "read", "--scope", "write", "--scope", "destructive"],
       "env": {
         "PLAKY115_API_KEY": "set-this-in-your-secret-store"
       }

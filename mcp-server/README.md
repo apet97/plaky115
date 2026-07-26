@@ -19,8 +19,15 @@ host does not route for your workspace, set `PLAKY115_BASE_URL` (or pass
 
 Use `--mode curated`, `--mode generated`, or `--mode all` to choose the tool
 surface. Use repeated `--scope read`, `--scope write`, or `--scope destructive`
-flags when a client should mount only part of the behavior surface. When no
-scope is supplied, all scopes are enabled.
+flags to mount the required behavior surface. When omitted, mode defaults to
+`curated` and scope defaults to `read`; typos and unknown arguments exit with a
+usage error instead of broadening access.
+
+Request the prior broad surface explicitly:
+
+```bash
+mcp --mode all --scope read --scope write --scope destructive
+```
 
 ## Curated Tools
 
