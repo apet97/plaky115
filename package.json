@@ -7,6 +7,8 @@
     "overlay:apply": "ruby scripts/apply-overlay.rb --source api-1.yaml --overlay overlays/plaky115-dx.overlay.yaml --out openapi/plaky115-dx.openapi.yaml",
     "metadata:generate": "ruby scripts/generate-operation-metadata.rb",
     "metadata:test": "ruby scripts/test-operation-metadata.rb",
+    "contract:inventory": "node scripts/print-contract-inventory.mjs",
+    "contract:inventory:test": "node --test scripts/test-contract-inventory.mjs",
     "lint:openapi": "ruby scripts/lint-openapi.rb api-1.yaml openapi/plaky115-dx.openapi.yaml",
     "openapi:test": "ruby scripts/test-overlay-application.rb && ruby scripts/test-openapi-lint.rb",
     "secret:scan": "bash -lc '! rg -n \"plk_[A-Za-z0-9]{16,}\" . -g \"!**/node_modules/**\" -g \"!**/.git/**\"'",

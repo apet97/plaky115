@@ -10,7 +10,7 @@
 ## Task ledger
 
 - [x] `B001` | Phase 0 — Baseline | DONE | Create the branch, status ledger, and task guardrails
-- [ ] `B002` | Phase 0 — Baseline | NOT STARTED | Capture reproducible baseline inventory and gate results
+- [x] `B002` | Phase 0 — Baseline | DONE | Capture reproducible baseline inventory and gate results
 - [ ] `B003` | Phase 0 — Baseline | NOT STARTED | Add the intentional 32-operation expected manifest
 - [ ] `C001` | Phase 1 — Contract acquisition | NOT STARTED | Create official-source parser fixtures and a deterministic YAML helper
 - [ ] `C002` | Phase 1 — Contract acquisition | NOT STARTED | Implement candidate fetch, parsing, canonicalization, and provenance
@@ -71,3 +71,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Ledger contains all 51 manifest task IDs exactly once.
 - `git diff --check`: exit 0.
 - The four supplied taskbook/validation inputs are preserved unchanged and locally excluded from Git status; they are not committed implementation artifacts.
+
+### B002
+
+- Added a deterministic offline inventory and duplicate-key guards.
+- Inventory: 20 operations, 8 mutations, 2 destructive operations, 20 CLI raw files, and 20 MCP raw files.
+- Two inventory runs were byte-identical.
+- All packet gates exited 0; full `npm run verify` also exited 0 from this real Git checkout.
+- External freshness, live mutation, and publishing gates remain intentionally unrun and are listed in the baseline document.
