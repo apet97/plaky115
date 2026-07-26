@@ -1,7 +1,11 @@
 import { pathParams } from "./codegen-common.mjs";
 
 export function buildCobraCommand(op) {
-  const params = pathParams(op.path);
+  const pathParameters = op.parameters.filter((parameter) => parameter.in === "path");
+  const queryParameters = uniqueParameters([
+    ...op.parameters.filter((parameter) => parameter.in === "query"),
+    ...(op.pagination?.inputs ?? []),
+  ]);
   const useSlug = goSlug(op.operationId);
   const fnName = `new${cap(op.operationId)}Cmd`;
   const lines = [];
@@ -26,22 +30,26 @@ export function buildCobraCommand(op) {
   lines.push(`\t\t\treturn plakydx.Run${cap(op.operationId)}(ctx, cmd, client)`);
   lines.push(`\t\t},`);
   lines.push(`\t}`);
-  const queryParams = op.query ?? [];
-  for (const p of params) lines.push(`\tcmd.Flags().String(${JSON.stringify(flagFor(p))}, "", ${JSON.stringify(paramDescription(p) + " (required)")})`);
-  if (op.pagination) {
-    lines.push(`\tcmd.Flags().Int("page", 0, "Page number (1-based)")`);
-    lines.push(`\tcmd.Flags().Int("page-size", 0, "Page size")`);
+  for (const parameter of pathParameters) {
+    lines.push(`\tcmd.Flags().String(${JSON.stringify(flagFor(parameter.name))}, "", ${JSON.stringify(flagDescription(parameter))})`);
   }
-  for (const q of queryParams) {
-    if (repeatedArray(q)) lines.push(`\tcmd.Flags().StringArray(${JSON.stringify(flagFor(q.name))}, nil, ${JSON.stringify(queryFlagDescription(q))})`);
-    else lines.push(`\tcmd.Flags().String(${JSON.stringify(flagFor(q.name))}, "", ${JSON.stringify(queryFlagDescription(q))})`);
+  for (const parameter of queryParameters) {
+    lines.push(cobraFlagLine(parameter));
   }
-  if (op.method !== "GET" && op.method !== "DELETE") {
-    lines.push(`\tcmd.Flags().String("body", "", "Request body JSON, @file.json, or @- for stdin (required)")`);
+  if (op.request.kind === "json") {
+    const required = op.request.required ? " (required)" : "";
+    lines.push(`\tcmd.Flags().String("body", "", "Request body JSON, @file.json, or @- for stdin${required}")`);
+  } else if (op.request.kind === "multipart") {
+    validateMultipartRequest(op);
+    lines.push(`\tcmd.Flags().String("file", "", "File to upload; use - for stdin (required)")`);
+    lines.push(`\tcmd.Flags().String("filename", "", "Multipart filename; required with --file - and otherwise defaults to the path basename")`);
+    lines.push(`\tcmd.Flags().String("content-type", "", "Optional file media type, such as application/pdf")`);
+  }
+  if (op.mutation && op.request.kind !== "none") {
     lines.push(`\tcmd.Flags().String("idempotency-key", "", "Idempotency-Key header for safe write retries")`);
   }
-  if (op.method === "DELETE") {
-    lines.push(`\tcmd.Flags().Bool("confirm", false, "Confirm execution; required for destructive raw DELETE operations")`);
+  if (op.confirmation === "destructive") {
+    lines.push(`\tcmd.Flags().Bool("confirm", false, "Confirm execution of this destructive raw operation")`);
   }
   lines.push(`\treturn cmd`);
   lines.push(`}`);
@@ -159,16 +167,54 @@ function formatGoPath(path, params) {
 function repeatedArray(q) { return q.array === true && q.explode !== false; }
 function cap(s) { return s[0].toUpperCase() + s.slice(1); }
 function flagFor(p) { return p.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase(); }
-function queryFlagDescription(q) { return q.description ?? `${q.name} query parameter for this Plaky operation`; }
 function goSlug(operationId) { return operationId.replace(/([A-Z])/g, "-$1").toLowerCase().replace(/^-/, ""); }
-function paramDescription(param) {
-  const descriptions = {
-    spaceId: "Plaky space ID for the target workspace area",
-    boardId: "Plaky board ID within the selected space",
-    itemId: "Plaky item ID within the selected board",
-    itemFieldKey: "Field key to update, such as status-1 or string-2",
-    itemCommentId: "Plaky comment ID on the selected item",
-    teamId: "Plaky team ID to retrieve",
-  };
-  return descriptions[param] ?? `${param} path parameter for this Plaky operation`;
+
+function uniqueParameters(parameters) {
+  const seen = new Set();
+  return parameters.filter(({ name }) => {
+    if (seen.has(name)) return false;
+    seen.add(name);
+    return true;
+  });
+}
+
+function cobraFlagLine(parameter) {
+  const name = JSON.stringify(flagFor(parameter.name));
+  const description = JSON.stringify(flagDescription(parameter));
+  const schema = parameter.schema;
+  switch (schema.type) {
+    case "string": return `\tcmd.Flags().String(${name}, "", ${description})`;
+    case "integer": return schema.format === "int64"
+      ? `\tcmd.Flags().Int64(${name}, 0, ${description})`
+      : `\tcmd.Flags().Int(${name}, 0, ${description})`;
+    case "number": return `\tcmd.Flags().Float64(${name}, 0, ${description})`;
+    case "boolean": return `\tcmd.Flags().Bool(${name}, false, ${description})`;
+    case "array":
+      if (schema.items?.type !== "string") throw new Error(`${parameter.name}: only string-array CLI flags are supported`);
+      return `\tcmd.Flags().StringArray(${name}, nil, ${description})`;
+    default: throw new Error(`${parameter.name}: unsupported CLI flag type ${schema.type}`);
+  }
+}
+
+function flagDescription(parameter) {
+  const fallback = `${parameter.name} ${parameter.in} parameter for this Plaky operation`;
+  const allowed = Array.isArray(parameter.schema.enum)
+    ? ` Allowed values: ${parameter.schema.enum.join(", ")}.`
+    : "";
+  const required = parameter.required ? " (required)" : "";
+  return `${collapseWhitespace(parameter.description ?? fallback)}${allowed}${required}`;
+}
+
+function collapseWhitespace(value) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function validateMultipartRequest(op) {
+  const parts = op.request.parts;
+  const valid = parts.length === 1
+    && parts[0].name === "file"
+    && parts[0].required === true
+    && parts[0].type === "string"
+    && parts[0].format === "binary";
+  if (!valid) throw new Error(`${op.operationId}: expected a single required binary multipart part named file`);
 }

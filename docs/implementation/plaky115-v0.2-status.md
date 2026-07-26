@@ -23,7 +23,7 @@
 - [x] `G001` | Phase 3 — Generators | DONE | Add one shared metadata loader and validator for JavaScript generators
 - [x] `G002` | Phase 3 — Generators | DONE | Make MCP generator use request/success/parameter metadata
 - [x] `G003` | Phase 3 — Generators | DONE | Generate safe MCP multipart upload tools
-- [ ] `G004` | Phase 3 — Generators | NOT STARTED | Make Cobra command generation transport- and confirmation-aware
+- [x] `G004` | Phase 3 — Generators | DONE | Make Cobra command generation transport- and confirmation-aware
 - [ ] `G005` | Phase 3 — Generators | NOT STARTED | Generate Go operation methods and runner functions from one descriptor
 - [ ] `G006` | Phase 3 — Generators | NOT STARTED | Delete stale outputs deterministically and make parity count dynamic
 - [ ] `GO001` | Phase 4 — Go transport | NOT STARTED | Propagate body read errors and preserve generic JSON numbers
@@ -176,3 +176,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Multipart generation accepts only one required binary part named `file`, exposes base64/name/media-type inputs, and emits no filesystem path or JSON-body input.
 - Extended MCP types for `itemGroup`, `itemFile`, `downloadLink`, and sensitive-output metadata.
 - MCP build exited 0; upload suite passed 8 tests; MCP generator suite passed 8 tests; `git diff --check` exited 0.
+
+### G004
+
+- Cobra command generation now derives required path and typed query flags from parameter metadata, including integer/int64/string/string-array forms and enum help.
+- JSON, multipart, and bodyless requests emit distinct flag sets; multipart documents stdin input and never emits `--body`.
+- Destructive confirmation derives only from explicit confirmation metadata, so the bodyless archive and void delete goldens require `--confirm` while non-destructive writes do not.
+- Whitespace is collapsed in generated one-line help while existing operation command names and `RunX` calls remain stable.
+- CLI v2 suite: 6 exact-text/heuristic tests passed; `git diff --check` exited 0.
