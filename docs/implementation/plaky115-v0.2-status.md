@@ -39,7 +39,7 @@
 - [x] `S004` | Phase 6 — TypeScript SDK | DONE | Implement the typed Item Groups SDK resource
 - [x] `S005` | Phase 6 — TypeScript SDK | DONE | Implement the typed Item files SDK resource
 - [x] `S006` | Phase 6 — TypeScript SDK | DONE | Lock SDK public surface, package exports, and consumer behavior
-- [ ] `MCP001` | Phase 7 — MCP | NOT STARTED | Add dedicated compactors and response envelopes for new resource kinds
+- [x] `MCP001` | Phase 7 — MCP | DONE | Add dedicated compactors and response envelopes for new resource kinds
 - [ ] `MCP002` | Phase 7 — MCP | NOT STARTED | Make modes, scopes, and argument parsing fail closed
 - [ ] `MCP003` | Phase 7 — MCP | NOT STARTED | Remove private MCP SDK access and pin the dependency
 - [ ] `MCP004` | Phase 7 — MCP | NOT STARTED | Replace generic workflow records with exact read/mutation schemas
@@ -306,3 +306,10 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Package audit rejects private SDK export prefixes and requires both built resource artifacts. Reviewed pack drift contains only eight new SDK resource artifacts and the 52 MCP artifacts generated in O004; no fixtures, secrets, or build junk are present.
 - The owning `packsnapshot:write` command always refreshes both package baselines, but this task packet listed only `sdk/.packsnapshot`. Scope expanded only to `mcp-server/.packsnapshot` so the mandated command and drift gate could record the already-accepted O004 MCP artifacts without hand-editing either snapshot.
 - SDK typecheck/type tests and all 163 SDK tests passed; installed consumer smoke, 33-test exact parity, artifact audit, package dry-run, snapshot write/drift, and `git diff --check` exited 0.
+
+### MCP001
+
+- Added dedicated Item Group, Item file, and download-link compactors with only their contract fields; group/file payloads can no longer fall through as raw board/item-like objects.
+- Bare arrays normalize to `{data,hasMore:false}` at the MCP response boundary. `includeRaw` is attached once to the outer list and no longer duplicated recursively on elements.
+- Download compaction preserves the requested URL and expiry, while final structured serialization continues centralized API-key redaction without logging or storing links.
+- MCP build and `git diff --check` exited 0; 11 focused compaction tests and all 33 exact cross-surface parity tests passed.

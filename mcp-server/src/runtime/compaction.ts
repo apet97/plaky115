@@ -63,10 +63,37 @@ export function compactComment(value: unknown, options: McpRespondOptions = {}):
   return out;
 }
 
+export function compactItemGroup(value: unknown, options: McpRespondOptions = {}): Record_ {
+  const group = asRecord(value);
+  const out: Record_ = {};
+  for (const key of ["id", "title", "color", "ranking"]) copyIfPresent(group, out, key);
+  if (options.includeRaw === true) out["raw"] = value;
+  return out;
+}
+
+export function compactItemFile(value: unknown, options: McpRespondOptions = {}): Record_ {
+  const file = asRecord(value);
+  const out: Record_ = {};
+  for (const key of ["id", "name", "description", "size", "extension", "fileType", "uploadedBy", "createdAt"]) {
+    copyIfPresent(file, out, key);
+  }
+  if (options.includeRaw === true) out["raw"] = value;
+  return out;
+}
+
+export function compactDownloadLink(value: unknown, options: McpRespondOptions = {}): Record_ {
+  const link = asRecord(value);
+  const out: Record_ = {};
+  copyIfPresent(link, out, "url");
+  copyIfPresent(link, out, "expiresInSeconds");
+  if (options.includeRaw === true) out["raw"] = value;
+  return out;
+}
+
 export function compactList(value: unknown, kind: CompactKind, options: McpRespondOptions = {}): Record_ {
   const r = asRecord(value);
   const items = readArray(r, "data");
-  const compactItems = items.map((it) => compactByKind(it, kind, options));
+  const compactItems = items.map((it) => compactByKind(it, kind, withoutRaw(options)));
   return {
     data: compactItems,
     hasMore: r["hasMore"] === true,
@@ -80,7 +107,7 @@ export function compactByKind(value: unknown, kind: CompactKind, options: McpRes
   // each element is compacted and the result stays a schema-valid object.
   if (Array.isArray(value)) {
     return {
-      data: value.map((it) => compactByKind(it, kind, options)),
+      data: value.map((it) => compactByKind(it, kind, withoutRaw(options))),
       hasMore: false,
       ...(options.includeRaw === true ? { raw: value } : {}),
     };
@@ -92,7 +119,14 @@ export function compactByKind(value: unknown, kind: CompactKind, options: McpRes
   if (kind === "board") return compactBoard(value, options);
   if (kind === "space") return compactSpace(value, options);
   if (kind === "comment") return compactComment(value, options);
+  if (kind === "itemGroup") return compactItemGroup(value, options);
+  if (kind === "itemFile") return compactItemFile(value, options);
+  if (kind === "downloadLink") return compactDownloadLink(value, options);
   return value;
+}
+
+function withoutRaw(options: McpRespondOptions): McpRespondOptions {
+  return options.includeRaw === true ? { ...options, includeRaw: false } : options;
 }
 
 export function serializeForMcp(value: unknown): string {
