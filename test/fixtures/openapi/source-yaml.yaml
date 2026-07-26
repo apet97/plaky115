@@ -1,0 +1,17 @@
+openapi: 3.0.3
+info:
+  title: Fixture API
+  version: 1.0.0
+paths:
+  /fixture/widgets:
+    get:
+      operationId: listFixtureWidgets
+      responses:
+        '200':
+          description: OK
+  /fixture/widgets/{widgetId}:
+    get:
+      operationId: getFixtureWidget
+      responses:
+        '200':
+          description: OK

@@ -12,7 +12,7 @@
 - [x] `B001` | Phase 0 — Baseline | DONE | Create the branch, status ledger, and task guardrails
 - [x] `B002` | Phase 0 — Baseline | DONE | Capture reproducible baseline inventory and gate results
 - [x] `B003` | Phase 0 — Baseline | DONE | Add the intentional 32-operation expected manifest
-- [ ] `C001` | Phase 1 — Contract acquisition | NOT STARTED | Create official-source parser fixtures and a deterministic YAML helper
+- [x] `C001` | Phase 1 — Contract acquisition | DONE | Create official-source parser fixtures and a deterministic YAML helper
 - [ ] `C002` | Phase 1 — Contract acquisition | NOT STARTED | Implement candidate fetch, parsing, canonicalization, and provenance
 - [ ] `C003` | Phase 1 — Contract acquisition | NOT STARTED | Add semantic contract diff, manifest checks, and freshness workflow
 - [ ] `M001` | Phase 2 — Metadata | NOT STARTED | Create and validate transport-quadrant OpenAPI fixtures
@@ -86,3 +86,10 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Strict comparison fails during migration; `--allow-missing` is diagnostic-only.
 - Current diagnostic: exactly 12 missing Item Group/file operations and 0 unexpected operations.
 - Duplicate operation IDs and method/path keys fail closed.
+
+### C001
+
+- Fixture keys: `GET /fixture/widgets listFixtureWidgets` and `GET /fixture/widgets/{widgetId} getFixtureWidget`.
+- JSON, YAML, and complete inert-HTML fixtures are semantically equal; malformed HTML has no complete assignment.
+- Ruby YAML parsing disables aliases and object deserialization, validates an OpenAPI object root, and emits canonical JSON.
+- Canonical JSON to deterministic UTF-8 YAML to canonical JSON round-trip was byte-identical with exactly two fake paths.
