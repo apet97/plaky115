@@ -4,8 +4,8 @@ import { request } from "plaky115/runtime/http.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
-  spaceId: z.union([z.string(), z.number()]).describe("Plaky space ID for the target workspace area."),
-  expand: z.string().describe("Comma-separated list of relationships to be expanded into full objects.").optional(),
+  spaceId: z.number().int().describe("Represents unique space identifier across the system."),
+  expand: z.array(z.enum(["board"])).describe("Comma-separated list of relationships to be expanded into full objects.").optional(),
 });
 const output = z.object({}).passthrough();
 
@@ -14,6 +14,7 @@ export const getSpaceTool: McpToolDefinition = {
   title: "Get space",
   description: "Retrieve a space",
   scopes: ["read"],
+  sensitiveOutput: false,
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
@@ -27,7 +28,7 @@ export const getSpaceTool: McpToolDefinition = {
     const query = {
       ...(parsed.expand !== undefined ? { expand: parsed.expand } : {}),
     };
-    const result = await request({
+    const result = await request<Record<string, unknown>>({
       method: "GET",
       path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}`,
       query,

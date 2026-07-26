@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "fileutils"
+require "json"
 require "minitest/autorun"
 require "open3"
 require "tmpdir"
@@ -11,6 +12,32 @@ ROOT = File.expand_path("..", __dir__)
 SCRIPT = File.join(ROOT, "scripts/apply-overlay.rb")
 
 class OverlayApplicationTest < Minitest::Test
+  def test_repository_overlay_produces_exact_expected_operation_set
+    Dir.mktmpdir do |dir|
+      out = File.join(dir, "dx.yaml")
+      _stdout, stderr, status = run_script(
+        "--source", File.join(ROOT, "api-1.yaml"),
+        "--overlay", File.join(ROOT, "overlays/plaky115-dx.overlay.yaml"),
+        "--out", out
+      )
+      assert status.success?, stderr
+
+      expected = JSON.parse(File.read(File.join(ROOT, "openapi/plaky115-expected-operations.json")))
+                     .fetch("operations")
+                     .map { |operation| [operation.fetch("operationId"), operation.fetch("method"), operation.fetch("path")] }
+                     .sort
+      actual = []
+      load_yaml_file(out).fetch("paths").each do |path, path_item|
+        path_item.each do |method, operation|
+          next unless HTTP_METHODS.include?(method)
+
+          actual << [operation.fetch("operationId"), method.upcase, path]
+        end
+      end
+      assert_equal expected, actual.sort
+    end
+  end
+
   def test_updates_info_and_exact_operation_targets
     Dir.mktmpdir do |dir|
       source = write_yaml(dir, "source.yaml", base_spec)
@@ -114,6 +141,8 @@ class OverlayApplicationTest < Minitest::Test
 
   private
 
+  HTTP_METHODS = %w[get post put patch delete head options trace].freeze
+
   def run_script(*args)
     Open3.capture3("ruby", SCRIPT, *args, chdir: ROOT)
   end
@@ -122,6 +151,10 @@ class OverlayApplicationTest < Minitest::Test
     path = File.join(dir, name)
     File.write(path, YAML.dump(payload))
     path
+  end
+
+  def load_yaml_file(path)
+    YAML.safe_load(File.read(path), aliases: true)
   end
 
   def base_spec

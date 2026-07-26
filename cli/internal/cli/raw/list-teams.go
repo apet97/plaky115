@@ -19,7 +19,7 @@ func newListTeamsCmd(getClient ClientFactory) *cobra.Command {
 			return plakydx.RunListTeams(ctx, cmd, client)
 		},
 	}
-	cmd.Flags().Int("page", 0, "Page number (1-based)")
-	cmd.Flags().Int("page-size", 0, "Page size")
+	cmd.Flags().Int("page", 0, "Page number.")
+	cmd.Flags().Int("page-size", 0, "Page size.")
 	return cmd
 }

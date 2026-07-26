@@ -4,10 +4,10 @@ import { request } from "plaky115/runtime/http.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
-  spaceId: z.union([z.string(), z.number()]).describe("Plaky space ID for the target workspace area."),
-  boardId: z.union([z.string(), z.number()]).describe("Plaky board ID within the selected space."),
-  itemId: z.union([z.string(), z.number()]).describe("Plaky item ID within the selected board."),
-  itemCommentId: z.union([z.string(), z.number()]).describe("Plaky comment ID on the selected item."),
+  spaceId: z.number().int().describe("Represents unique space identifier across the system."),
+  boardId: z.number().int().describe("Represents unique board identifier across the system."),
+  itemId: z.number().int().describe("Represents unique item identifier across the system."),
+  itemCommentId: z.number().int().describe("Represents unique item comment identifier across the system."),
 });
 const output = z.object({ ok: z.boolean() });
 
@@ -16,6 +16,7 @@ export const deleteItemCommentTool: McpToolDefinition = {
   title: "Delete item comment",
   description: "Delete item comment",
   scopes: ["write","destructive"],
+  sensitiveOutput: false,
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
@@ -26,7 +27,7 @@ export const deleteItemCommentTool: McpToolDefinition = {
   outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
-    await request({
+    await request<void>({
       method: "DELETE",
       path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/comments/${encodeURIComponent(String(parsed.itemCommentId))}`,
       responseType: "void",

@@ -19,8 +19,8 @@ func newListSpacesCmd(getClient ClientFactory) *cobra.Command {
 			return plakydx.RunListSpaces(ctx, cmd, client)
 		},
 	}
-	cmd.Flags().Int("page", 0, "Page number (1-based)")
-	cmd.Flags().Int("page-size", 0, "Page size")
-	cmd.Flags().String("expand", "", "Comma-separated list of relationships to be expanded into full objects.")
+	cmd.Flags().StringArray("expand", nil, "Comma-separated list of relationships to be expanded into full objects.")
+	cmd.Flags().Int("page", 0, "Page number.")
+	cmd.Flags().Int("page-size", 0, "Page size.")
 	return cmd
 }

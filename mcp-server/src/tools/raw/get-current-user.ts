@@ -12,6 +12,7 @@ export const getCurrentUserTool: McpToolDefinition = {
   title: "Get current user",
   description: "Retrieve current user",
   scopes: ["read"],
+  sensitiveOutput: false,
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
@@ -21,7 +22,7 @@ export const getCurrentUserTool: McpToolDefinition = {
   inputSchema: args,
   outputSchema: output,
   async handler(_input, ctx) {
-    const result = await request({
+    const result = await request<Record<string, unknown>>({
       method: "GET",
       path: "/v1/public/users/me",
       operationId: "getCurrentUser",

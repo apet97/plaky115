@@ -51,7 +51,11 @@ type GetWidgetOptions struct {
 func (c *Client) CreateWidget(ctx context.Context, opts CreateWidgetOptions) (any, error) {
 	path := "/v1/widgets"
 	req := Request{Method: "POST", Path: path}
-	req.Body = opts.JSONBody
+	jsonBody := opts.JSONBody
+	if jsonBody == nil {
+		jsonBody = opts.Body
+	}
+	req.JSONBody = jsonBody
 	req.Idempotency = opts.IdempotencyKey
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
@@ -61,7 +65,10 @@ func (c *Client) CreateWidget(ctx context.Context, opts CreateWidgetOptions) (an
 }
 
 type CreateWidgetOptions struct {
-	JSONBody       any
+	JSONBody any
+	// Body is retained for compatibility with curated CLI workflows.
+	// Deprecated: use JSONBody.
+	Body           any
 	IdempotencyKey string
 }
 
@@ -80,7 +87,7 @@ type ArchiveWidgetOptions struct {
 func (c *Client) UploadWidgetFile(ctx context.Context, opts UploadWidgetFileOptions) (any, error) {
 	path := strings.ReplaceAll("/v1/widgets/{widgetId}/files", "{widgetId}", url.PathEscape(opts.WidgetId))
 	req := Request{Method: "POST", Path: path}
-	req.Body = opts.Multipart
+	req.Multipart = opts.Multipart
 	req.Idempotency = opts.IdempotencyKey
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {

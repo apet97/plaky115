@@ -597,3 +597,352 @@ actions:
         destructiveHint: false
         idempotentHint: true
         openWorldHint: true
+
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups"].get
+    update:
+      operationId: listItemGroups
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: itemGroup
+      x-plaky115-sensitive-output: false
+      summary: List board item groups
+      description: List item groups on one Plaky board.
+      x-plaky115-usage-example:
+        title: List item groups
+        description: Resolve item group IDs before creating or moving board items.
+        position: 21
+        response:
+          data:
+            - id: 3001
+              title: Backlog
+              color: "#3366FF"
+              ranking: "0|hzzzzz:"
+          hasMore: false
+      x-plaky115-pagination:
+        type: offsetLimit
+        inputs:
+          - name: page
+            in: parameters
+            type: page
+          - name: pageSize
+            in: parameters
+            type: limit
+        outputs:
+          results: $.data
+      x-plaky115-mcp:
+        name: plaky_list_item_groups
+        title: List item groups
+        description: List item groups on one Plaky board.
+        scopes: [read]
+        readOnlyHint: true
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}"].get
+    update:
+      operationId: getItemGroup
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: itemGroup
+      x-plaky115-sensitive-output: false
+      summary: Retrieve an item group
+      description: Retrieve one Plaky item group by ID.
+      x-plaky115-usage-example:
+        title: Get an item group
+        description: Read the title, color, and ranking of one item group.
+        position: 22
+        response:
+          id: 3001
+          title: Backlog
+          color: "#3366FF"
+          ranking: "0|hzzzzz:"
+      x-plaky115-mcp:
+        name: plaky_get_item_group
+        title: Get item group
+        description: Retrieve one Plaky item group by ID.
+        scopes: [read]
+        readOnlyHint: true
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups"].post
+    update:
+      operationId: createItemGroup
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: itemGroup
+      x-plaky115-sensitive-output: false
+      summary: Create an item group
+      description: Create an item group on one Plaky board.
+      x-plaky115-usage-example:
+        title: Create an item group
+        description: Add a named group to a board.
+        position: 23
+        request:
+          title: Backlog
+          color: "#3366FF"
+          ranking: "0|hzzzzz:"
+        response:
+          id: 3001
+          title: Backlog
+          color: "#3366FF"
+          ranking: "0|hzzzzz:"
+      x-plaky115-mcp:
+        name: plaky_create_item_group
+        title: Create item group
+        description: Create an item group on one Plaky board.
+        scopes: [write]
+        readOnlyHint: false
+        destructiveHint: false
+        idempotentHint: false
+        openWorldHint: true
+
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}"].put
+    update:
+      operationId: updateItemGroup
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: itemGroup
+      x-plaky115-sensitive-output: false
+      summary: Update an item group
+      description: Replace the editable fields of one Plaky item group.
+      x-plaky115-usage-example:
+        title: Update an item group
+        description: Change a known item group's title, color, or ranking.
+        position: 24
+        request:
+          title: In progress
+          color: "#FFAA00"
+          ranking: "0|i00000:"
+        response:
+          id: 3001
+          title: In progress
+          color: "#FFAA00"
+          ranking: "0|i00000:"
+      x-plaky115-mcp:
+        name: plaky_update_item_group
+        title: Update item group
+        description: Replace the editable fields of one Plaky item group.
+        scopes: [write]
+        readOnlyHint: false
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}"].delete
+    update:
+      operationId: deleteItemGroup
+      x-plaky115-confirmation: destructive
+      x-plaky115-compact-kind: raw
+      x-plaky115-sensitive-output: false
+      summary: Delete an item group
+      description: Delete one Plaky item group by ID.
+      x-plaky115-usage-example:
+        title: Delete an item group
+        description: Remove one known item group after explicit user confirmation.
+        position: 25
+      x-plaky115-mcp:
+        name: plaky_delete_item_group
+        title: Delete item group
+        description: Delete one Plaky item group by ID.
+        scopes: [write, destructive]
+        readOnlyHint: false
+        destructiveHint: true
+        idempotentHint: true
+        openWorldHint: true
+
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}/archive"].put
+    update:
+      operationId: archiveItemGroup
+      x-plaky115-confirmation: destructive
+      x-plaky115-compact-kind: raw
+      x-plaky115-sensitive-output: false
+      summary: Archive an item group
+      description: Archive one Plaky item group by ID.
+      x-plaky115-usage-example:
+        title: Archive an item group
+        description: Archive one known item group after explicit user confirmation.
+        position: 26
+      x-plaky115-mcp:
+        name: plaky_archive_item_group
+        title: Archive item group
+        description: Archive one Plaky item group by ID.
+        scopes: [write, destructive]
+        readOnlyHint: false
+        destructiveHint: true
+        idempotentHint: true
+        openWorldHint: true
+
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files"].post
+    update:
+      operationId: uploadItemFile
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: itemFile
+      x-plaky115-sensitive-output: false
+      summary: Upload an item file
+      description: Upload one file attachment to a Plaky item.
+      x-plaky115-usage-example:
+        title: Upload an item file
+        description: Attach a named binary file to one known item.
+        position: 27
+        request:
+          file: fixture.txt
+        response:
+          id: 4001
+          name: fixture.txt
+          description: Fixture attachment
+          size: 128
+          extension: txt
+          fileType: TEXT
+          uploadedBy: 1001
+          createdAt: "2026-06-28T12:00:00Z"
+      x-plaky115-mcp:
+        name: plaky_upload_item_file
+        title: Upload item file
+        description: Upload one file attachment to a Plaky item.
+        scopes: [write]
+        readOnlyHint: false
+        destructiveHint: false
+        idempotentHint: false
+        openWorldHint: true
+
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files"].get
+    update:
+      operationId: listItemFiles
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: itemFile
+      x-plaky115-sensitive-output: false
+      summary: List item files
+      description: List file attachments on one Plaky item.
+      x-plaky115-usage-example:
+        title: List item files
+        description: Discover file IDs attached to one item.
+        position: 28
+        response:
+          - id: 4001
+            name: fixture.txt
+            description: Fixture attachment
+            size: 128
+            extension: txt
+            fileType: TEXT
+            uploadedBy: 1001
+            createdAt: "2026-06-28T12:00:00Z"
+      x-plaky115-mcp:
+        name: plaky_list_item_files
+        title: List item files
+        description: List file attachments on one Plaky item.
+        scopes: [read]
+        readOnlyHint: true
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}"].get
+    update:
+      operationId: getItemFile
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: itemFile
+      x-plaky115-sensitive-output: false
+      summary: Retrieve an item file
+      description: Retrieve metadata for one Plaky item file.
+      x-plaky115-usage-example:
+        title: Get an item file
+        description: Read attachment metadata before renaming or downloading it.
+        position: 29
+        response:
+          id: 4001
+          name: fixture.txt
+          description: Fixture attachment
+          size: 128
+          extension: txt
+          fileType: TEXT
+          uploadedBy: 1001
+          createdAt: "2026-06-28T12:00:00Z"
+      x-plaky115-mcp:
+        name: plaky_get_item_file
+        title: Get item file
+        description: Retrieve metadata for one Plaky item file.
+        scopes: [read]
+        readOnlyHint: true
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}/download"].get
+    update:
+      operationId: getItemFileDownload
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: downloadLink
+      x-plaky115-sensitive-output: true
+      summary: Get an item file download link
+      description: Return a temporary download link for one Plaky item file.
+      x-plaky115-usage-example:
+        title: Get a file download link
+        description: Request a temporary link for a known item file without logging it.
+        position: 30
+        response:
+          url: https://example.com/plaky/item-file
+          expiresInSeconds: 900
+      x-plaky115-mcp:
+        name: plaky_get_item_file_download
+        title: Get item file download
+        description: Return a temporary download link for one Plaky item file.
+        scopes: [read]
+        readOnlyHint: true
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}"].put
+    update:
+      operationId: updateItemFile
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: itemFile
+      x-plaky115-sensitive-output: false
+      summary: Update an item file
+      description: Replace the editable metadata of one Plaky item file.
+      x-plaky115-usage-example:
+        title: Update an item file
+        description: Rename a known file and replace its description.
+        position: 31
+        request:
+          name: renamed-fixture.txt
+          description: Updated fixture attachment
+        response:
+          id: 4001
+          name: renamed-fixture.txt
+          description: Updated fixture attachment
+          size: 128
+          extension: txt
+          fileType: TEXT
+          uploadedBy: 1001
+          createdAt: "2026-06-28T12:00:00Z"
+      x-plaky115-mcp:
+        name: plaky_update_item_file
+        title: Update item file
+        description: Replace the editable metadata of one Plaky item file.
+        scopes: [write]
+        readOnlyHint: false
+        destructiveHint: false
+        idempotentHint: true
+        openWorldHint: true
+
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}"].delete
+    update:
+      operationId: deleteItemFile
+      x-plaky115-confirmation: destructive
+      x-plaky115-compact-kind: raw
+      x-plaky115-sensitive-output: false
+      summary: Delete an item file
+      description: Delete one Plaky item file by ID.
+      x-plaky115-usage-example:
+        title: Delete an item file
+        description: Remove one known file after explicit user confirmation.
+        position: 32
+      x-plaky115-mcp:
+        name: plaky_delete_item_file
+        title: Delete item file
+        description: Delete one Plaky item file by ID.
+        scopes: [write, destructive]
+        readOnlyHint: false
+        destructiveHint: true
+        idempotentHint: true
+        openWorldHint: true

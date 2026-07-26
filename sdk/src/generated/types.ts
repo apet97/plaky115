@@ -88,6 +88,78 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /**
+         * List board item groups
+         * @description List item groups on one Plaky board.
+         */
+        readonly get: operations["listItemGroups"];
+        readonly put?: never;
+        /**
+         * Create an item group
+         * @description Create an item group on one Plaky board.
+         */
+        readonly post: operations["createItemGroup"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /**
+         * Retrieve an item group
+         * @description Retrieve one Plaky item group by ID.
+         */
+        readonly get: operations["getItemGroup"];
+        /**
+         * Update an item group
+         * @description Replace the editable fields of one Plaky item group.
+         */
+        readonly put: operations["updateItemGroup"];
+        readonly post?: never;
+        /**
+         * Delete an item group
+         * @description Delete one Plaky item group by ID.
+         */
+        readonly delete: operations["deleteItemGroup"];
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}/archive": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        /**
+         * Archive an item group
+         * @description Archive one Plaky item group by ID.
+         */
+        readonly put: operations["archiveItemGroup"];
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/v1/public/spaces/{spaceId}/boards/{boardId}/items": {
         readonly parameters: {
             readonly query?: never;
@@ -242,6 +314,78 @@ export interface paths {
          * @description Update a single field value on one Plaky item.
          */
         readonly patch: operations["updateItemField"];
+        readonly trace?: never;
+    };
+    readonly "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /**
+         * List item files
+         * @description List file attachments on one Plaky item.
+         */
+        readonly get: operations["listItemFiles"];
+        readonly put?: never;
+        /**
+         * Upload an item file
+         * @description Upload one file attachment to a Plaky item.
+         */
+        readonly post: operations["uploadItemFile"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /**
+         * Retrieve an item file
+         * @description Retrieve metadata for one Plaky item file.
+         */
+        readonly get: operations["getItemFile"];
+        /**
+         * Update an item file
+         * @description Replace the editable metadata of one Plaky item file.
+         */
+        readonly put: operations["updateItemFile"];
+        readonly post?: never;
+        /**
+         * Delete an item file
+         * @description Delete one Plaky item file by ID.
+         */
+        readonly delete: operations["deleteItemFile"];
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}/download": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /**
+         * Get an item file download link
+         * @description Return a temporary download link for one Plaky item file.
+         */
+        readonly get: operations["getItemFileDownload"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
         readonly trace?: never;
     };
     readonly "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/sub-items": {
@@ -542,9 +686,9 @@ export interface components {
              *     | **Link** | `{"link-1" : "https://www.google.com"}` <br> `{"link-1" : {"url" : "https://www.google.com", "displayText" : "Google"}}` <br> `{"Link" : "https://www.google.com"}` |
              *     | **Person** | `{"person-1": {"users" : [{"id" : "1"}, {"email" : "test@gmail.com"}], "teams": [{"id" : 1}, {"title" : "Backend Team"}]}}` <br> `{"Assignee": {"users" : [{"id" : "1"}, {"email" : "test@gmail.com"}], "teams": [{"id" : 1}, {"title" : "Backend Team"}]}}` |
              * @example {
+             *       "Description": "Test description",
              *       "Status": "To do",
-             *       "number-1": 50,
-             *       "Description": "Test description"
+             *       "number-1": 50
              *     }
              */
             readonly fields?: {
@@ -613,6 +757,68 @@ export interface components {
              */
             readonly value?: unknown;
         };
+        /** @description Represents item file download response. */
+        readonly ItemFileDownloadResponse: {
+            /**
+             * Format: int64
+             * @description Represents presigned URL validity period in seconds.
+             */
+            readonly expiresInSeconds?: number;
+            /** @description Represents presigned URL for file download. */
+            readonly url?: string;
+        };
+        /** @description Represents item file response. */
+        readonly ItemFileResponse: {
+            /**
+             * Format: date-time
+             * @description Represents date and time of the file upload (UTC) in ISO-8601 format.
+             */
+            readonly createdAt?: string;
+            /** @description Represents item file description. */
+            readonly description?: string;
+            /**
+             * @description Represents item file extension.
+             * @example pdf
+             */
+            readonly extension?: string;
+            /**
+             * @description Represents item file type.
+             * @example PDF
+             */
+            readonly fileType?: string;
+            /**
+             * Format: int64
+             * @description Represents unique item file identifier across the system.
+             */
+            readonly id?: number;
+            /** @description Represents item file name. */
+            readonly name?: string;
+            /**
+             * Format: int64
+             * @description Represents item file size in bytes.
+             */
+            readonly size?: number;
+            /**
+             * Format: int64
+             * @description Represents ID of the user who uploaded the file.
+             */
+            readonly uploadedBy?: number;
+        };
+        /** @description Represents item file update request. */
+        readonly ItemFileUpdateRequest: {
+            /** @description Represents item file description. */
+            readonly description?: string;
+            /** @description The new name for the file. You may include or omit the extension; the system will preserve the original file type regardless. */
+            readonly name: string;
+        };
+        readonly ItemGroupCreateRequest: {
+            /** @description Represents color of the item group. Color value must be in standard RGB hexadecimal format. */
+            readonly color?: string;
+            /** @description Represents lexicographical string used for custom ordering/sorting. */
+            readonly ranking?: string;
+            /** @description Represents title of the item group. */
+            readonly title: string;
+        };
         /** @description Represents item group response. */
         readonly ItemGroupResponse: {
             /** @description Represents color of the item group. Color value is in standard RGB hexadecimal format. */
@@ -626,6 +832,14 @@ export interface components {
             readonly ranking?: string;
             /** @description Represents title of the item group. */
             readonly title?: string;
+        };
+        readonly ItemGroupUpdateRequest: {
+            /** @description Represents color of the item group. Color value must be in standard RGB hexadecimal format. */
+            readonly color?: string;
+            /** @description Represents lexicographical string used for custom ordering/sorting. */
+            readonly ranking: string;
+            /** @description Represents title of the item group. */
+            readonly title: string;
         };
         /** @description Represents extendable item response. */
         readonly ItemResponse: {
@@ -714,6 +928,12 @@ export interface components {
         readonly PublicPagedResponseV1BoardResponse: {
             /** @description The list of elements returned for the current page. */
             readonly data?: readonly components["schemas"]["BoardResponse"][];
+            /** @description Whether there are more elements available beyond this current set. */
+            readonly hasMore?: boolean;
+        };
+        readonly PublicPagedResponseV1ItemGroupResponse: {
+            /** @description The list of elements returned for the current page. */
+            readonly data?: readonly components["schemas"]["ItemGroupResponse"][];
             /** @description Whether there are more elements available beyond this current set. */
             readonly hasMore?: boolean;
         };
@@ -1095,6 +1315,221 @@ export interface operations {
                 content: {
                     readonly "application/json": components["schemas"]["BoardResponse"];
                 };
+            };
+        };
+    };
+    readonly listItemGroups: {
+        readonly parameters: {
+            readonly query?: {
+                /** @description Page number. */
+                readonly page?: number;
+                /** @description Page size. */
+                readonly pageSize?: number;
+            };
+            readonly header?: never;
+            readonly path: {
+                /**
+                 * @description Represents unique board identifier across the system.
+                 * @example 1
+                 */
+                readonly boardId: number;
+                /**
+                 * @description Represents unique space identifier across the system.
+                 * @example 1
+                 */
+                readonly spaceId: number;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PublicPagedResponseV1ItemGroupResponse"];
+                };
+            };
+        };
+    };
+    readonly createItemGroup: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                /**
+                 * @description Represents unique board identifier across the system.
+                 * @example 1
+                 */
+                readonly boardId: number;
+                /**
+                 * @description Represents unique space identifier across the system.
+                 * @example 1
+                 */
+                readonly spaceId: number;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["ItemGroupCreateRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description Created */
+            readonly 201: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ItemGroupResponse"];
+                };
+            };
+        };
+    };
+    readonly getItemGroup: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                /**
+                 * @description Represents unique board identifier across the system.
+                 * @example 1
+                 */
+                readonly boardId: number;
+                /**
+                 * @description Represents unique item group identifier across the system.
+                 * @example 1
+                 */
+                readonly itemGroupId: number;
+                /**
+                 * @description Represents unique space identifier across the system.
+                 * @example 1
+                 */
+                readonly spaceId: number;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ItemGroupResponse"];
+                };
+            };
+        };
+    };
+    readonly updateItemGroup: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                /**
+                 * @description Represents unique board identifier across the system.
+                 * @example 1
+                 */
+                readonly boardId: number;
+                /**
+                 * @description Represents unique item group identifier across the system.
+                 * @example 1
+                 */
+                readonly itemGroupId: number;
+                /**
+                 * @description Represents unique space identifier across the system.
+                 * @example 1
+                 */
+                readonly spaceId: number;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["ItemGroupUpdateRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ItemGroupResponse"];
+                };
+            };
+        };
+    };
+    readonly deleteItemGroup: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                /**
+                 * @description Represents unique board identifier across the system.
+                 * @example 1
+                 */
+                readonly boardId: number;
+                /**
+                 * @description Represents unique item group identifier across the system.
+                 * @example 1
+                 */
+                readonly itemGroupId: number;
+                /**
+                 * @description Represents unique space identifier across the system.
+                 * @example 1
+                 */
+                readonly spaceId: number;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    readonly archiveItemGroup: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                /**
+                 * @description Represents unique board identifier across the system.
+                 * @example 1
+                 */
+                readonly boardId: number;
+                /**
+                 * @description Represents unique item group identifier across the system.
+                 * @example 1
+                 */
+                readonly itemGroupId: number;
+                /**
+                 * @description Represents unique space identifier across the system.
+                 * @example 1
+                 */
+                readonly spaceId: number;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1544,6 +1979,254 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ItemResponse"];
+                };
+            };
+        };
+    };
+    readonly listItemFiles: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                /**
+                 * @description Represents unique board identifier across the system.
+                 * @example 1
+                 */
+                readonly boardId: number;
+                /**
+                 * @description Represents unique item identifier across the system.
+                 * @example 1
+                 */
+                readonly itemId: number;
+                /**
+                 * @description Represents unique space identifier across the system.
+                 * @example 1
+                 */
+                readonly spaceId: number;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": readonly components["schemas"]["ItemFileResponse"][];
+                };
+            };
+        };
+    };
+    readonly uploadItemFile: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                /**
+                 * @description Represents unique board identifier across the system.
+                 * @example 1
+                 */
+                readonly boardId: number;
+                /**
+                 * @description Represents unique item identifier across the system.
+                 * @example 1
+                 */
+                readonly itemId: number;
+                /**
+                 * @description Represents unique space identifier across the system.
+                 * @example 1
+                 */
+                readonly spaceId: number;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: {
+            readonly content: {
+                readonly "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description File to upload
+                     */
+                    readonly file: string;
+                };
+            };
+        };
+        readonly responses: {
+            /** @description Created */
+            readonly 201: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ItemFileResponse"];
+                };
+            };
+        };
+    };
+    readonly getItemFile: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                /**
+                 * @description Represents unique board identifier across the system.
+                 * @example 1
+                 */
+                readonly boardId: number;
+                /**
+                 * @description Represents unique item file identifier across the system.
+                 * @example 1
+                 */
+                readonly itemFileId: number;
+                /**
+                 * @description Represents unique item identifier across the system.
+                 * @example 1
+                 */
+                readonly itemId: number;
+                /**
+                 * @description Represents unique space identifier across the system.
+                 * @example 1
+                 */
+                readonly spaceId: number;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ItemFileResponse"];
+                };
+            };
+        };
+    };
+    readonly updateItemFile: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                /**
+                 * @description Represents unique board identifier across the system.
+                 * @example 1
+                 */
+                readonly boardId: number;
+                /**
+                 * @description Represents unique item file identifier across the system.
+                 * @example 1
+                 */
+                readonly itemFileId: number;
+                /**
+                 * @description Represents unique item identifier across the system.
+                 * @example 1
+                 */
+                readonly itemId: number;
+                /**
+                 * @description Represents unique space identifier across the system.
+                 * @example 1
+                 */
+                readonly spaceId: number;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["ItemFileUpdateRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ItemFileResponse"];
+                };
+            };
+        };
+    };
+    readonly deleteItemFile: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                /**
+                 * @description Unique identifier of the board.
+                 * @example 1
+                 */
+                readonly boardId: number;
+                /**
+                 * @description Represents unique item file identifier across the system.
+                 * @example 1
+                 */
+                readonly itemFileId: number;
+                /**
+                 * @description Represents unique board identifier across the system.
+                 * @example 1
+                 */
+                readonly itemId: number;
+                /**
+                 * @description Represents unique space identifier across the system.
+                 * @example 1
+                 */
+                readonly spaceId: number;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    readonly getItemFileDownload: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                /**
+                 * @description Represents unique board identifier across the system.
+                 * @example 1
+                 */
+                readonly boardId: number;
+                /**
+                 * @description Represents unique item file identifier across the system.
+                 * @example 1
+                 */
+                readonly itemFileId: number;
+                /**
+                 * @description Represents unique item identifier across the system.
+                 * @example 1
+                 */
+                readonly itemId: number;
+                /**
+                 * @description Represents unique space identifier across the system.
+                 * @example 1
+                 */
+                readonly spaceId: number;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ItemFileDownloadResponse"];
                 };
             };
         };

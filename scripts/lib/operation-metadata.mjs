@@ -33,7 +33,6 @@ const REQUIRED_OPERATION_KEYS = [
   "sensitiveOutput",
   "list",
   "mutation",
-  "bodyRequired",
 ];
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"];
 const PARAMETER_LOCATIONS = ["path", "query"];
@@ -73,7 +72,7 @@ export function validateOperationMetadata(metadata) {
     }
     for (const key of [
       "readOnly", "destructive", "idempotent", "openWorld", "sensitiveOutput",
-      "list", "mutation", "bodyRequired",
+      "list", "mutation",
     ]) {
       if (typeof operation[key] !== "boolean") fail(id, key, "must be a boolean");
     }

@@ -154,13 +154,6 @@ def operation_semantics(operation)
   }
 end
 
-def body_required?(operation)
-  request_body = operation["requestBody"]
-  return false unless request_body.is_a?(Hash)
-
-  request_body["required"] == true
-end
-
 def request_metadata(operation, spec)
   raw_request = operation["requestBody"]
   return { "kind" => "none", "required" => false } unless raw_request
@@ -358,8 +351,6 @@ def generate_metadata(source)
         "confirmation" => semantics["confirmation"],
         "compactKind" => semantics["compactKind"],
         "sensitiveOutput" => semantics["sensitiveOutput"],
-        # Deprecated compatibility field; remove after generators consume request.kind in G006.
-        "bodyRequired" => body_required?(operation),
       }
 
       generic = generic_parameters(parameters)

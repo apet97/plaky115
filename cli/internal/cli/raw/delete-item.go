@@ -19,9 +19,9 @@ func newDeleteItemCmd(getClient ClientFactory) *cobra.Command {
 			return plakydx.RunDeleteItem(ctx, cmd, client)
 		},
 	}
-	cmd.Flags().String("space-id", "", "Plaky space ID for the target workspace area (required)")
-	cmd.Flags().String("board-id", "", "Plaky board ID within the selected space (required)")
-	cmd.Flags().String("item-id", "", "Plaky item ID within the selected board (required)")
-	cmd.Flags().Bool("confirm", false, "Confirm execution; required for destructive raw DELETE operations")
+	cmd.Flags().String("space-id", "", "Represents unique space identifier across the system. (required)")
+	cmd.Flags().String("board-id", "", "Represents unique board identifier across the system. (required)")
+	cmd.Flags().String("item-id", "", "Represents unique item identifier across the system. (required)")
+	cmd.Flags().Bool("confirm", false, "Confirm execution of this destructive raw operation")
 	return cmd
 }

@@ -19,10 +19,10 @@ func newListUsersCmd(getClient ClientFactory) *cobra.Command {
 			return plakydx.RunListUsers(ctx, cmd, client)
 		},
 	}
-	cmd.Flags().Int("page", 0, "Page number (1-based)")
-	cmd.Flags().Int("page-size", 0, "Page size")
 	cmd.Flags().StringArray("emails", nil, "If provided, you will get list of users filtered for the provided emails")
-	cmd.Flags().String("status", "", "If provided, you will get list of users filtered for the provided status")
-	cmd.Flags().String("type", "", "If provided, you will get list of users filtered for the provided type")
+	cmd.Flags().String("status", "", "If provided, you will get list of users filtered for the provided status Allowed values: ACTIVE, PENDING, INACTIVE.")
+	cmd.Flags().String("type", "", "If provided, you will get list of users filtered for the provided type Allowed values: OWNER, ADMIN, MEMBER, VIEWER.")
+	cmd.Flags().Int("page", 0, "Page number.")
+	cmd.Flags().Int("page-size", 0, "Page size.")
 	return cmd
 }

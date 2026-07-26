@@ -4,9 +4,9 @@ import { request } from "plaky115/runtime/http.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
-  page: z.number().int().min(1).describe("One-based result page to request.").optional(),
-  pageSize: z.number().int().min(1).max(200).describe("Maximum number of records to return for this page.").optional(),
-  expand: z.string().describe("Comma-separated list of relationships to be expanded into full objects.").optional(),
+  expand: z.array(z.enum(["board"])).describe("Comma-separated list of relationships to be expanded into full objects.").optional(),
+  page: z.number().int().describe("Page number.").optional(),
+  pageSize: z.number().int().describe("Page size.").optional(),
 });
 const output = z.object({}).passthrough();
 
@@ -15,6 +15,7 @@ export const listSpacesTool: McpToolDefinition = {
   title: "List spaces",
   description: "List workspace spaces",
   scopes: ["read"],
+  sensitiveOutput: false,
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
@@ -26,11 +27,11 @@ export const listSpacesTool: McpToolDefinition = {
   async handler(input, ctx) {
     const parsed = args.parse(input);
     const query = {
+      ...(parsed.expand !== undefined ? { expand: parsed.expand } : {}),
       ...(parsed.page !== undefined ? { page: parsed.page } : {}),
       ...(parsed.pageSize !== undefined ? { pageSize: parsed.pageSize } : {}),
-      ...(parsed.expand !== undefined ? { expand: parsed.expand } : {}),
     };
-    const result = await request({
+    const result = await request<Record<string, unknown>>({
       method: "GET",
       path: "/v1/public/spaces",
       query,

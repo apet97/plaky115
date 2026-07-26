@@ -184,32 +184,3 @@ func emitVoid(cmd *cobra.Command) error {
 	_, err = fmt.Fprintln(cmd.OutOrStdout(), "ok")
 	return err
 }
-
-// Compatibility helpers used by the current hand-written runners until O004.
-func emit(cmd *cobra.Command, value any) error { return EmitJSON(cmd, value) }
-func mustString(cmd *cobra.Command, name string) (string, error) {
-	return requiredStringFlag(cmd, name)
-}
-func pageOpts(cmd *cobra.Command) (page int, pageSize int) {
-	page, _ = optionalIntFlag(cmd, "page")
-	pageSize, _ = optionalIntFlag(cmd, "page-size")
-	return
-}
-func bodyRequired(cmd *cobra.Command) (any, error) { return jsonBodyFlag(cmd, true) }
-func idempotencyKey(cmd *cobra.Command) string {
-	value, _ := optionalStringFlag(cmd, "idempotency-key")
-	return value
-}
-func expandFlag(cmd *cobra.Command) string {
-	value, _ := optionalStringFlag(cmd, "expand")
-	return value
-}
-func optString(cmd *cobra.Command, name string) string {
-	value, _ := optionalStringFlag(cmd, name)
-	return value
-}
-func optStringArray(cmd *cobra.Command, name string) []string {
-	value, _ := optionalStringArrayFlag(cmd, name)
-	return value
-}
-func confirmDestructive(cmd *cobra.Command) error { return confirmationFlag(cmd) }

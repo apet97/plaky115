@@ -31,7 +31,6 @@
       "confirmation": "none",
       "compactKind": "space",
       "sensitiveOutput": false,
-      "bodyRequired": false,
       "parameters": [
         {
           "name": "expand",
@@ -93,12 +92,12 @@
       ]
     },
     {
-      "operationId": "listTeams",
+      "operationId": "getSpace",
       "method": "GET",
-      "path": "/v1/public/teams",
-      "summary": "List workspace teams",
-      "mcpName": "plaky_list_teams",
-      "mcpTitle": "List teams",
+      "path": "/v1/public/spaces/{spaceId}",
+      "summary": "Retrieve a space",
+      "mcpName": "plaky_get_space",
+      "mcpTitle": "Get space",
       "scopes": [
         "read"
       ],
@@ -106,7 +105,7 @@
       "destructive": false,
       "idempotent": true,
       "openWorld": true,
-      "list": true,
+      "list": false,
       "mutation": false,
       "request": {
         "kind": "none",
@@ -116,169 +115,48 @@
         "status": 200,
         "kind": "json-object",
         "mediaType": "application/json",
-        "schemaRef": "#/components/schemas/PublicPagedResponseV1TeamResponse"
+        "schemaRef": "#/components/schemas/SpaceResponse"
       },
       "confirmation": "none",
-      "compactKind": "raw",
+      "compactKind": "space",
       "sensitiveOutput": false,
-      "bodyRequired": false,
-      "pagination": {
-        "type": "offsetLimit",
-        "results": "$.data",
-        "inputs": [
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "description": "Page number.",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 1
-            },
-            "style": "form",
-            "explode": true
-          },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "required": false,
-            "description": "Page size.",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 50
-            },
-            "style": "form",
-            "explode": true
-          }
-        ]
-      }
-    },
-    {
-      "operationId": "listUsers",
-      "method": "GET",
-      "path": "/v1/public/users",
-      "summary": "List workspace users",
-      "mcpName": "plaky_list_users",
-      "mcpTitle": "List users",
-      "scopes": [
-        "read"
-      ],
-      "readOnly": true,
-      "destructive": false,
-      "idempotent": true,
-      "openWorld": true,
-      "list": true,
-      "mutation": false,
-      "request": {
-        "kind": "none",
-        "required": false
-      },
-      "success": {
-        "status": 200,
-        "kind": "json-object",
-        "mediaType": "application/json",
-        "schemaRef": "#/components/schemas/PublicPagedResponseV1UserResponse"
-      },
-      "confirmation": "none",
-      "compactKind": "raw",
-      "sensitiveOutput": false,
-      "bodyRequired": false,
       "parameters": [
         {
-          "name": "emails",
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "expand",
           "in": "query",
           "required": false,
-          "description": "If provided, you will get list of users filtered for the provided emails",
+          "description": "Comma-separated list of relationships to be expanded into full objects.",
           "schema": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "board"
+              ]
             }
           },
           "style": "form",
-          "explode": true
-        },
-        {
-          "name": "status",
-          "in": "query",
-          "required": false,
-          "description": "If provided, you will get list of users filtered for the provided status",
-          "schema": {
-            "type": "string",
-            "enum": [
-              "ACTIVE",
-              "PENDING",
-              "INACTIVE"
-            ]
-          },
-          "style": "form",
-          "explode": true
-        },
-        {
-          "name": "type",
-          "in": "query",
-          "required": false,
-          "description": "If provided, you will get list of users filtered for the provided type",
-          "schema": {
-            "type": "string",
-            "enum": [
-              "OWNER",
-              "ADMIN",
-              "MEMBER",
-              "VIEWER"
-            ]
-          },
-          "style": "form",
-          "explode": true
+          "explode": false
         }
       ],
-      "pagination": {
-        "type": "offsetLimit",
-        "results": "$.data",
-        "inputs": [
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "description": "Page number.",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 1
-            },
-            "style": "form",
-            "explode": true
-          },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "required": false,
-            "description": "Page size.",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 50
-            },
-            "style": "form",
-            "explode": true
-          }
-        ]
-      },
       "query": [
         {
-          "name": "emails",
-          "description": "If provided, you will get list of users filtered for the provided emails",
-          "array": true
-        },
-        {
-          "name": "status",
-          "description": "If provided, you will get list of users filtered for the provided status"
-        },
-        {
-          "name": "type",
-          "description": "If provided, you will get list of users filtered for the provided type"
+          "name": "expand",
+          "description": "Comma-separated list of relationships to be expanded into full objects.",
+          "array": true,
+          "explode": false
         }
       ]
     },
@@ -311,7 +189,6 @@
       "confirmation": "none",
       "compactKind": "board",
       "sensitiveOutput": false,
-      "bodyRequired": false,
       "parameters": [
         {
           "name": "spaceId",
@@ -360,6 +237,480 @@
       }
     },
     {
+      "operationId": "getBoard",
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}",
+      "summary": "Retrieve a board",
+      "mcpName": "plaky_get_board",
+      "mcpTitle": "Get board",
+      "scopes": [
+        "read"
+      ],
+      "readOnly": true,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": false,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/BoardResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "board",
+      "sensitiveOutput": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
+    },
+    {
+      "operationId": "listItemGroups",
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups",
+      "summary": "List board item groups",
+      "mcpName": "plaky_list_item_groups",
+      "mcpTitle": "List item groups",
+      "scopes": [
+        "read"
+      ],
+      "readOnly": true,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": true,
+      "mutation": false,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/PublicPagedResponseV1ItemGroupResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "itemGroup",
+      "sensitiveOutput": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ],
+      "pagination": {
+        "type": "offsetLimit",
+        "results": "$.data",
+        "inputs": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            },
+            "style": "form",
+            "explode": true
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "Page size.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            },
+            "style": "form",
+            "explode": true
+          }
+        ]
+      }
+    },
+    {
+      "operationId": "createItemGroup",
+      "method": "POST",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups",
+      "summary": "Create an item group",
+      "mcpName": "plaky_create_item_group",
+      "mcpTitle": "Create item group",
+      "scopes": [
+        "write"
+      ],
+      "readOnly": false,
+      "destructive": false,
+      "idempotent": false,
+      "openWorld": true,
+      "list": false,
+      "mutation": true,
+      "request": {
+        "kind": "json",
+        "required": true,
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ItemGroupCreateRequest"
+      },
+      "success": {
+        "status": 201,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ItemGroupResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "itemGroup",
+      "sensitiveOutput": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
+    },
+    {
+      "operationId": "deleteItemGroup",
+      "method": "DELETE",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}",
+      "summary": "Delete an item group",
+      "mcpName": "plaky_delete_item_group",
+      "mcpTitle": "Delete item group",
+      "scopes": [
+        "write",
+        "destructive"
+      ],
+      "readOnly": false,
+      "destructive": true,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": true,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "void"
+      },
+      "confirmation": "destructive",
+      "compactKind": "raw",
+      "sensitiveOutput": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemGroupId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item group identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
+    },
+    {
+      "operationId": "getItemGroup",
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}",
+      "summary": "Retrieve an item group",
+      "mcpName": "plaky_get_item_group",
+      "mcpTitle": "Get item group",
+      "scopes": [
+        "read"
+      ],
+      "readOnly": true,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": false,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ItemGroupResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "itemGroup",
+      "sensitiveOutput": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemGroupId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item group identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
+    },
+    {
+      "operationId": "updateItemGroup",
+      "method": "PUT",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}",
+      "summary": "Update an item group",
+      "mcpName": "plaky_update_item_group",
+      "mcpTitle": "Update item group",
+      "scopes": [
+        "write"
+      ],
+      "readOnly": false,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": true,
+      "request": {
+        "kind": "json",
+        "required": true,
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ItemGroupUpdateRequest"
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ItemGroupResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "itemGroup",
+      "sensitiveOutput": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemGroupId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item group identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
+    },
+    {
+      "operationId": "archiveItemGroup",
+      "method": "PUT",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}/archive",
+      "summary": "Archive an item group",
+      "mcpName": "plaky_archive_item_group",
+      "mcpTitle": "Archive item group",
+      "scopes": [
+        "write",
+        "destructive"
+      ],
+      "readOnly": false,
+      "destructive": true,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": true,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "void"
+      },
+      "confirmation": "destructive",
+      "compactKind": "raw",
+      "sensitiveOutput": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemGroupId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item group identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
+    },
+    {
       "operationId": "listItems",
       "method": "GET",
       "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items",
@@ -388,7 +739,6 @@
       "confirmation": "none",
       "compactKind": "item",
       "sensitiveOutput": false,
-      "bodyRequired": false,
       "parameters": [
         {
           "name": "spaceId",
@@ -563,7 +913,6 @@
       "confirmation": "none",
       "compactKind": "item",
       "sensitiveOutput": false,
-      "bodyRequired": true,
       "parameters": [
         {
           "name": "spaceId",
@@ -592,12 +941,79 @@
       ]
     },
     {
-      "operationId": "getSpace",
+      "operationId": "deleteItem",
+      "method": "DELETE",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}",
+      "summary": "Delete an item",
+      "mcpName": "plaky_delete_item",
+      "mcpTitle": "Delete item",
+      "scopes": [
+        "write",
+        "destructive"
+      ],
+      "readOnly": false,
+      "destructive": true,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": true,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "void"
+      },
+      "confirmation": "destructive",
+      "compactKind": "raw",
+      "sensitiveOutput": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
+    },
+    {
+      "operationId": "getItem",
       "method": "GET",
-      "path": "/v1/public/spaces/{spaceId}",
-      "summary": "Retrieve a space",
-      "mcpName": "plaky_get_space",
-      "mcpTitle": "Get space",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}",
+      "summary": "Retrieve an item",
+      "mcpName": "plaky_get_item",
+      "mcpTitle": "Get item",
       "scopes": [
         "read"
       ],
@@ -615,18 +1031,41 @@
         "status": 200,
         "kind": "json-object",
         "mediaType": "application/json",
-        "schemaRef": "#/components/schemas/SpaceResponse"
+        "schemaRef": "#/components/schemas/ItemResponse"
       },
       "confirmation": "none",
-      "compactKind": "space",
+      "compactKind": "item",
       "sensitiveOutput": false,
-      "bodyRequired": false,
       "parameters": [
         {
           "name": "spaceId",
           "in": "path",
           "required": true,
           "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
           "schema": {
             "type": "integer",
             "format": "int64"
@@ -638,13 +1077,19 @@
           "name": "expand",
           "in": "query",
           "required": false,
-          "description": "Comma-separated list of relationships to be expanded into full objects.",
+          "description": "Comma-separated list of relationships to expand into full objects instead of IDs.",
           "schema": {
             "type": "array",
             "items": {
               "type": "string",
               "enum": [
-                "board"
+                "space",
+                "board",
+                "group",
+                "createdBy",
+                "parent",
+                "subscriptions",
+                "fields"
               ]
             }
           },
@@ -655,19 +1100,19 @@
       "query": [
         {
           "name": "expand",
-          "description": "Comma-separated list of relationships to be expanded into full objects.",
+          "description": "Comma-separated list of relationships to expand into full objects instead of IDs.",
           "array": true,
           "explode": false
         }
       ]
     },
     {
-      "operationId": "getTeam",
+      "operationId": "listItemComments",
       "method": "GET",
-      "path": "/v1/public/teams/{teamId}",
-      "summary": "Retrieve a team",
-      "mcpName": "plaky_get_team",
-      "mcpTitle": "Get team",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments",
+      "summary": "List item comments",
+      "mcpName": "plaky_list_item_comments",
+      "mcpTitle": "List item comments",
       "scopes": [
         "read"
       ],
@@ -675,7 +1120,7 @@
       "destructive": false,
       "idempotent": true,
       "openWorld": true,
-      "list": false,
+      "list": true,
       "mutation": false,
       "request": {
         "kind": "none",
@@ -683,90 +1128,12 @@
       },
       "success": {
         "status": 200,
-        "kind": "json-object",
-        "mediaType": "application/json",
-        "schemaRef": "#/components/schemas/TeamResponse"
+        "kind": "json-array",
+        "mediaType": "application/json"
       },
       "confirmation": "none",
-      "compactKind": "raw",
+      "compactKind": "comment",
       "sensitiveOutput": false,
-      "bodyRequired": false,
-      "parameters": [
-        {
-          "name": "teamId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique team identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        }
-      ]
-    },
-    {
-      "operationId": "getCurrentUser",
-      "method": "GET",
-      "path": "/v1/public/users/me",
-      "summary": "Retrieve current user",
-      "mcpName": "plaky_get_current_user",
-      "mcpTitle": "Get current user",
-      "scopes": [
-        "read"
-      ],
-      "readOnly": true,
-      "destructive": false,
-      "idempotent": true,
-      "openWorld": true,
-      "list": false,
-      "mutation": false,
-      "request": {
-        "kind": "none",
-        "required": false
-      },
-      "success": {
-        "status": 200,
-        "kind": "json-object",
-        "mediaType": "application/json",
-        "schemaRef": "#/components/schemas/UserResponse"
-      },
-      "confirmation": "none",
-      "compactKind": "raw",
-      "sensitiveOutput": false,
-      "bodyRequired": false
-    },
-    {
-      "operationId": "getBoard",
-      "method": "GET",
-      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}",
-      "summary": "Retrieve a board",
-      "mcpName": "plaky_get_board",
-      "mcpTitle": "Get board",
-      "scopes": [
-        "read"
-      ],
-      "readOnly": true,
-      "destructive": false,
-      "idempotent": true,
-      "openWorld": true,
-      "list": false,
-      "mutation": false,
-      "request": {
-        "kind": "none",
-        "required": false
-      },
-      "success": {
-        "status": 200,
-        "kind": "json-object",
-        "mediaType": "application/json",
-        "schemaRef": "#/components/schemas/BoardResponse"
-      },
-      "confirmation": "none",
-      "compactKind": "board",
-      "sensitiveOutput": false,
-      "bodyRequired": false,
       "parameters": [
         {
           "name": "spaceId",
@@ -785,6 +1152,947 @@
           "in": "path",
           "required": true,
           "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
+    },
+    {
+      "operationId": "createItemComment",
+      "method": "POST",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments",
+      "summary": "Create item comment",
+      "mcpName": "plaky_create_item_comment",
+      "mcpTitle": "Create item comment",
+      "scopes": [
+        "write"
+      ],
+      "readOnly": false,
+      "destructive": false,
+      "idempotent": false,
+      "openWorld": true,
+      "list": false,
+      "mutation": true,
+      "request": {
+        "kind": "json",
+        "required": true,
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/CommentRequest"
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/CommentResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "comment",
+      "sensitiveOutput": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
+    },
+    {
+      "operationId": "deleteItemComment",
+      "method": "DELETE",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}",
+      "summary": "Delete item comment",
+      "mcpName": "plaky_delete_item_comment",
+      "mcpTitle": "Delete item comment",
+      "scopes": [
+        "write",
+        "destructive"
+      ],
+      "readOnly": false,
+      "destructive": true,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": true,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "void"
+      },
+      "confirmation": "destructive",
+      "compactKind": "raw",
+      "sensitiveOutput": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemCommentId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item comment identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
+    },
+    {
+      "operationId": "updateItemComment",
+      "method": "PUT",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}",
+      "summary": "Update item comment",
+      "mcpName": "plaky_update_item_comment",
+      "mcpTitle": "Update item comment",
+      "scopes": [
+        "write"
+      ],
+      "readOnly": false,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": true,
+      "request": {
+        "kind": "json",
+        "required": true,
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/CommentRequest"
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/CommentResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "comment",
+      "sensitiveOutput": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemCommentId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item comment identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
+    },
+    {
+      "operationId": "replaceCommentReactions",
+      "method": "PUT",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}/reactions",
+      "summary": "Replace comment reactions",
+      "mcpName": "plaky_replace_comment_reactions",
+      "mcpTitle": "Replace comment reactions",
+      "scopes": [
+        "write"
+      ],
+      "readOnly": false,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": true,
+      "request": {
+        "kind": "json",
+        "required": true,
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ReactionPutRequest"
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ReactionPutResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "raw",
+      "sensitiveOutput": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemCommentId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item comment identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
+    },
+    {
+      "operationId": "updateItemFields",
+      "method": "PATCH",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields",
+      "summary": "Update item fields",
+      "mcpName": "plaky_update_item_fields",
+      "mcpTitle": "Update item fields",
+      "scopes": [
+        "write"
+      ],
+      "readOnly": false,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": true,
+      "request": {
+        "kind": "json",
+        "required": true,
+        "mediaType": "application/json"
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ItemResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "item",
+      "sensitiveOutput": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
+    },
+    {
+      "operationId": "updateItemField",
+      "method": "PATCH",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields/{itemFieldKey}",
+      "summary": "Update one item field",
+      "mcpName": "plaky_update_item_field",
+      "mcpTitle": "Update item field",
+      "scopes": [
+        "write"
+      ],
+      "readOnly": false,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": true,
+      "request": {
+        "kind": "json",
+        "required": true,
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/FieldValueChangeRequest"
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ItemResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "item",
+      "sensitiveOutput": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemFieldKey",
+          "in": "path",
+          "required": true,
+          "description": "Represents key of the field.",
+          "schema": {
+            "type": "string"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
+    },
+    {
+      "operationId": "listItemFiles",
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files",
+      "summary": "List item files",
+      "mcpName": "plaky_list_item_files",
+      "mcpTitle": "List item files",
+      "scopes": [
+        "read"
+      ],
+      "readOnly": true,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": true,
+      "mutation": false,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-array",
+        "mediaType": "application/json"
+      },
+      "confirmation": "none",
+      "compactKind": "itemFile",
+      "sensitiveOutput": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
+    },
+    {
+      "operationId": "uploadItemFile",
+      "method": "POST",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files",
+      "summary": "Upload an item file",
+      "mcpName": "plaky_upload_item_file",
+      "mcpTitle": "Upload item file",
+      "scopes": [
+        "write"
+      ],
+      "readOnly": false,
+      "destructive": false,
+      "idempotent": false,
+      "openWorld": true,
+      "list": false,
+      "mutation": true,
+      "request": {
+        "kind": "multipart",
+        "required": false,
+        "mediaType": "multipart/form-data",
+        "parts": [
+          {
+            "name": "file",
+            "required": true,
+            "type": "string",
+            "format": "binary",
+            "description": "File to upload"
+          }
+        ]
+      },
+      "success": {
+        "status": 201,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ItemFileResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "itemFile",
+      "sensitiveOutput": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
+    },
+    {
+      "operationId": "deleteItemFile",
+      "method": "DELETE",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}",
+      "summary": "Delete an item file",
+      "mcpName": "plaky_delete_item_file",
+      "mcpTitle": "Delete item file",
+      "scopes": [
+        "write",
+        "destructive"
+      ],
+      "readOnly": false,
+      "destructive": true,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": true,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "void"
+      },
+      "confirmation": "destructive",
+      "compactKind": "raw",
+      "sensitiveOutput": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Unique identifier of the board.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemFileId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item file identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
+    },
+    {
+      "operationId": "getItemFile",
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}",
+      "summary": "Retrieve an item file",
+      "mcpName": "plaky_get_item_file",
+      "mcpTitle": "Get item file",
+      "scopes": [
+        "read"
+      ],
+      "readOnly": true,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": false,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ItemFileResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "itemFile",
+      "sensitiveOutput": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemFileId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item file identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
+    },
+    {
+      "operationId": "updateItemFile",
+      "method": "PUT",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}",
+      "summary": "Update an item file",
+      "mcpName": "plaky_update_item_file",
+      "mcpTitle": "Update item file",
+      "scopes": [
+        "write"
+      ],
+      "readOnly": false,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": true,
+      "request": {
+        "kind": "json",
+        "required": true,
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ItemFileUpdateRequest"
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ItemFileResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "itemFile",
+      "sensitiveOutput": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemFileId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item file identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
+    },
+    {
+      "operationId": "getItemFileDownload",
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}/download",
+      "summary": "Get an item file download link",
+      "mcpName": "plaky_get_item_file_download",
+      "mcpTitle": "Get item file download",
+      "scopes": [
+        "read"
+      ],
+      "readOnly": true,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": false,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ItemFileDownloadResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "downloadLink",
+      "sensitiveOutput": true,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemFileId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item file identifier across the system.",
           "schema": {
             "type": "integer",
             "format": "int64"
@@ -823,7 +2131,6 @@
       "confirmation": "none",
       "compactKind": "item",
       "sensitiveOutput": false,
-      "bodyRequired": false,
       "parameters": [
         {
           "name": "spaceId",
@@ -927,332 +2234,12 @@
       ]
     },
     {
-      "operationId": "getItem",
+      "operationId": "listTeams",
       "method": "GET",
-      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}",
-      "summary": "Retrieve an item",
-      "mcpName": "plaky_get_item",
-      "mcpTitle": "Get item",
-      "scopes": [
-        "read"
-      ],
-      "readOnly": true,
-      "destructive": false,
-      "idempotent": true,
-      "openWorld": true,
-      "list": false,
-      "mutation": false,
-      "request": {
-        "kind": "none",
-        "required": false
-      },
-      "success": {
-        "status": 200,
-        "kind": "json-object",
-        "mediaType": "application/json",
-        "schemaRef": "#/components/schemas/ItemResponse"
-      },
-      "confirmation": "none",
-      "compactKind": "item",
-      "sensitiveOutput": false,
-      "bodyRequired": false,
-      "parameters": [
-        {
-          "name": "spaceId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique space identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        },
-        {
-          "name": "boardId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique board identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        },
-        {
-          "name": "itemId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique item identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        },
-        {
-          "name": "expand",
-          "in": "query",
-          "required": false,
-          "description": "Comma-separated list of relationships to expand into full objects instead of IDs.",
-          "schema": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": [
-                "space",
-                "board",
-                "group",
-                "createdBy",
-                "parent",
-                "subscriptions",
-                "fields"
-              ]
-            }
-          },
-          "style": "form",
-          "explode": false
-        }
-      ],
-      "query": [
-        {
-          "name": "expand",
-          "description": "Comma-separated list of relationships to expand into full objects instead of IDs.",
-          "array": true,
-          "explode": false
-        }
-      ]
-    },
-    {
-      "operationId": "deleteItem",
-      "method": "DELETE",
-      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}",
-      "summary": "Delete an item",
-      "mcpName": "plaky_delete_item",
-      "mcpTitle": "Delete item",
-      "scopes": [
-        "write",
-        "destructive"
-      ],
-      "readOnly": false,
-      "destructive": true,
-      "idempotent": true,
-      "openWorld": true,
-      "list": false,
-      "mutation": true,
-      "request": {
-        "kind": "none",
-        "required": false
-      },
-      "success": {
-        "status": 200,
-        "kind": "void"
-      },
-      "confirmation": "destructive",
-      "compactKind": "raw",
-      "sensitiveOutput": false,
-      "bodyRequired": false,
-      "parameters": [
-        {
-          "name": "spaceId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique space identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        },
-        {
-          "name": "boardId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique board identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        },
-        {
-          "name": "itemId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique item identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        }
-      ]
-    },
-    {
-      "operationId": "updateItemField",
-      "method": "PATCH",
-      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields/{itemFieldKey}",
-      "summary": "Update one item field",
-      "mcpName": "plaky_update_item_field",
-      "mcpTitle": "Update item field",
-      "scopes": [
-        "write"
-      ],
-      "readOnly": false,
-      "destructive": false,
-      "idempotent": true,
-      "openWorld": true,
-      "list": false,
-      "mutation": true,
-      "request": {
-        "kind": "json",
-        "required": true,
-        "mediaType": "application/json",
-        "schemaRef": "#/components/schemas/FieldValueChangeRequest"
-      },
-      "success": {
-        "status": 200,
-        "kind": "json-object",
-        "mediaType": "application/json",
-        "schemaRef": "#/components/schemas/ItemResponse"
-      },
-      "confirmation": "none",
-      "compactKind": "item",
-      "sensitiveOutput": false,
-      "bodyRequired": true,
-      "parameters": [
-        {
-          "name": "spaceId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique space identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        },
-        {
-          "name": "boardId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique board identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        },
-        {
-          "name": "itemId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique item identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        },
-        {
-          "name": "itemFieldKey",
-          "in": "path",
-          "required": true,
-          "description": "Represents key of the field.",
-          "schema": {
-            "type": "string"
-          },
-          "style": "simple",
-          "explode": false
-        }
-      ]
-    },
-    {
-      "operationId": "updateItemFields",
-      "method": "PATCH",
-      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields",
-      "summary": "Update item fields",
-      "mcpName": "plaky_update_item_fields",
-      "mcpTitle": "Update item fields",
-      "scopes": [
-        "write"
-      ],
-      "readOnly": false,
-      "destructive": false,
-      "idempotent": true,
-      "openWorld": true,
-      "list": false,
-      "mutation": true,
-      "request": {
-        "kind": "json",
-        "required": true,
-        "mediaType": "application/json"
-      },
-      "success": {
-        "status": 200,
-        "kind": "json-object",
-        "mediaType": "application/json",
-        "schemaRef": "#/components/schemas/ItemResponse"
-      },
-      "confirmation": "none",
-      "compactKind": "item",
-      "sensitiveOutput": false,
-      "bodyRequired": true,
-      "parameters": [
-        {
-          "name": "spaceId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique space identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        },
-        {
-          "name": "boardId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique board identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        },
-        {
-          "name": "itemId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique item identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        }
-      ]
-    },
-    {
-      "operationId": "listItemComments",
-      "method": "GET",
-      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments",
-      "summary": "List item comments",
-      "mcpName": "plaky_list_item_comments",
-      "mcpTitle": "List item comments",
+      "path": "/v1/public/teams",
+      "summary": "List workspace teams",
+      "mcpName": "plaky_list_teams",
+      "mcpTitle": "List teams",
       "scopes": [
         "read"
       ],
@@ -1268,277 +2255,81 @@
       },
       "success": {
         "status": 200,
-        "kind": "json-array",
-        "mediaType": "application/json"
-      },
-      "confirmation": "none",
-      "compactKind": "comment",
-      "sensitiveOutput": false,
-      "bodyRequired": false,
-      "parameters": [
-        {
-          "name": "spaceId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique space identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        },
-        {
-          "name": "boardId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique board identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        },
-        {
-          "name": "itemId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique item identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        }
-      ]
-    },
-    {
-      "operationId": "createItemComment",
-      "method": "POST",
-      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments",
-      "summary": "Create item comment",
-      "mcpName": "plaky_create_item_comment",
-      "mcpTitle": "Create item comment",
-      "scopes": [
-        "write"
-      ],
-      "readOnly": false,
-      "destructive": false,
-      "idempotent": false,
-      "openWorld": true,
-      "list": false,
-      "mutation": true,
-      "request": {
-        "kind": "json",
-        "required": true,
-        "mediaType": "application/json",
-        "schemaRef": "#/components/schemas/CommentRequest"
-      },
-      "success": {
-        "status": 200,
         "kind": "json-object",
         "mediaType": "application/json",
-        "schemaRef": "#/components/schemas/CommentResponse"
+        "schemaRef": "#/components/schemas/PublicPagedResponseV1TeamResponse"
       },
       "confirmation": "none",
-      "compactKind": "comment",
+      "compactKind": "raw",
       "sensitiveOutput": false,
-      "bodyRequired": true,
-      "parameters": [
-        {
-          "name": "spaceId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique space identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
+      "pagination": {
+        "type": "offsetLimit",
+        "results": "$.data",
+        "inputs": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            },
+            "style": "form",
+            "explode": true
           },
-          "style": "simple",
-          "explode": false
-        },
-        {
-          "name": "boardId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique board identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        },
-        {
-          "name": "itemId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique item identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        }
-      ]
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "Page size.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            },
+            "style": "form",
+            "explode": true
+          }
+        ]
+      }
     },
     {
-      "operationId": "updateItemComment",
-      "method": "PUT",
-      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}",
-      "summary": "Update item comment",
-      "mcpName": "plaky_update_item_comment",
-      "mcpTitle": "Update item comment",
+      "operationId": "getTeam",
+      "method": "GET",
+      "path": "/v1/public/teams/{teamId}",
+      "summary": "Retrieve a team",
+      "mcpName": "plaky_get_team",
+      "mcpTitle": "Get team",
       "scopes": [
-        "write"
+        "read"
       ],
-      "readOnly": false,
+      "readOnly": true,
       "destructive": false,
       "idempotent": true,
       "openWorld": true,
       "list": false,
-      "mutation": true,
-      "request": {
-        "kind": "json",
-        "required": true,
-        "mediaType": "application/json",
-        "schemaRef": "#/components/schemas/CommentRequest"
-      },
-      "success": {
-        "status": 200,
-        "kind": "json-object",
-        "mediaType": "application/json",
-        "schemaRef": "#/components/schemas/CommentResponse"
-      },
-      "confirmation": "none",
-      "compactKind": "comment",
-      "sensitiveOutput": false,
-      "bodyRequired": true,
-      "parameters": [
-        {
-          "name": "spaceId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique space identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        },
-        {
-          "name": "boardId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique board identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        },
-        {
-          "name": "itemId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique item identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        },
-        {
-          "name": "itemCommentId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique item comment identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        }
-      ]
-    },
-    {
-      "operationId": "deleteItemComment",
-      "method": "DELETE",
-      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}",
-      "summary": "Delete item comment",
-      "mcpName": "plaky_delete_item_comment",
-      "mcpTitle": "Delete item comment",
-      "scopes": [
-        "write",
-        "destructive"
-      ],
-      "readOnly": false,
-      "destructive": true,
-      "idempotent": true,
-      "openWorld": true,
-      "list": false,
-      "mutation": true,
+      "mutation": false,
       "request": {
         "kind": "none",
         "required": false
       },
       "success": {
         "status": 200,
-        "kind": "void"
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/TeamResponse"
       },
-      "confirmation": "destructive",
+      "confirmation": "none",
       "compactKind": "raw",
       "sensitiveOutput": false,
-      "bodyRequired": false,
       "parameters": [
         {
-          "name": "spaceId",
+          "name": "teamId",
           "in": "path",
           "required": true,
-          "description": "Represents unique space identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        },
-        {
-          "name": "boardId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique board identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        },
-        {
-          "name": "itemId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique item identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
-        },
-        {
-          "name": "itemCommentId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique item comment identifier across the system.",
+          "description": "Represents unique team identifier across the system.",
           "schema": {
             "type": "integer",
             "format": "int64"
@@ -1549,87 +2340,160 @@
       ]
     },
     {
-      "operationId": "replaceCommentReactions",
-      "method": "PUT",
-      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}/reactions",
-      "summary": "Replace comment reactions",
-      "mcpName": "plaky_replace_comment_reactions",
-      "mcpTitle": "Replace comment reactions",
+      "operationId": "listUsers",
+      "method": "GET",
+      "path": "/v1/public/users",
+      "summary": "List workspace users",
+      "mcpName": "plaky_list_users",
+      "mcpTitle": "List users",
       "scopes": [
-        "write"
+        "read"
       ],
-      "readOnly": false,
+      "readOnly": true,
       "destructive": false,
       "idempotent": true,
       "openWorld": true,
-      "list": false,
-      "mutation": true,
+      "list": true,
+      "mutation": false,
       "request": {
-        "kind": "json",
-        "required": true,
-        "mediaType": "application/json",
-        "schemaRef": "#/components/schemas/ReactionPutRequest"
+        "kind": "none",
+        "required": false
       },
       "success": {
         "status": 200,
         "kind": "json-object",
         "mediaType": "application/json",
-        "schemaRef": "#/components/schemas/ReactionPutResponse"
+        "schemaRef": "#/components/schemas/PublicPagedResponseV1UserResponse"
       },
       "confirmation": "none",
       "compactKind": "raw",
       "sensitiveOutput": false,
-      "bodyRequired": true,
       "parameters": [
         {
-          "name": "spaceId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique space identifier across the system.",
+          "name": "emails",
+          "in": "query",
+          "required": false,
+          "description": "If provided, you will get list of users filtered for the provided emails",
           "schema": {
-            "type": "integer",
-            "format": "int64"
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
-          "style": "simple",
-          "explode": false
+          "style": "form",
+          "explode": true
         },
         {
-          "name": "boardId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique board identifier across the system.",
+          "name": "status",
+          "in": "query",
+          "required": false,
+          "description": "If provided, you will get list of users filtered for the provided status",
           "schema": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "PENDING",
+              "INACTIVE"
+            ]
           },
-          "style": "simple",
-          "explode": false
+          "style": "form",
+          "explode": true
         },
         {
-          "name": "itemId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique item identifier across the system.",
+          "name": "type",
+          "in": "query",
+          "required": false,
+          "description": "If provided, you will get list of users filtered for the provided type",
           "schema": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "enum": [
+              "OWNER",
+              "ADMIN",
+              "MEMBER",
+              "VIEWER"
+            ]
           },
-          "style": "simple",
-          "explode": false
+          "style": "form",
+          "explode": true
+        }
+      ],
+      "pagination": {
+        "type": "offsetLimit",
+        "results": "$.data",
+        "inputs": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            },
+            "style": "form",
+            "explode": true
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "Page size.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            },
+            "style": "form",
+            "explode": true
+          }
+        ]
+      },
+      "query": [
+        {
+          "name": "emails",
+          "description": "If provided, you will get list of users filtered for the provided emails",
+          "array": true
         },
         {
-          "name": "itemCommentId",
-          "in": "path",
-          "required": true,
-          "description": "Represents unique item comment identifier across the system.",
-          "schema": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "style": "simple",
-          "explode": false
+          "name": "status",
+          "description": "If provided, you will get list of users filtered for the provided status"
+        },
+        {
+          "name": "type",
+          "description": "If provided, you will get list of users filtered for the provided type"
         }
       ]
+    },
+    {
+      "operationId": "getCurrentUser",
+      "method": "GET",
+      "path": "/v1/public/users/me",
+      "summary": "Retrieve current user",
+      "mcpName": "plaky_get_current_user",
+      "mcpTitle": "Get current user",
+      "scopes": [
+        "read"
+      ],
+      "readOnly": true,
+      "destructive": false,
+      "idempotent": true,
+      "openWorld": true,
+      "list": false,
+      "mutation": false,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/UserResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "raw",
+      "sensitiveOutput": false
     }
   ],
   "paths": [
@@ -1640,18 +2504,48 @@
     },
     {
       "method": "GET",
-      "path": "/v1/public/teams",
-      "operationId": "listTeams"
-    },
-    {
-      "method": "GET",
-      "path": "/v1/public/users",
-      "operationId": "listUsers"
+      "path": "/v1/public/spaces/{spaceId}",
+      "operationId": "getSpace"
     },
     {
       "method": "GET",
       "path": "/v1/public/spaces/{spaceId}/boards",
       "operationId": "listBoards"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}",
+      "operationId": "getBoard"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups",
+      "operationId": "listItemGroups"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups",
+      "operationId": "createItemGroup"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}",
+      "operationId": "deleteItemGroup"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}",
+      "operationId": "getItemGroup"
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}",
+      "operationId": "updateItemGroup"
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}/archive",
+      "operationId": "archiveItemGroup"
     },
     {
       "method": "GET",
@@ -1664,49 +2558,14 @@
       "operationId": "createItem"
     },
     {
-      "method": "GET",
-      "path": "/v1/public/spaces/{spaceId}",
-      "operationId": "getSpace"
-    },
-    {
-      "method": "GET",
-      "path": "/v1/public/teams/{teamId}",
-      "operationId": "getTeam"
-    },
-    {
-      "method": "GET",
-      "path": "/v1/public/users/me",
-      "operationId": "getCurrentUser"
-    },
-    {
-      "method": "GET",
-      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}",
-      "operationId": "getBoard"
-    },
-    {
-      "method": "GET",
-      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/sub-items",
-      "operationId": "listSubitems"
-    },
-    {
-      "method": "GET",
-      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}",
-      "operationId": "getItem"
-    },
-    {
       "method": "DELETE",
       "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}",
       "operationId": "deleteItem"
     },
     {
-      "method": "PATCH",
-      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields/{itemFieldKey}",
-      "operationId": "updateItemField"
-    },
-    {
-      "method": "PATCH",
-      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields",
-      "operationId": "updateItemFields"
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}",
+      "operationId": "getItem"
     },
     {
       "method": "GET",
@@ -1719,33 +2578,118 @@
       "operationId": "createItemComment"
     },
     {
-      "method": "PUT",
-      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}",
-      "operationId": "updateItemComment"
-    },
-    {
       "method": "DELETE",
       "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}",
       "operationId": "deleteItemComment"
     },
     {
       "method": "PUT",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}",
+      "operationId": "updateItemComment"
+    },
+    {
+      "method": "PUT",
       "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}/reactions",
       "operationId": "replaceCommentReactions"
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields",
+      "operationId": "updateItemFields"
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields/{itemFieldKey}",
+      "operationId": "updateItemField"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files",
+      "operationId": "listItemFiles"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files",
+      "operationId": "uploadItemFile"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}",
+      "operationId": "deleteItemFile"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}",
+      "operationId": "getItemFile"
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}",
+      "operationId": "updateItemFile"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}/download",
+      "operationId": "getItemFileDownload"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/sub-items",
+      "operationId": "listSubitems"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/teams",
+      "operationId": "listTeams"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/teams/{teamId}",
+      "operationId": "getTeam"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/users",
+      "operationId": "listUsers"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/public/users/me",
+      "operationId": "getCurrentUser"
     }
   ],
   "scopes": {
     "listSpaces": [
       "read"
     ],
-    "listTeams": [
-      "read"
-    ],
-    "listUsers": [
+    "getSpace": [
       "read"
     ],
     "listBoards": [
       "read"
+    ],
+    "getBoard": [
+      "read"
+    ],
+    "listItemGroups": [
+      "read"
+    ],
+    "createItemGroup": [
+      "write"
+    ],
+    "deleteItemGroup": [
+      "write",
+      "destructive"
+    ],
+    "getItemGroup": [
+      "read"
+    ],
+    "updateItemGroup": [
+      "write"
+    ],
+    "archiveItemGroup": [
+      "write",
+      "destructive"
     ],
     "listItems": [
       "read"
@@ -1753,33 +2697,12 @@
     "createItem": [
       "write"
     ],
-    "getSpace": [
-      "read"
-    ],
-    "getTeam": [
-      "read"
-    ],
-    "getCurrentUser": [
-      "read"
-    ],
-    "getBoard": [
-      "read"
-    ],
-    "listSubitems": [
-      "read"
-    ],
-    "getItem": [
-      "read"
-    ],
     "deleteItem": [
       "write",
       "destructive"
     ],
-    "updateItemField": [
-      "write"
-    ],
-    "updateItemFields": [
-      "write"
+    "getItem": [
+      "read"
     ],
     "listItemComments": [
       "read"
@@ -1787,39 +2710,91 @@
     "createItemComment": [
       "write"
     ],
-    "updateItemComment": [
-      "write"
-    ],
     "deleteItemComment": [
       "write",
       "destructive"
     ],
+    "updateItemComment": [
+      "write"
+    ],
     "replaceCommentReactions": [
       "write"
+    ],
+    "updateItemFields": [
+      "write"
+    ],
+    "updateItemField": [
+      "write"
+    ],
+    "listItemFiles": [
+      "read"
+    ],
+    "uploadItemFile": [
+      "write"
+    ],
+    "deleteItemFile": [
+      "write",
+      "destructive"
+    ],
+    "getItemFile": [
+      "read"
+    ],
+    "updateItemFile": [
+      "write"
+    ],
+    "getItemFileDownload": [
+      "read"
+    ],
+    "listSubitems": [
+      "read"
+    ],
+    "listTeams": [
+      "read"
+    ],
+    "getTeam": [
+      "read"
+    ],
+    "listUsers": [
+      "read"
+    ],
+    "getCurrentUser": [
+      "read"
     ]
   },
   "listEndpoints": [
     "listSpaces",
-    "listTeams",
-    "listUsers",
     "listBoards",
+    "listItemGroups",
     "listItems",
+    "listItemComments",
+    "listItemFiles",
     "listSubitems",
-    "listItemComments"
+    "listTeams",
+    "listUsers"
   ],
   "mutations": [
+    "createItemGroup",
+    "deleteItemGroup",
+    "updateItemGroup",
+    "archiveItemGroup",
     "createItem",
     "deleteItem",
-    "updateItemField",
-    "updateItemFields",
     "createItemComment",
-    "updateItemComment",
     "deleteItemComment",
-    "replaceCommentReactions"
+    "updateItemComment",
+    "replaceCommentReactions",
+    "updateItemFields",
+    "updateItemField",
+    "uploadItemFile",
+    "deleteItemFile",
+    "updateItemFile"
   ],
   "destructive": [
+    "deleteItemGroup",
+    "archiveItemGroup",
     "deleteItem",
-    "deleteItemComment"
+    "deleteItemComment",
+    "deleteItemFile"
   ],
   "examples": {
     "listSpaces": {
@@ -1827,20 +2802,89 @@
       "description": "Discover spaces before resolving boards or items.",
       "position": 1
     },
-    "listTeams": {
-      "title": "List teams",
-      "description": "Resolve teams before assigning person/team fields.",
-      "position": 14
-    },
-    "listUsers": {
-      "title": "List users",
-      "description": "Resolve users before assigning people fields.",
-      "position": 12
+    "getSpace": {
+      "title": "Get a space",
+      "description": "Fetch one space after choosing its ID from listSpaces.",
+      "position": 2
     },
     "listBoards": {
       "title": "List boards",
       "description": "Discover boards in a space before reading or mutating items.",
       "position": 3
+    },
+    "getBoard": {
+      "title": "Get a board",
+      "description": "Fetch board schema and groups before building item field values.",
+      "position": 4
+    },
+    "listItemGroups": {
+      "title": "List item groups",
+      "description": "Resolve item group IDs before creating or moving board items.",
+      "position": 21,
+      "response": {
+        "data": [
+          {
+            "id": 3001,
+            "title": "Backlog",
+            "color": "#3366FF",
+            "ranking": "0|hzzzzz:"
+          }
+        ],
+        "hasMore": false
+      }
+    },
+    "createItemGroup": {
+      "title": "Create an item group",
+      "description": "Add a named group to a board.",
+      "position": 23,
+      "request": {
+        "title": "Backlog",
+        "color": "#3366FF",
+        "ranking": "0|hzzzzz:"
+      },
+      "response": {
+        "id": 3001,
+        "title": "Backlog",
+        "color": "#3366FF",
+        "ranking": "0|hzzzzz:"
+      }
+    },
+    "deleteItemGroup": {
+      "title": "Delete an item group",
+      "description": "Remove one known item group after explicit user confirmation.",
+      "position": 25
+    },
+    "getItemGroup": {
+      "title": "Get an item group",
+      "description": "Read the title, color, and ranking of one item group.",
+      "position": 22,
+      "response": {
+        "id": 3001,
+        "title": "Backlog",
+        "color": "#3366FF",
+        "ranking": "0|hzzzzz:"
+      }
+    },
+    "updateItemGroup": {
+      "title": "Update an item group",
+      "description": "Change a known item group's title, color, or ranking.",
+      "position": 24,
+      "request": {
+        "title": "In progress",
+        "color": "#FFAA00",
+        "ranking": "0|i00000:"
+      },
+      "response": {
+        "id": 3001,
+        "title": "In progress",
+        "color": "#FFAA00",
+        "ranking": "0|i00000:"
+      }
+    },
+    "archiveItemGroup": {
+      "title": "Archive an item group",
+      "description": "Archive one known item group after explicit user confirmation.",
+      "position": 26
     },
     "listItems": {
       "title": "List board items",
@@ -1891,80 +2935,15 @@
         ]
       }
     },
-    "getSpace": {
-      "title": "Get a space",
-      "description": "Fetch one space after choosing its ID from listSpaces.",
-      "position": 2
-    },
-    "getTeam": {
-      "title": "Get a team",
-      "description": "Fetch one team after choosing its ID from listTeams.",
-      "position": 15
-    },
-    "getCurrentUser": {
-      "title": "Get current user",
-      "description": "Check which Plaky user owns the current API key.",
-      "position": 13
-    },
-    "getBoard": {
-      "title": "Get a board",
-      "description": "Fetch board schema and groups before building item field values.",
-      "position": 4
-    },
-    "listSubitems": {
-      "title": "List subitems",
-      "description": "Read child items under a parent item.",
-      "position": 9
-    },
-    "getItem": {
-      "title": "Get an item",
-      "description": "Fetch a specific item before reading details or planning a mutation.",
-      "position": 7
-    },
     "deleteItem": {
       "title": "Delete an item",
       "description": "Remove one known item after explicit user confirmation.",
       "position": 8
     },
-    "updateItemField": {
-      "title": "Update one item field",
-      "description": "Change one field by field key after resolving the item.",
-      "position": 10,
-      "request": {
-        "value": "new value"
-      },
-      "response": {
-        "id": 123456,
-        "title": "Example item",
-        "fields": [
-          {
-            "key": "string-2",
-            "type": "STRING",
-            "title": "Notes",
-            "value": "new value"
-          }
-        ]
-      }
-    },
-    "updateItemFields": {
-      "title": "Update item fields",
-      "description": "Apply a compact field-value object keyed by field title or field key.",
-      "position": 11,
-      "request": {
-        "string-2": "new value"
-      },
-      "response": {
-        "id": 123456,
-        "title": "Example item",
-        "fields": [
-          {
-            "key": "string-2",
-            "type": "STRING",
-            "title": "Notes",
-            "value": "new value"
-          }
-        ]
-      }
+    "getItem": {
+      "title": "Get an item",
+      "description": "Fetch a specific item before reading details or planning a mutation.",
+      "position": 7
     },
     "listItemComments": {
       "title": "List item comments",
@@ -1994,6 +2973,11 @@
         ]
       }
     },
+    "deleteItemComment": {
+      "title": "Delete item comment",
+      "description": "Remove one known comment after explicit user confirmation.",
+      "position": 19
+    },
     "updateItemComment": {
       "title": "Update item comment",
       "description": "Replace a known comment's text.",
@@ -2017,11 +3001,6 @@
         ]
       }
     },
-    "deleteItemComment": {
-      "title": "Delete item comment",
-      "description": "Remove one known comment after explicit user confirmation.",
-      "position": 19
-    },
     "replaceCommentReactions": {
       "title": "Replace comment reactions",
       "description": "Set or clear the current user's reactions on one comment.",
@@ -2043,6 +3022,154 @@
           ]
         }
       }
+    },
+    "updateItemFields": {
+      "title": "Update item fields",
+      "description": "Apply a compact field-value object keyed by field title or field key.",
+      "position": 11,
+      "request": {
+        "string-2": "new value"
+      },
+      "response": {
+        "id": 123456,
+        "title": "Example item",
+        "fields": [
+          {
+            "key": "string-2",
+            "type": "STRING",
+            "title": "Notes",
+            "value": "new value"
+          }
+        ]
+      }
+    },
+    "updateItemField": {
+      "title": "Update one item field",
+      "description": "Change one field by field key after resolving the item.",
+      "position": 10,
+      "request": {
+        "value": "new value"
+      },
+      "response": {
+        "id": 123456,
+        "title": "Example item",
+        "fields": [
+          {
+            "key": "string-2",
+            "type": "STRING",
+            "title": "Notes",
+            "value": "new value"
+          }
+        ]
+      }
+    },
+    "listItemFiles": {
+      "title": "List item files",
+      "description": "Discover file IDs attached to one item.",
+      "position": 28,
+      "response": [
+        {
+          "id": 4001,
+          "name": "fixture.txt",
+          "description": "Fixture attachment",
+          "size": 128,
+          "extension": "txt",
+          "fileType": "TEXT",
+          "uploadedBy": 1001,
+          "createdAt": "2026-06-28T12:00:00Z"
+        }
+      ]
+    },
+    "uploadItemFile": {
+      "title": "Upload an item file",
+      "description": "Attach a named binary file to one known item.",
+      "position": 27,
+      "request": {
+        "file": "fixture.txt"
+      },
+      "response": {
+        "id": 4001,
+        "name": "fixture.txt",
+        "description": "Fixture attachment",
+        "size": 128,
+        "extension": "txt",
+        "fileType": "TEXT",
+        "uploadedBy": 1001,
+        "createdAt": "2026-06-28T12:00:00Z"
+      }
+    },
+    "deleteItemFile": {
+      "title": "Delete an item file",
+      "description": "Remove one known file after explicit user confirmation.",
+      "position": 32
+    },
+    "getItemFile": {
+      "title": "Get an item file",
+      "description": "Read attachment metadata before renaming or downloading it.",
+      "position": 29,
+      "response": {
+        "id": 4001,
+        "name": "fixture.txt",
+        "description": "Fixture attachment",
+        "size": 128,
+        "extension": "txt",
+        "fileType": "TEXT",
+        "uploadedBy": 1001,
+        "createdAt": "2026-06-28T12:00:00Z"
+      }
+    },
+    "updateItemFile": {
+      "title": "Update an item file",
+      "description": "Rename a known file and replace its description.",
+      "position": 31,
+      "request": {
+        "name": "renamed-fixture.txt",
+        "description": "Updated fixture attachment"
+      },
+      "response": {
+        "id": 4001,
+        "name": "renamed-fixture.txt",
+        "description": "Updated fixture attachment",
+        "size": 128,
+        "extension": "txt",
+        "fileType": "TEXT",
+        "uploadedBy": 1001,
+        "createdAt": "2026-06-28T12:00:00Z"
+      }
+    },
+    "getItemFileDownload": {
+      "title": "Get a file download link",
+      "description": "Request a temporary link for a known item file without logging it.",
+      "position": 30,
+      "response": {
+        "url": "https://example.com/plaky/item-file",
+        "expiresInSeconds": 900
+      }
+    },
+    "listSubitems": {
+      "title": "List subitems",
+      "description": "Read child items under a parent item.",
+      "position": 9
+    },
+    "listTeams": {
+      "title": "List teams",
+      "description": "Resolve teams before assigning person/team fields.",
+      "position": 14
+    },
+    "getTeam": {
+      "title": "Get a team",
+      "description": "Fetch one team after choosing its ID from listTeams.",
+      "position": 15
+    },
+    "listUsers": {
+      "title": "List users",
+      "description": "Resolve users before assigning people fields.",
+      "position": 12
+    },
+    "getCurrentUser": {
+      "title": "Get current user",
+      "description": "Check which Plaky user owns the current API key.",
+      "position": 13
     }
   }
 }

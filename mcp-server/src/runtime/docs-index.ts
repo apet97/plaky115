@@ -22,21 +22,11 @@ export const docsIndex: PlakyDocsEntry[] = [
     ]
   },
   {
-    "id": "op:listTeams",
+    "id": "op:getSpace",
     "kind": "operation",
-    "title": "List teams",
-    "text": "List workspace teams\nPath: GET /v1/public/teams\nMCP tool: plaky_list_teams\nScopes: read",
-    "operationId": "listTeams",
-    "scopes": [
-      "read"
-    ]
-  },
-  {
-    "id": "op:listUsers",
-    "kind": "operation",
-    "title": "List users",
-    "text": "List workspace users\nPath: GET /v1/public/users\nMCP tool: plaky_list_users\nScopes: read",
-    "operationId": "listUsers",
+    "title": "Get space",
+    "text": "Retrieve a space\nPath: GET /v1/public/spaces/{spaceId}\nMCP tool: plaky_get_space\nScopes: read",
+    "operationId": "getSpace",
     "scopes": [
       "read"
     ]
@@ -49,6 +39,78 @@ export const docsIndex: PlakyDocsEntry[] = [
     "operationId": "listBoards",
     "scopes": [
       "read"
+    ]
+  },
+  {
+    "id": "op:getBoard",
+    "kind": "operation",
+    "title": "Get board",
+    "text": "Retrieve a board\nPath: GET /v1/public/spaces/{spaceId}/boards/{boardId}\nMCP tool: plaky_get_board\nScopes: read",
+    "operationId": "getBoard",
+    "scopes": [
+      "read"
+    ]
+  },
+  {
+    "id": "op:listItemGroups",
+    "kind": "operation",
+    "title": "List item groups",
+    "text": "List board item groups\nPath: GET /v1/public/spaces/{spaceId}/boards/{boardId}/item-groups\nMCP tool: plaky_list_item_groups\nScopes: read",
+    "operationId": "listItemGroups",
+    "scopes": [
+      "read"
+    ]
+  },
+  {
+    "id": "op:createItemGroup",
+    "kind": "operation",
+    "title": "Create item group",
+    "text": "Create an item group\nPath: POST /v1/public/spaces/{spaceId}/boards/{boardId}/item-groups\nMCP tool: plaky_create_item_group\nScopes: write",
+    "operationId": "createItemGroup",
+    "scopes": [
+      "write"
+    ]
+  },
+  {
+    "id": "op:deleteItemGroup",
+    "kind": "operation",
+    "title": "Delete item group",
+    "text": "Delete an item group\nPath: DELETE /v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}\nMCP tool: plaky_delete_item_group\nScopes: write, destructive",
+    "operationId": "deleteItemGroup",
+    "scopes": [
+      "write",
+      "destructive"
+    ]
+  },
+  {
+    "id": "op:getItemGroup",
+    "kind": "operation",
+    "title": "Get item group",
+    "text": "Retrieve an item group\nPath: GET /v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}\nMCP tool: plaky_get_item_group\nScopes: read",
+    "operationId": "getItemGroup",
+    "scopes": [
+      "read"
+    ]
+  },
+  {
+    "id": "op:updateItemGroup",
+    "kind": "operation",
+    "title": "Update item group",
+    "text": "Update an item group\nPath: PUT /v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}\nMCP tool: plaky_update_item_group\nScopes: write",
+    "operationId": "updateItemGroup",
+    "scopes": [
+      "write"
+    ]
+  },
+  {
+    "id": "op:archiveItemGroup",
+    "kind": "operation",
+    "title": "Archive item group",
+    "text": "Archive an item group\nPath: PUT /v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}/archive\nMCP tool: plaky_archive_item_group\nScopes: write, destructive",
+    "operationId": "archiveItemGroup",
+    "scopes": [
+      "write",
+      "destructive"
     ]
   },
   {
@@ -72,66 +134,6 @@ export const docsIndex: PlakyDocsEntry[] = [
     ]
   },
   {
-    "id": "op:getSpace",
-    "kind": "operation",
-    "title": "Get space",
-    "text": "Retrieve a space\nPath: GET /v1/public/spaces/{spaceId}\nMCP tool: plaky_get_space\nScopes: read",
-    "operationId": "getSpace",
-    "scopes": [
-      "read"
-    ]
-  },
-  {
-    "id": "op:getTeam",
-    "kind": "operation",
-    "title": "Get team",
-    "text": "Retrieve a team\nPath: GET /v1/public/teams/{teamId}\nMCP tool: plaky_get_team\nScopes: read",
-    "operationId": "getTeam",
-    "scopes": [
-      "read"
-    ]
-  },
-  {
-    "id": "op:getCurrentUser",
-    "kind": "operation",
-    "title": "Get current user",
-    "text": "Retrieve current user\nPath: GET /v1/public/users/me\nMCP tool: plaky_get_current_user\nScopes: read",
-    "operationId": "getCurrentUser",
-    "scopes": [
-      "read"
-    ]
-  },
-  {
-    "id": "op:getBoard",
-    "kind": "operation",
-    "title": "Get board",
-    "text": "Retrieve a board\nPath: GET /v1/public/spaces/{spaceId}/boards/{boardId}\nMCP tool: plaky_get_board\nScopes: read",
-    "operationId": "getBoard",
-    "scopes": [
-      "read"
-    ]
-  },
-  {
-    "id": "op:listSubitems",
-    "kind": "operation",
-    "title": "List subitems",
-    "text": "List subitems\nPath: GET /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/sub-items\nMCP tool: plaky_list_subitems\nScopes: read",
-    "operationId": "listSubitems",
-    "scopes": [
-      "read"
-    ]
-  },
-  {
-    "id": "op:getItem",
-    "kind": "operation",
-    "title": "Get item",
-    "text": "Retrieve an item\nPath: GET /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}\nMCP tool: plaky_get_item\nScopes: read",
-    "operationId": "getItem",
-    "scopes": [
-      "read"
-    ]
-  },
-  {
     "id": "op:deleteItem",
     "kind": "operation",
     "title": "Delete item",
@@ -143,23 +145,13 @@ export const docsIndex: PlakyDocsEntry[] = [
     ]
   },
   {
-    "id": "op:updateItemField",
+    "id": "op:getItem",
     "kind": "operation",
-    "title": "Update item field",
-    "text": "Update one item field\nPath: PATCH /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields/{itemFieldKey}\nMCP tool: plaky_update_item_field\nScopes: write",
-    "operationId": "updateItemField",
+    "title": "Get item",
+    "text": "Retrieve an item\nPath: GET /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}\nMCP tool: plaky_get_item\nScopes: read",
+    "operationId": "getItem",
     "scopes": [
-      "write"
-    ]
-  },
-  {
-    "id": "op:updateItemFields",
-    "kind": "operation",
-    "title": "Update item fields",
-    "text": "Update item fields\nPath: PATCH /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields\nMCP tool: plaky_update_item_fields\nScopes: write",
-    "operationId": "updateItemFields",
-    "scopes": [
-      "write"
+      "read"
     ]
   },
   {
@@ -183,16 +175,6 @@ export const docsIndex: PlakyDocsEntry[] = [
     ]
   },
   {
-    "id": "op:updateItemComment",
-    "kind": "operation",
-    "title": "Update item comment",
-    "text": "Update item comment\nPath: PUT /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}\nMCP tool: plaky_update_item_comment\nScopes: write",
-    "operationId": "updateItemComment",
-    "scopes": [
-      "write"
-    ]
-  },
-  {
     "id": "op:deleteItemComment",
     "kind": "operation",
     "title": "Delete item comment",
@@ -204,6 +186,16 @@ export const docsIndex: PlakyDocsEntry[] = [
     ]
   },
   {
+    "id": "op:updateItemComment",
+    "kind": "operation",
+    "title": "Update item comment",
+    "text": "Update item comment\nPath: PUT /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}\nMCP tool: plaky_update_item_comment\nScopes: write",
+    "operationId": "updateItemComment",
+    "scopes": [
+      "write"
+    ]
+  },
+  {
     "id": "op:replaceCommentReactions",
     "kind": "operation",
     "title": "Replace comment reactions",
@@ -211,6 +203,137 @@ export const docsIndex: PlakyDocsEntry[] = [
     "operationId": "replaceCommentReactions",
     "scopes": [
       "write"
+    ]
+  },
+  {
+    "id": "op:updateItemFields",
+    "kind": "operation",
+    "title": "Update item fields",
+    "text": "Update item fields\nPath: PATCH /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields\nMCP tool: plaky_update_item_fields\nScopes: write",
+    "operationId": "updateItemFields",
+    "scopes": [
+      "write"
+    ]
+  },
+  {
+    "id": "op:updateItemField",
+    "kind": "operation",
+    "title": "Update item field",
+    "text": "Update one item field\nPath: PATCH /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields/{itemFieldKey}\nMCP tool: plaky_update_item_field\nScopes: write",
+    "operationId": "updateItemField",
+    "scopes": [
+      "write"
+    ]
+  },
+  {
+    "id": "op:listItemFiles",
+    "kind": "operation",
+    "title": "List item files",
+    "text": "List item files\nPath: GET /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files\nMCP tool: plaky_list_item_files\nScopes: read",
+    "operationId": "listItemFiles",
+    "scopes": [
+      "read"
+    ]
+  },
+  {
+    "id": "op:uploadItemFile",
+    "kind": "operation",
+    "title": "Upload item file",
+    "text": "Upload an item file\nPath: POST /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files\nMCP tool: plaky_upload_item_file\nScopes: write",
+    "operationId": "uploadItemFile",
+    "scopes": [
+      "write"
+    ]
+  },
+  {
+    "id": "op:deleteItemFile",
+    "kind": "operation",
+    "title": "Delete item file",
+    "text": "Delete an item file\nPath: DELETE /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}\nMCP tool: plaky_delete_item_file\nScopes: write, destructive",
+    "operationId": "deleteItemFile",
+    "scopes": [
+      "write",
+      "destructive"
+    ]
+  },
+  {
+    "id": "op:getItemFile",
+    "kind": "operation",
+    "title": "Get item file",
+    "text": "Retrieve an item file\nPath: GET /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}\nMCP tool: plaky_get_item_file\nScopes: read",
+    "operationId": "getItemFile",
+    "scopes": [
+      "read"
+    ]
+  },
+  {
+    "id": "op:updateItemFile",
+    "kind": "operation",
+    "title": "Update item file",
+    "text": "Update an item file\nPath: PUT /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}\nMCP tool: plaky_update_item_file\nScopes: write",
+    "operationId": "updateItemFile",
+    "scopes": [
+      "write"
+    ]
+  },
+  {
+    "id": "op:getItemFileDownload",
+    "kind": "operation",
+    "title": "Get item file download",
+    "text": "Get an item file download link\nPath: GET /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}/download\nMCP tool: plaky_get_item_file_download\nScopes: read",
+    "operationId": "getItemFileDownload",
+    "scopes": [
+      "read"
+    ]
+  },
+  {
+    "id": "op:listSubitems",
+    "kind": "operation",
+    "title": "List subitems",
+    "text": "List subitems\nPath: GET /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/sub-items\nMCP tool: plaky_list_subitems\nScopes: read",
+    "operationId": "listSubitems",
+    "scopes": [
+      "read"
+    ]
+  },
+  {
+    "id": "op:listTeams",
+    "kind": "operation",
+    "title": "List teams",
+    "text": "List workspace teams\nPath: GET /v1/public/teams\nMCP tool: plaky_list_teams\nScopes: read",
+    "operationId": "listTeams",
+    "scopes": [
+      "read"
+    ]
+  },
+  {
+    "id": "op:getTeam",
+    "kind": "operation",
+    "title": "Get team",
+    "text": "Retrieve a team\nPath: GET /v1/public/teams/{teamId}\nMCP tool: plaky_get_team\nScopes: read",
+    "operationId": "getTeam",
+    "scopes": [
+      "read"
+    ]
+  },
+  {
+    "id": "op:listUsers",
+    "kind": "operation",
+    "title": "List users",
+    "text": "List workspace users\nPath: GET /v1/public/users\nMCP tool: plaky_list_users\nScopes: read",
+    "operationId": "listUsers",
+    "scopes": [
+      "read"
+    ]
+  },
+  {
+    "id": "op:getCurrentUser",
+    "kind": "operation",
+    "title": "Get current user",
+    "text": "Retrieve current user\nPath: GET /v1/public/users/me\nMCP tool: plaky_get_current_user\nScopes: read",
+    "operationId": "getCurrentUser",
+    "scopes": [
+      "read"
     ]
   },
   {

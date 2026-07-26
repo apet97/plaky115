@@ -108,8 +108,14 @@ export function buildGoOperations(ops) {
     }
     lines.push(`\treq := Request{Method: ${JSON.stringify(op.method)}, Path: path}`);
     if (hasQuery) lines.push(`\treq.Query = query`);
-    if (descriptor.requestKind === "json") lines.push(`\treq.Body = opts.JSONBody`);
-    if (descriptor.requestKind === "multipart") lines.push(`\treq.Body = opts.Multipart`);
+    if (descriptor.requestKind === "json") {
+      lines.push(`\tjsonBody := opts.JSONBody`);
+      lines.push(`\tif jsonBody == nil {`);
+      lines.push(`\t\tjsonBody = opts.Body`);
+      lines.push(`\t}`);
+      lines.push(`\treq.JSONBody = jsonBody`);
+    }
+    if (descriptor.requestKind === "multipart") lines.push(`\treq.Multipart = opts.Multipart`);
     if (descriptor.acceptsIdempotencyKey) lines.push(`\treq.Idempotency = opts.IdempotencyKey`);
     if (descriptor.isVoid) {
       lines.push(`\treturn c.Do(ctx, req, nil)`);
@@ -125,7 +131,12 @@ export function buildGoOperations(ops) {
     lines.push(`type ${fn}Options struct {`);
     for (const parameter of pathParameters) lines.push(`\t${cap(parameter.name)} string`);
     for (const parameter of queryParameters) lines.push(`\t${cap(parameter.name)} ${goOptionType(parameter)}`);
-    if (descriptor.requestKind === "json") lines.push(`\tJSONBody any`);
+    if (descriptor.requestKind === "json") {
+      lines.push(`\tJSONBody any`);
+      lines.push(`\t// Body is retained for compatibility with curated CLI workflows.`);
+      lines.push(`\t// Deprecated: use JSONBody.`);
+      lines.push(`\tBody any`);
+    }
     if (descriptor.requestKind === "multipart") lines.push(`\tMultipart *MultipartFileBody`);
     if (descriptor.acceptsIdempotencyKey) lines.push(`\tIdempotencyKey string`);
     lines.push(`}`);

@@ -4,9 +4,9 @@ import { request } from "plaky115/runtime/http.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
-  spaceId: z.union([z.string(), z.number()]).describe("Plaky space ID for the target workspace area."),
-  page: z.number().int().min(1).describe("One-based result page to request.").optional(),
-  pageSize: z.number().int().min(1).max(200).describe("Maximum number of records to return for this page.").optional(),
+  spaceId: z.number().int().describe("Represents unique space identifier across the system."),
+  page: z.number().int().describe("Page number.").optional(),
+  pageSize: z.number().int().describe("Page size.").optional(),
 });
 const output = z.object({}).passthrough();
 
@@ -15,6 +15,7 @@ export const listBoardsTool: McpToolDefinition = {
   title: "List boards",
   description: "List space boards",
   scopes: ["read"],
+  sensitiveOutput: false,
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
@@ -29,7 +30,7 @@ export const listBoardsTool: McpToolDefinition = {
       ...(parsed.page !== undefined ? { page: parsed.page } : {}),
       ...(parsed.pageSize !== undefined ? { pageSize: parsed.pageSize } : {}),
     };
-    const result = await request({
+    const result = await request<Record<string, unknown>>({
       method: "GET",
       path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards`,
       query,

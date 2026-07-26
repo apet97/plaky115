@@ -32,7 +32,7 @@
 - [x] `O001` | Phase 5 — Official contract | DONE | Fetch and validate a current 32-operation candidate
 - [x] `O002` | Phase 5 — Official contract | DONE | Overlay all six Item Group operations against the candidate
 - [x] `O003` | Phase 5 — Official contract | DONE | Overlay all six Item file operations against the candidate
-- [ ] `O004` | Phase 5 — Official contract | NOT STARTED | Accept the official candidate, regenerate all surfaces, and review the complete diff
+- [x] `O004` | Phase 5 — Official contract | DONE | Accept the official candidate, regenerate all surfaces, and review the complete diff
 - [ ] `S001` | Phase 6 — TypeScript SDK | NOT STARTED | Remove automatic mutation retries and resource-generated idempotency keys
 - [ ] `S002` | Phase 6 — TypeScript SDK | NOT STARTED | Validate dynamic API keys and server URL at the runtime boundary
 - [ ] `S003` | Phase 6 — TypeScript SDK | NOT STARTED | Add IDs/file/group shapes and correct existing generated unions
@@ -134,7 +134,7 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Request metadata is contract-derived as `none`, `json`, or `multipart`; bodyless PUT is explicitly `none`.
 - Required/optional state, selected media type, schema ref, and primitive multipart parts are explicit.
 - Multipart requires at least one binary part and rejects nested object parts; ambiguous supported media requires an overlay selection.
-- The legacy `bodyRequired` field remains temporarily with an in-source deprecation marker for G006 removal.
+- The legacy `bodyRequired` field was retained temporarily during generator migration and removed from production metadata in O004.
 - Request slice: 6 tests and 25 assertions passed; legacy metadata tests remain green.
 
 ### M004
@@ -249,3 +249,15 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Stable MCP names, read/write scopes, `itemFile`/`downloadLink`/`raw` compaction, and destructive confirmation were asserted across all six operations.
 - Download-link output is marked sensitive. Its only example URL uses `https://example.com/`; the candidate overlay contains no API key, token, or real signed URL.
 - Candidate overlay apply, source/DX lint, metadata generation, and the complete six-operation transport/annotation assertion exited 0.
+
+### O004
+
+- Accepted the reviewed official candidate at `2026-07-26T22:57:08.072Z`; accepted YAML SHA-256 is `fe3e5bac33564ecd11e4d4d7c8172904883abd967b56500e946db3df2415c1b7` and the manifest verifies 32 operations.
+- Production overlay/metadata now contain exactly 32 expected operations with no missing, unexpected, or duplicate key. All existing 20 operation names remain present unchanged.
+- Regeneration added 12 MCP raw tools, 12 Cobra raw commands, 12 Go methods/options/runners, the matching docs-index entries, and official Item Group/Item file/download schemas.
+- Manual generated-output review confirmed streaming multipart upload, 201 object upload response, bare-array file list envelope, sensitive download-link handling, and bodyless 200 archive/delete receipts with destructive confirmation.
+- Removed deprecated `bodyRequired` from production metadata and its loader/generator contract. Generated Go requests now use `JSONBody`/`Multipart`; legacy option `Body` remains only to keep existing curated CLI workflows compiling without touching forbidden curated commands.
+- Removed the duplicated 20 hand-written operation runners and their compatibility-only helper aliases after generated runner ownership became complete.
+- The task packet omitted five owning generator/test files required by its own metadata-removal, correct-request-kind, and codegen-test steps. Scope expanded only to `scripts/generate-operation-metadata.rb`, `scripts/lib/operation-metadata.mjs`, `scripts/lib/codegen-cli.mjs`, `scripts/test-operation-metadata-v2.rb`, and `test/fixtures/codegen/cli-operations-v2.go`; an exact changed-file audit found nothing else outside the packet list plus these necessities, and no forbidden SDK resource, MCP curated/server, or CLI curated file changed.
+- A final second generation produced a byte-identical 689,202-byte patch before and after; both SHA-256 values are `79b1164010e1cc1ec566057b46c2d838e9b31140ee8aed20730fcf3634b98116`.
+- Overlay/lint/metadata v1+v2, expected-contract, upstream-manifest, generator drift/determinism/goldens, Go suite, MCP build, and strict surface status all exited 0. Full SDK/CLI/MCP request parity remains intentionally scheduled for S006 after typed resources exist.

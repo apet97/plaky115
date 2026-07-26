@@ -4,8 +4,8 @@ import { request } from "plaky115/runtime/http.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
-  page: z.number().int().min(1).describe("One-based result page to request.").optional(),
-  pageSize: z.number().int().min(1).max(200).describe("Maximum number of records to return for this page.").optional(),
+  page: z.number().int().describe("Page number.").optional(),
+  pageSize: z.number().int().describe("Page size.").optional(),
 });
 const output = z.object({}).passthrough();
 
@@ -14,6 +14,7 @@ export const listTeamsTool: McpToolDefinition = {
   title: "List teams",
   description: "List workspace teams",
   scopes: ["read"],
+  sensitiveOutput: false,
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
@@ -28,7 +29,7 @@ export const listTeamsTool: McpToolDefinition = {
       ...(parsed.page !== undefined ? { page: parsed.page } : {}),
       ...(parsed.pageSize !== undefined ? { pageSize: parsed.pageSize } : {}),
     };
-    const result = await request({
+    const result = await request<Record<string, unknown>>({
       method: "GET",
       path: "/v1/public/teams",
       query,

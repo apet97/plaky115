@@ -23,6 +23,23 @@ class OperationMetadataTest < Minitest::Test
     updateItemComment
     deleteItemComment
     replaceCommentReactions
+    getBoard
+    getCurrentUser
+    getItem
+    deleteItem
+    listSubitems
+    listItemGroups
+    getItemGroup
+    createItemGroup
+    updateItemGroup
+    deleteItemGroup
+    archiveItemGroup
+    uploadItemFile
+    listItemFiles
+    getItemFile
+    getItemFileDownload
+    updateItemFile
+    deleteItemFile
   ].freeze
 
   HTTP_METHODS = %w[get post put patch delete head options trace].freeze
@@ -83,18 +100,36 @@ class OperationMetadataTest < Minitest::Test
 
     operations.each do |generated|
       id = generated.fetch("operationId")
+      refute generated.key?("bodyRequired"), "#{id} must not expose deprecated bodyRequired metadata"
       assert generated.fetch("request").key?("kind"), "#{id} request kind"
       assert generated.fetch("success").key?("kind"), "#{id} success kind"
       assert_includes %w[none destructive], generated.fetch("confirmation"), id
       assert_includes %w[raw space board item comment itemGroup itemFile downloadLink],
                       generated.fetch("compactKind"), id
-      assert_equal false, generated.fetch("sensitiveOutput"), id
+      assert_equal id == "getItemFileDownload", generated.fetch("sensitiveOutput"), id
     end
-    assert_equal %w[deleteItem deleteItemComment],
+    assert_equal %w[archiveItemGroup deleteItem deleteItemComment deleteItemFile deleteItemGroup],
                  operations.select { |generated| generated.fetch("confirmation") == "destructive" }
                            .map { |generated| generated.fetch("operationId") }
                            .sort
     assert_equal operations.length, operations.map { |generated| generated.fetch("mcpName") }.uniq.length
+
+    upload = operation(operations, "uploadItemFile")
+    assert_equal "multipart", upload.dig("request", "kind")
+    assert_equal [{
+      "name" => "file", "required" => true, "type" => "string", "format" => "binary",
+      "description" => "File to upload"
+    }], upload.dig("request", "parts")
+    assert_equal({ "status" => 201, "kind" => "json-object", "mediaType" => "application/json",
+                   "schemaRef" => "#/components/schemas/ItemFileResponse" }, upload.fetch("success"))
+
+    assert_equal "json-array", operation(operations, "listItemFiles").dig("success", "kind")
+    assert_equal "downloadLink", operation(operations, "getItemFileDownload").fetch("compactKind")
+    assert_equal "json", operation(operations, "updateItemFile").dig("request", "kind")
+    %w[archiveItemGroup deleteItemGroup deleteItemFile].each do |id|
+      assert_equal "none", operation(operations, id).dig("request", "kind")
+      assert_equal({ "status" => 200, "kind" => "void" }, operation(operations, id).fetch("success"))
+    end
 
     examples = metadata.fetch("examples")
     assert examples.key?("createItem")

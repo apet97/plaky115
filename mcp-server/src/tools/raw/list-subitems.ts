@@ -4,12 +4,12 @@ import { request } from "plaky115/runtime/http.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
-  spaceId: z.union([z.string(), z.number()]).describe("Plaky space ID for the target workspace area."),
-  boardId: z.union([z.string(), z.number()]).describe("Plaky board ID within the selected space."),
-  itemId: z.union([z.string(), z.number()]).describe("Plaky item ID within the selected board."),
-  page: z.number().int().min(1).describe("One-based result page to request.").optional(),
-  pageSize: z.number().int().min(1).max(200).describe("Maximum number of records to return for this page.").optional(),
-  expand: z.string().describe("Comma-separated list of relationships to expand into full objects instead of IDs.").optional(),
+  spaceId: z.number().int().describe("Represents unique space identifier across the system."),
+  boardId: z.number().int().describe("Represents unique board identifier across the system."),
+  itemId: z.number().int().describe("Represents unique item identifier across the system."),
+  expand: z.array(z.enum(["space","board","group","createdBy","parent","subscriptions","fields"])).describe("Comma-separated list of relationships to expand into full objects instead of IDs.").optional(),
+  page: z.number().int().describe("Page number.").optional(),
+  pageSize: z.number().int().describe("Page size.").optional(),
 });
 const output = z.object({}).passthrough();
 
@@ -18,6 +18,7 @@ export const listSubitemsTool: McpToolDefinition = {
   title: "List subitems",
   description: "List subitems",
   scopes: ["read"],
+  sensitiveOutput: false,
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
@@ -29,11 +30,11 @@ export const listSubitemsTool: McpToolDefinition = {
   async handler(input, ctx) {
     const parsed = args.parse(input);
     const query = {
+      ...(parsed.expand !== undefined ? { expand: parsed.expand } : {}),
       ...(parsed.page !== undefined ? { page: parsed.page } : {}),
       ...(parsed.pageSize !== undefined ? { pageSize: parsed.pageSize } : {}),
-      ...(parsed.expand !== undefined ? { expand: parsed.expand } : {}),
     };
-    const result = await request({
+    const result = await request<Record<string, unknown>>({
       method: "GET",
       path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/sub-items`,
       query,

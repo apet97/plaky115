@@ -4,8 +4,8 @@ import { request } from "plaky115/runtime/http.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
-  spaceId: z.union([z.string(), z.number()]).describe("Plaky space ID for the target workspace area."),
-  boardId: z.union([z.string(), z.number()]).describe("Plaky board ID within the selected space."),
+  spaceId: z.number().int().describe("Represents unique space identifier across the system."),
+  boardId: z.number().int().describe("Represents unique board identifier across the system."),
 });
 const output = z.object({}).passthrough();
 
@@ -14,6 +14,7 @@ export const getBoardTool: McpToolDefinition = {
   title: "Get board",
   description: "Retrieve a board",
   scopes: ["read"],
+  sensitiveOutput: false,
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
@@ -24,7 +25,7 @@ export const getBoardTool: McpToolDefinition = {
   outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
-    const result = await request({
+    const result = await request<Record<string, unknown>>({
       method: "GET",
       path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}`,
       operationId: "getBoard",

@@ -13,25 +13,31 @@ GENERATOR = File.join(ROOT, "scripts/generate-operation-metadata.rb")
 FIXTURES = File.join(ROOT, "test/fixtures/openapi")
 
 class OperationMetadataV2Test < Minitest::Test
-  def test_semantics_existing_20_are_exact_and_explicit
+  def test_semantics_all_32_are_exact_and_explicit
     metadata = generate(File.join(ROOT, "openapi/plaky115-dx.openapi.yaml"))
     operations = metadata.fetch("operations")
-    assert_equal 20, operations.length
+    assert_equal 32, operations.length
     expected_compact = {
       "listSpaces" => "space", "getSpace" => "space",
       "listBoards" => "board", "getBoard" => "board",
       "listItems" => "item", "createItem" => "item", "getItem" => "item",
       "listSubitems" => "item", "updateItemField" => "item", "updateItemFields" => "item",
       "listItemComments" => "comment", "createItemComment" => "comment", "updateItemComment" => "comment",
+      "listItemGroups" => "itemGroup", "getItemGroup" => "itemGroup",
+      "createItemGroup" => "itemGroup", "updateItemGroup" => "itemGroup",
+      "uploadItemFile" => "itemFile", "listItemFiles" => "itemFile",
+      "getItemFile" => "itemFile", "updateItemFile" => "itemFile",
+      "getItemFileDownload" => "downloadLink",
     }
-    destructive = %w[deleteItem deleteItemComment]
+    destructive = %w[deleteItem deleteItemComment deleteItemGroup archiveItemGroup deleteItemFile]
     operations.each do |operation|
       id = operation.fetch("operationId")
       assert operation.key?("request"), "#{id} request"
       assert operation.key?("success"), "#{id} success"
       assert_equal expected_compact.fetch(id, "raw"), operation.fetch("compactKind"), id
       assert_equal destructive.include?(id) ? "destructive" : "none", operation.fetch("confirmation"), id
-      assert_equal false, operation.fetch("sensitiveOutput"), id
+      assert_equal id == "getItemFileDownload", operation.fetch("sensitiveOutput"), id
+      refute operation.key?("bodyRequired"), id
       assert_match(/\Aplaky_[a-z0-9_]+\z/, operation.fetch("mcpName"), id)
       refute_empty operation.fetch("mcpTitle"), id
       refute_empty operation.fetch("scopes"), id
