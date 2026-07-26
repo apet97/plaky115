@@ -307,7 +307,13 @@ function runnerFlagRead(parameter, required) {
 }
 
 function localName(name) {
-  return name[0].toLowerCase() + name.slice(1);
+  const value = name[0].toLowerCase() + name.slice(1);
+  const keywords = new Set([
+    "break", "case", "chan", "const", "continue", "default", "defer", "else", "fallthrough",
+    "for", "func", "go", "goto", "if", "import", "interface", "map", "package", "range",
+    "return", "select", "struct", "switch", "type", "var",
+  ]);
+  return keywords.has(value) ? `${value}Value` : value;
 }
 
 // A query param serialized as repeated keys (explode=true array, e.g. `emails`).

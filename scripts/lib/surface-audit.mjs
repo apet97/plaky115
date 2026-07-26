@@ -34,14 +34,13 @@ function buildSpec(metadata) {
       list: op.list === true,
       mutation: op.mutation === true,
       pagination: op.pagination ?? null,
-      pathParams: extractPathParams(op.path),
-      hasRequestBody: op.mutation === true && op.method !== "DELETE",
+      pathParams: (op.parameters ?? []).filter((parameter) => parameter.in === "path").map((parameter) => parameter.name),
+      requestKind: op.request.kind,
+      successKind: op.success.kind,
+      confirmation: op.confirmation,
+      hasRequestBody: op.request.kind !== "none",
     })),
   };
-}
-
-function extractPathParams(path) {
-  return [...(path ?? "").matchAll(/\{([^}]+)\}/g)].map((m) => m[1]);
 }
 
 function buildSdkReport(root, spec) {

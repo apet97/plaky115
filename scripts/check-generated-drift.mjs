@@ -14,6 +14,7 @@ const targets = [
   "mcp-server/src/runtime/docs-index.ts",
   "cli/internal/cli/raw",
   "cli/internal/plakysdk/operations.go",
+  "cli/internal/plakydx/runners_generated.go",
 ];
 
 const before = snapshotTargets();

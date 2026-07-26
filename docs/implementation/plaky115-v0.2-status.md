@@ -25,7 +25,7 @@
 - [x] `G003` | Phase 3 — Generators | DONE | Generate safe MCP multipart upload tools
 - [x] `G004` | Phase 3 — Generators | DONE | Make Cobra command generation transport- and confirmation-aware
 - [x] `G005` | Phase 3 — Generators | DONE | Generate Go operation methods and runner functions from one descriptor
-- [ ] `G006` | Phase 3 — Generators | NOT STARTED | Delete stale outputs deterministically and make parity count dynamic
+- [x] `G006` | Phase 3 — Generators | DONE | Delete stale outputs deterministically and make parity count dynamic
 - [ ] `GO001` | Phase 4 — Go transport | NOT STARTED | Propagate body read errors and preserve generic JSON numbers
 - [ ] `GO002` | Phase 4 — Go transport | NOT STARTED | Add explicit JSON/multipart body forms and streaming upload
 - [ ] `GO003` | Phase 4 — Go transport | NOT STARTED | Harden Go client option and URL validation
@@ -192,3 +192,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Reusable flag, JSON, confirmation, upload-stream, and receipt helpers moved out of the hand-written operation runners, which remain in place until O004 replaces them atomically.
 - `--file -` requires a filename and never closes stdin; regular files default to their basename and are closed. No generated runner buffers upload bytes.
 - Helper tests and the full CLI Go suite exited 0; CLI codegen suite passed 8 tests; `git diff --check` exited 0.
+
+### G006
+
+- MCP and CLI entry points now delete only stale files carrying the matching generated header and refuse to overwrite unmarked expected-name files.
+- Isolated-output determinism tests prove exact metadata-derived filename sets, header-guarded cleanup, hand-written-file preservation, owned Go runner generation, and a zero-diff second run without touching production outputs.
+- Drift snapshots include generated runners; surface body classification now uses request metadata.
+- Cross-surface parity is metadata-count-driven, builds requests from typed request/parameter metadata, stubs responses by success kind, and invokes MCP tools through the public protocol instead of private server fields.
+- Determinism/parity/surface command passed 29 tests; transport-quadrant generator suites passed 16 tests; `git diff --check` exited 0.

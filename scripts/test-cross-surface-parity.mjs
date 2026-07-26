@@ -1,8 +1,8 @@
 // Cross-surface parity test (F7).
 //
 // Drives all three Plaky115 surfaces — the TypeScript SDK (in-process), the MCP
-// raw tools (in-process), and the Go CLI raw commands (subprocess) — against
-// recording transports, then asserts that for every one of the 20 operations
+// raw tools (through the public MCP protocol), and the Go CLI raw commands
+// (subprocess) — against recording transports, then asserts that every metadata operation
 // the three surfaces emit the SAME HTTP method, path, and query-parameter keys
 // and values (including the threaded filter params: the `emails` array as
 // repeated keys and the scalar status/type/boardViewId/parentId/subitemsBehaviour
@@ -15,7 +15,7 @@ import assert from "node:assert/strict";
 import { test, before, after } from "node:test";
 import { execFile, execFileSync } from "node:child_process";
 import { createServer } from "node:http";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -27,16 +27,19 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 // Fixed inputs fed identically to every surface. Sentinel IDs need no escaping
 // so all three surfaces produce byte-identical concrete paths.
 const ID = {
-  spaceId: "S1",
-  boardId: "B1",
-  itemId: "I1",
-  itemCommentId: "C1",
+  spaceId: 1,
+  boardId: 2,
+  itemId: 3,
+  itemCommentId: 4,
   itemFieldKey: "F1",
-  teamId: "T1",
+  itemGroupId: 5,
+  itemFileId: 6,
+  teamId: 7,
 };
 const PAGE = 1;
 const PAGE_SIZE = 2;
 const EXPAND = "space,board";
+const EXPAND_VALUES = ["space", "board"];
 const BODIES = {
   createItem: { title: "Parity" },
   updateItemField: { value: "x" },
@@ -50,7 +53,7 @@ const BODIES = {
 // the array (`emails`, repeated keys) and scalar filters are compared end-to-end.
 const FILTERS = {
   listUsers: { emails: ["ada@example.com", "ben@example.com"], status: "ACTIVE", type: "MEMBER" },
-  listItems: { boardViewId: "5", parentId: "9", subitemsBehaviour: "INCLUDE" },
+  listItems: { boardViewId: 5, parentId: 9, subitemsBehaviour: "INCLUDE" },
 };
 
 // SDK invocation per operationId. The SDK method names do not map mechanically
@@ -82,19 +85,19 @@ function camelToKebab(value) {
   return value.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
 }
 
-function pathParamNames(path) {
-  return [...path.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]);
-}
-
 // Derive the metadata-driven shape of one operation: the inputs each surface is
 // expected to send and the resulting concrete request.
 function describeOperation(op) {
-  const params = pathParamNames(op.path);
-  const queryNames = (op.query ?? []).map((q) => q.name);
-  const expectsExpand = queryNames.includes("expand");
-  const expectsPage = Boolean(op.pagination);
-  const isWrite = op.bodyRequired === true;
-  const isDelete = op.method === "DELETE";
+  const parameters = op.parameters ?? [];
+  const pathParameters = parameters.filter((parameter) => parameter.in === "path");
+  const queryParameters = uniqueParameters([
+    ...parameters.filter((parameter) => parameter.in === "query"),
+    ...(op.pagination?.inputs ?? []),
+  ]);
+  const paginationNames = new Set((op.pagination?.inputs ?? []).map(({ name }) => name));
+  const expectsExpand = queryParameters.some(({ name }) => name === "expand");
+  const requestKind = op.request.kind;
+  const successKind = op.success.kind;
 
   const concretePath = op.path.replace(/\{([^}]+)\}/g, (_m, name) => {
     if (!(name in ID)) throw new Error(`no sentinel for path param ${name} in ${op.operationId}`);
@@ -102,52 +105,53 @@ function describeOperation(op) {
   });
 
   const expectedQueryPairs = [];
-  if (expectsPage) {
-    expectedQueryPairs.push(`page=${PAGE}`, `pageSize=${PAGE_SIZE}`);
-  }
-  if (expectsExpand) {
-    expectedQueryPairs.push(`expand=${EXPAND}`);
-  }
-  expectedQueryPairs.sort();
-
-  // MCP input object (camelCase keys, as the generated zod schemas expect).
   const mcpInput = {};
-  for (const name of params) mcpInput[name] = ID[name];
-  if (expectsPage) {
-    mcpInput.page = PAGE;
-    mcpInput.pageSize = PAGE_SIZE;
-  }
-  if (expectsExpand) mcpInput.expand = EXPAND;
-  if (isWrite) mcpInput.body = BODIES[op.operationId];
-
-  // CLI flags (kebab-cased), as the generated cobra commands expect.
+  const legacyMcpInput = {};
+  const sdkQuery = {};
   const cliCmd = camelToKebab(op.operationId);
   const cliFlags = [];
-  for (const name of params) cliFlags.push(`--${camelToKebab(name)}`, String(ID[name]));
-  if (expectsPage) cliFlags.push("--page", String(PAGE), "--page-size", String(PAGE_SIZE));
-  if (expectsExpand) cliFlags.push("--expand", EXPAND);
-  if (isWrite) cliFlags.push("--body", JSON.stringify(BODIES[op.operationId]));
-  if (isDelete) cliFlags.push("--confirm");
-
-  // Threaded filter params (array `emails` → repeated keys/flags; scalars → one).
-  const filters = FILTERS[op.operationId] ?? {};
-  for (const q of op.query ?? []) {
-    if (q.name === "expand") continue; // handled above
-    const value = filters[q.name];
+  for (const { name } of pathParameters) {
+    mcpInput[name] = ID[name];
+    legacyMcpInput[name] = ID[name];
+    cliFlags.push(`--${camelToKebab(name)}`, String(ID[name]));
+  }
+  for (const parameter of queryParameters) {
+    const value = queryValue(op.operationId, parameter);
     if (value === undefined) continue;
-    if (q.array) {
-      for (const v of value) {
-        expectedQueryPairs.push(`${q.name}=${v}`);
-        cliFlags.push(`--${camelToKebab(q.name)}`, String(v));
+    sdkQuery[parameter.name] = value;
+    mcpInput[parameter.name] = value;
+    legacyMcpInput[parameter.name] = legacyMcpValue(parameter, value, paginationNames.has(parameter.name));
+    if (Array.isArray(value)) {
+      if (parameter.explode === false) {
+        const joined = value.join(",");
+        expectedQueryPairs.push(`${parameter.name}=${joined}`);
+        cliFlags.push(`--${camelToKebab(parameter.name)}`, joined);
+      } else {
+        for (const entry of value) {
+          expectedQueryPairs.push(`${parameter.name}=${entry}`);
+          cliFlags.push(`--${camelToKebab(parameter.name)}`, String(entry));
+        }
       }
-      mcpInput[q.name] = value;
     } else {
-      expectedQueryPairs.push(`${q.name}=${value}`);
-      mcpInput[q.name] = String(value);
-      cliFlags.push(`--${camelToKebab(q.name)}`, String(value));
+      expectedQueryPairs.push(`${parameter.name}=${value}`);
+      cliFlags.push(`--${camelToKebab(parameter.name)}`, String(value));
     }
   }
   expectedQueryPairs.sort();
+
+  const jsonBody = requestKind === "json" ? (BODIES[op.operationId] ?? { fixture: op.operationId }) : undefined;
+  if (requestKind === "json") {
+    mcpInput.body = jsonBody;
+    legacyMcpInput.body = jsonBody;
+    cliFlags.push("--body", JSON.stringify(jsonBody));
+  } else if (requestKind === "multipart") {
+    mcpInput.fileBase64 = Buffer.from("parity").toString("base64");
+    mcpInput.fileName = "parity.txt";
+    mcpInput.contentType = "text/plain";
+    Object.assign(legacyMcpInput, mcpInput);
+    cliFlags.push("--file", "__PARITY_UPLOAD__", "--filename", "parity.txt", "--content-type", "text/plain");
+  }
+  if (op.confirmation === "destructive") cliFlags.push("--confirm");
 
   return {
     operationId: op.operationId,
@@ -156,12 +160,50 @@ function describeOperation(op) {
     concretePath,
     expectedQueryPairs,
     expectsExpand,
-    isWrite,
-    isDelete,
+    requestKind,
+    successKind,
+    successStatus: op.success.status,
+    jsonBody,
+    sdkQuery,
     mcpInput,
+    legacyMcpInput,
     cliCmd,
     cliFlags,
   };
+}
+
+function uniqueParameters(parameters) {
+  const seen = new Set();
+  return parameters.filter(({ name }) => {
+    if (seen.has(name)) return false;
+    seen.add(name);
+    return true;
+  });
+}
+
+function queryValue(operationId, parameter) {
+  if (parameter.name === "page") return PAGE;
+  if (parameter.name === "pageSize") return PAGE_SIZE;
+  if (parameter.name === "expand") return EXPAND_VALUES;
+  const filtered = FILTERS[operationId]?.[parameter.name];
+  if (filtered !== undefined) return filtered;
+  if (parameter.schema.default !== undefined) return parameter.schema.default;
+  if (Array.isArray(parameter.schema.enum) && parameter.schema.enum.length > 0) return parameter.schema.enum[0];
+  switch (parameter.schema.type) {
+    case "string": return "fixture";
+    case "integer":
+    case "number": return 1;
+    case "boolean": return true;
+    case "array": return [parameter.schema.items?.enum?.[0] ?? "fixture"];
+    default: return undefined;
+  }
+}
+
+function legacyMcpValue(parameter, value, paginationInput) {
+  if (paginationInput) return value;
+  if (parameter.schema.type === "integer" || parameter.schema.type === "number") return String(value);
+  if (parameter.schema.type === "array" && parameter.explode === false) return value.join(",");
+  return value;
 }
 
 // Parse a captured request URL (full or path-relative) into method-agnostic
@@ -169,7 +211,7 @@ function describeOperation(op) {
 function dissect(captured) {
   const url = new URL(captured.url, "http://parity.local");
   const queryPairs = [...url.searchParams.entries()].map(([k, v]) => `${k}=${v}`).sort();
-  return { method: captured.method, pathname: url.pathname, queryPairs, body: captured.body };
+  return { method: captured.method, pathname: url.pathname, queryPairs, body: captured.body, bodyKind: captured.bodyKind };
 }
 
 // A fetch implementation that records the outgoing request and returns a benign
@@ -178,19 +220,39 @@ function recordingFetch(store) {
   return async (input, init) => {
     const url = typeof input === "string" ? input : input.url;
     const method = (init && init.method) || (typeof input === "object" && input.method) || "GET";
-    let body;
     const rawBody = init && init.body;
-    if (rawBody !== undefined && rawBody !== null && rawBody !== "") {
-      try {
-        body = JSON.parse(typeof rawBody === "string" ? rawBody : String(rawBody));
-      } catch {
-        body = rawBody;
-      }
-    }
-    store.push({ url, method, body });
-    if (method === "DELETE") return new Response(null, { status: 204 });
-    return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+    const { body, bodyKind } = await normalizeFetchBody(rawBody);
+    store.push({ url, method, body, bodyKind });
+    return responseStub(method, url);
   };
+}
+
+async function normalizeFetchBody(rawBody) {
+  if (rawBody === undefined || rawBody === null || rawBody === "") return { body: undefined, bodyKind: "none" };
+  if (rawBody instanceof FormData) {
+    const file = rawBody.get("file");
+    return {
+      body: file && typeof file !== "string"
+        ? { name: file.name, type: file.type, bytes: Buffer.from(await file.arrayBuffer()).toString("base64") }
+        : undefined,
+      bodyKind: "multipart",
+    };
+  }
+  try {
+    return { body: JSON.parse(typeof rawBody === "string" ? rawBody : String(rawBody)), bodyKind: "json" };
+  } catch {
+    return { body: rawBody, bodyKind: "other" };
+  }
+}
+
+function responseStub(method, url) {
+  const pathname = new URL(url, "http://parity.local").pathname;
+  const operation = operations.find((candidate) => candidate.method === method && candidate.concretePath === pathname);
+  if (!operation) throw new Error(`no parity metadata for ${method} ${pathname}`);
+  const status = operation.successStatus;
+  if (operation.successKind === "void") return new Response(null, { status });
+  const body = operation.successKind === "json-array" ? "[]" : "{}";
+  return new Response(body, { status, headers: { "content-type": "application/json" } });
 }
 
 // Always rebuild the esm before importing it: validating a stale build against
@@ -205,6 +267,7 @@ const operations = metadata.operations.map(describeOperation);
 
 let sdkClient;
 let mcpServer;
+let mcpClient;
 let savedFetch;
 const sdkStore = [];
 const mcpStore = [];
@@ -213,6 +276,7 @@ let tmpDir;
 let binPath;
 let recorder;
 let cliBase;
+let uploadPath;
 
 before(async () => {
   ensureBuild("sdk");
@@ -236,8 +300,15 @@ before(async () => {
     mode: "all",
     scopes: ["read", "write", "destructive"],
   }));
+  const clientMod = await import(pathToFileURL(join(root, "mcp-server/node_modules/@modelcontextprotocol/sdk/dist/esm/client/index.js")).href);
+  const transportMod = await import(pathToFileURL(join(root, "mcp-server/node_modules/@modelcontextprotocol/sdk/dist/esm/inMemory.js")).href);
+  mcpClient = new clientMod.Client({ name: "plaky115-parity", version: "0.0.0" });
+  const [clientTransport, serverTransport] = transportMod.InMemoryTransport.createLinkedPair();
+  await Promise.all([mcpClient.connect(clientTransport), mcpServer.connect(serverTransport)]);
 
   tmpDir = mkdtempSync(join(tmpdir(), "plaky115-parity-"));
+  uploadPath = join(tmpDir, "parity.txt");
+  writeFileSync(uploadPath, "parity");
   binPath = join(tmpDir, "plaky115-parity");
   execFileSync("go", ["build", "-o", binPath, "./cmd/plaky115"], { cwd: join(root, "cli"), stdio: "inherit" });
 
@@ -246,22 +317,29 @@ before(async () => {
     req.on("data", (c) => chunks.push(c));
     req.on("end", () => {
       const raw = Buffer.concat(chunks).toString("utf8");
+      const contentType = req.headers["content-type"] ?? "";
       let body;
-      if (raw) {
+      let bodyKind = "none";
+      if (contentType.startsWith("multipart/form-data")) {
+        bodyKind = "multipart";
+      } else if (raw) {
         try {
           body = JSON.parse(raw);
+          bodyKind = "json";
         } catch {
           body = raw;
+          bodyKind = "other";
         }
       }
-      cliStore.push({ method: req.method, url: req.url, body });
-      if (req.method === "DELETE") {
-        res.statusCode = 204;
+      cliStore.push({ method: req.method, url: req.url, body, bodyKind });
+      const operation = operations.find((candidate) => candidate.method === req.method && candidate.concretePath === new URL(req.url, "http://parity.local").pathname);
+      if (!operation) throw new Error(`no parity metadata for ${req.method} ${req.url}`);
+      res.statusCode = operation.successStatus;
+      if (operation.successKind === "void") {
         res.end();
       } else {
-        res.statusCode = 200;
         res.setHeader("content-type", "application/json");
-        res.end("{}");
+        res.end(operation.successKind === "json-array" ? "[]" : "{}");
       }
     });
   });
@@ -271,37 +349,61 @@ before(async () => {
 
 after(async () => {
   if (savedFetch) globalThis.fetch = savedFetch;
+  if (mcpClient) await mcpClient.close();
+  if (mcpServer) await mcpServer.close();
   if (recorder) await new Promise((resolve) => recorder.close(resolve));
   if (tmpDir) rmSync(tmpDir, { recursive: true, force: true });
 });
 
 async function captureSdk(op) {
   const before = sdkStore.length;
-  await sdkInvokers[op.operationId](sdkClient);
+  const invoke = sdkInvokers[op.operationId];
+  if (invoke) {
+    await invoke(sdkClient);
+  } else {
+    const request = {
+      method: op.method,
+      path: op.concretePath,
+      ...(Object.keys(op.sdkQuery).length > 0 ? { query: op.sdkQuery } : {}),
+    };
+    if (op.requestKind === "json") request.body = op.jsonBody;
+    if (op.requestKind === "multipart") {
+      const form = new FormData();
+      form.append("file", new Blob(["parity"], { type: "text/plain" }), "parity.txt");
+      request.body = form;
+    }
+    await sdkClient.request(request);
+  }
   assert.equal(sdkStore.length, before + 1, `SDK ${op.operationId} should make exactly one request`);
   return dissect(sdkStore[sdkStore.length - 1]);
 }
 
 async function captureMcp(op) {
-  const tool = mcpServer._registeredTools[op.mcpName];
-  assert.ok(tool, `MCP tool ${op.mcpName} should be registered`);
   const before = mcpStore.length;
-  const response = await tool.handler(op.mcpInput);
-  assert.notEqual(response.isError, true, `MCP ${op.mcpName} returned an error: ${JSON.stringify(response.structuredContent)}`);
+  let response = await mcpClient.callTool({ name: op.mcpName, arguments: op.mcpInput });
+  if (response.isError && JSON.stringify(op.legacyMcpInput) !== JSON.stringify(op.mcpInput)) {
+    response = await mcpClient.callTool({ name: op.mcpName, arguments: op.legacyMcpInput });
+  }
+  assert.notEqual(response.isError, true, `MCP ${op.mcpName} returned an error: ${JSON.stringify(response.structuredContent ?? response.content)}`);
   assert.equal(mcpStore.length, before + 1, `MCP ${op.mcpName} should make exactly one request`);
   return dissect(mcpStore[mcpStore.length - 1]);
 }
 
 async function captureCli(op) {
   const before = cliStore.length;
-  const args = ["--api-key", "ci-stub", "--server-url", cliBase, "raw", op.cliCmd, ...op.cliFlags];
+  const flags = op.cliFlags.map((value) => value === "__PARITY_UPLOAD__" ? uploadPath : value);
+  const args = ["--api-key", "ci-stub", "--server-url", cliBase, "raw", op.cliCmd, ...flags];
   await execFileAsync(binPath, args, { env: { ...process.env, PLAKY115_API_KEY: "", PLAKY115_API_KEY_AUTH: "" } });
   assert.equal(cliStore.length, before + 1, `CLI ${op.cliCmd} should make exactly one request`);
   return dissect(cliStore[cliStore.length - 1]);
 }
 
-test("all 20 operations are present in the metadata", () => {
-  assert.equal(operations.length, 20, `expected 20 operations, got ${operations.length}`);
+test("metadata operation set is unique and drives the parity matrix", () => {
+  assert.equal(new Set(operations.map(({ operationId }) => operationId)).size, operations.length);
+  assert.deepEqual(
+    Object.keys(sdkInvokers).filter((operationId) => !operations.some((operation) => operation.operationId === operationId)),
+    [],
+  );
 });
 
 for (const op of operations) {
@@ -325,16 +427,26 @@ for (const op of operations) {
     assert.deepEqual(mcp.queryPairs, op.expectedQueryPairs, `MCP query for ${op.operationId}`);
     assert.deepEqual(cli.queryPairs, op.expectedQueryPairs, `CLI query for ${op.operationId}`);
 
-    // Body parity for writes; no JSON body for reads/deletes.
-    if (op.isWrite) {
-      const expectedBody = BODIES[op.operationId];
+    // Body parity follows explicit request metadata, independent of method.
+    if (op.requestKind === "json") {
+      const expectedBody = op.jsonBody;
       assert.deepEqual(sdk.body, expectedBody, `SDK body for ${op.operationId}`);
       assert.deepEqual(mcp.body, expectedBody, `MCP body for ${op.operationId}`);
       assert.deepEqual(cli.body, expectedBody, `CLI body for ${op.operationId}`);
+      assert.equal(sdk.bodyKind, "json");
+      assert.equal(mcp.bodyKind, "json");
+      assert.equal(cli.bodyKind, "json");
+    } else if (op.requestKind === "multipart") {
+      assert.equal(sdk.bodyKind, "multipart", `SDK multipart body for ${op.operationId}`);
+      assert.equal(mcp.bodyKind, "multipart", `MCP multipart body for ${op.operationId}`);
+      assert.equal(cli.bodyKind, "multipart", `CLI multipart body for ${op.operationId}`);
     } else {
       assert.equal(sdk.body, undefined, `SDK ${op.operationId} should send no body`);
       assert.equal(mcp.body, undefined, `MCP ${op.operationId} should send no body`);
       assert.equal(cli.body, undefined, `CLI ${op.operationId} should send no body`);
+      assert.equal(sdk.bodyKind, "none");
+      assert.equal(mcp.bodyKind, "none");
+      assert.equal(cli.bodyKind, "none");
     }
 
     // F4 guard: `expand` must be one comma-joined value, never repeated keys.
