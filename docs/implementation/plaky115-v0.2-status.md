@@ -44,7 +44,7 @@
 - [x] `MCP003` | Phase 7 — MCP | DONE | Remove private MCP SDK access and pin the dependency
 - [x] `MCP004` | Phase 7 — MCP | DONE | Replace generic workflow records with exact read/mutation schemas
 - [x] `MCP005` | Phase 7 — MCP | DONE | Standardize structured errors and sensitive-output test handling
-- [ ] `CLI001` | Phase 8 — CLI | NOT STARTED | Validate all generated raw request kinds and new operation behavior
+- [x] `CLI001` | Phase 8 — CLI | DONE | Validate all generated raw request kinds and new operation behavior
 - [ ] `CLI002` | Phase 8 — CLI | NOT STARTED | Add minimal curated Item Group and Item file commands
 - [ ] `CLI003` | Phase 8 — CLI | NOT STARTED | Repair monorepo CLI release and installer targets
 - [ ] `SEC001` | Phase 9 — Security hygiene | NOT STARTED | Unify API-key redaction, test fixtures, and repository secret scanning
@@ -344,3 +344,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - The live MCP harness retains sensitive download results only in memory, verifies an HTTPS URL plus a finite expiry, and writes only `urlPresent` and `expiresInSeconds` to the summary. Direct MCP clients still receive the requested signed URL unchanged.
 - SECURITY guidance now treats signed links as short-lived bearer capabilities and forbids logging, persistence, prefetching, and summary inclusion. Its idempotency and destructive-operation descriptions were corrected to current behavior.
 - MCP build completed; all 43 focused server/protocol tests and all 5 live-sweep source tests passed. `npm run secret:scan` and `git diff --check` exited 0. The optional MCP lint command still reports the inherited `no-control-regex` warning in untouched `src/runtime/upload.ts` and exits 1 under `--deny-warnings`; lint is not a listed MCP005 gate.
+
+### CLI001
+
+- The raw CLI table now loads the accepted operation metadata and requires one canonical row for each of exactly 32 operation IDs; duplicates, missing commands, missing required path/query/request/confirmation flags, and unsupported request/success kinds fail the suite.
+- Every row proves method, escaped path, complete query serialization, request kind, content type, output shape, explicit-only idempotency, API-key transport without stdout leakage, and deterministic JSON/void formatting.
+- All JSON operations reject both missing and invalid `--body` before transport. All five destructive delete/archive operations reject missing `--confirm`, then send no body or content type and print one void receipt when confirmed.
+- Dedicated probes cover multipart file/stdin bytes, missing file, missing stdin filename, unreadable file, filename/content-type overrides, bare-array Item file listing, and a download-link response containing exactly one JSON document and one URL occurrence. Raw help is deterministic and lists every metadata operation.
+- The focused raw/upload/archive command passed, the full Go suite passed, `go vet ./...` exited 0, and `git diff --check` exited 0. No generated or curated production file changed.
