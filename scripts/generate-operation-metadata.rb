@@ -33,17 +33,63 @@ def fetch_ref(schema, spec, seen = [])
   fetch_ref(resolved, spec, seen + [reference])
 end
 
-def response_schema(operation, spec)
-  content = operation.dig("responses", "200", "content", "application/json", "schema") ||
-            operation.dig("responses", "201", "content", "application/json", "schema")
-  fetch_ref(content || {}, spec)
+def success_responses(operation, spec)
+  operation.fetch("responses", {}).each_with_object([]) do |(status, raw_response), responses|
+    next unless status.to_s.match?(/\A2\d\d\z/)
+
+    responses << [status.to_i, fetch_ref(raw_response, spec)]
+  end.sort_by(&:first)
 end
 
-def list_operation?(operation, method, spec)
-  return true if operation.key?("x-plaky115-pagination")
+def success_shape(status, response, spec)
+  return { "status" => status, "kind" => "void" } if [204, 205].include?(status)
 
-  schema = response_schema(operation, spec)
-  method == "get" && schema.is_a?(Hash) && schema.dig("properties", "hasMore")
+  content = response.is_a?(Hash) ? response["content"] : nil
+  return { "status" => status, "kind" => "void" } unless content.is_a?(Hash) && !content.empty?
+
+  media_type = content.key?("application/json") ? "application/json" : content.keys.sort.first
+  raw_schema = content.dig(media_type, "schema")
+  raise ArgumentError, "successful response #{status} schema is required" unless raw_schema.is_a?(Hash)
+
+  schema = fetch_ref(raw_schema, spec)
+  {
+    "status" => status,
+    "kind" => media_type == "application/json" && schema.is_a?(Hash) && schema["type"] == "array" ?
+      "json-array" : "json-object",
+    "mediaType" => media_type,
+    "schemaRef" => raw_schema["$ref"],
+  }.compact
+end
+
+def success_metadata(operation, spec)
+  responses = success_responses(operation, spec)
+  raise ArgumentError, "operation has no numeric 2xx response" if responses.empty?
+
+  selected_status = operation["x-plaky115-success-status"]&.to_i
+  selected_status ||= responses.first.first
+  selected = responses.find { |status, _response| status == selected_status }
+  raise ArgumentError, "selected success status is unavailable: #{selected_status}" unless selected
+
+  shapes = responses.map { |status, response| success_shape(status, response, spec) }
+  if !operation.key?("x-plaky115-success-status") && shapes.map { |shape| shape["kind"] }.uniq.length > 1
+    kinds = shapes.map { |shape| "#{shape['status']}=#{shape['kind']}" }.join(", ")
+    raise ArgumentError, "incompatible successful response kinds: #{kinds}"
+  end
+  shapes.find { |shape| shape["status"] == selected_status }
+end
+
+def response_schema(operation, success, spec)
+  response = success_responses(operation, spec).find { |status, _value| status == success.fetch("status") }&.last
+  raw_schema = response&.dig("content", success["mediaType"], "schema")
+  raw_schema ? fetch_ref(raw_schema, spec) : {}
+end
+
+def list_operation?(operation, success, spec)
+  return true if operation.key?("x-plaky115-pagination")
+  return true if success["kind"] == "json-array"
+
+  schema = response_schema(operation, success, spec)
+  schema.is_a?(Hash) && schema.dig("properties", "hasMore")
 end
 
 def default_scopes(operation, method)
@@ -239,6 +285,7 @@ def generate_metadata(source)
       scopes = default_scopes(operation, method)
       destructive = destructive?(operation, method)
       parameters = operation_parameter_metadata(operation, path_item, spec)
+      success = success_metadata(operation, spec)
 
       entry = {
         "operationId" => operation_id,
@@ -252,9 +299,10 @@ def generate_metadata(source)
         "destructive" => destructive,
         "idempotent" => mcp.fetch("idempotentHint", %w[get head put delete].include?(method)),
         "openWorld" => mcp.fetch("openWorldHint", true),
-        "list" => list_operation?(operation, method, spec),
+        "list" => list_operation?(operation, success, spec),
         "mutation" => !%w[get head].include?(method),
         "request" => request_metadata(operation, spec),
+        "success" => success,
         # Deprecated compatibility field; remove after generators consume request.kind in G006.
         "bodyRequired" => body_required?(operation),
       }

@@ -13,6 +13,76 @@ GENERATOR = File.join(ROOT, "scripts/generate-operation-metadata.rb")
 FIXTURES = File.join(ROOT, "test/fixtures/openapi")
 
 class OperationMetadataV2Test < Minitest::Test
+  def test_success_200_and_201_json_objects_include_schema_refs
+    json = generate(File.join(FIXTURES, "metadata-json.yaml")).fetch("operations").fetch(0)
+    assert_equal({
+      "status" => 200,
+      "kind" => "json-object",
+      "mediaType" => "application/json",
+      "schemaRef" => "#/components/schemas/Widget",
+    }, json.fetch("success"))
+
+    multipart = generate(File.join(FIXTURES, "metadata-multipart.yaml")).fetch("operations").fetch(0)
+    assert_equal 201, multipart.dig("success", "status")
+    assert_equal "json-object", multipart.dig("success", "kind")
+    assert_equal "#/components/schemas/File", multipart.dig("success", "schemaRef")
+  end
+
+  def test_success_bare_array_is_list_and_bodyless_put_is_void
+    array = generate(File.join(FIXTURES, "metadata-array.yaml")).fetch("operations").fetch(0)
+    assert_equal({
+      "status" => 200,
+      "kind" => "json-array",
+      "mediaType" => "application/json",
+    }, array.fetch("success"))
+    assert_equal true, array.fetch("list")
+
+    bodyless = generate(File.join(FIXTURES, "metadata-bodyless-put.yaml")).fetch("operations").fetch(0)
+    assert_equal({ "status" => 200, "kind" => "void" }, bodyless.fetch("success"))
+  end
+
+  def test_success_204_and_205_are_void
+    spec = fixture("metadata-json.yaml")
+    responses = spec.dig("paths", "/fixture/widgets/{widgetId}", "post", "responses")
+    responses.clear
+    responses["204"] = { "description" => "No content" }
+    assert_equal({ "status" => 204, "kind" => "void" },
+                 generate_document(spec).dig("operations", 0, "success"))
+    responses.clear
+    responses["205"] = { "description" => "Reset content", "content" => { "application/json" => { "schema" => { "type" => "object" } } } }
+    assert_equal({ "status" => 205, "kind" => "void" },
+                 generate_document(spec).dig("operations", 0, "success"))
+  end
+
+  def test_success_multiple_compatible_uses_lowest_status
+    spec = fixture("metadata-json.yaml")
+    responses = spec.dig("paths", "/fixture/widgets/{widgetId}", "post", "responses")
+    responses["201"] = Marshal.load(Marshal.dump(responses.fetch("200")))
+    assert_equal 200, generate_document(spec).dig("operations", 0, "success", "status")
+  end
+
+  def test_success_incompatible_shapes_require_explicit_selection
+    source = File.join(FIXTURES, "metadata-invalid-success-shapes.yaml")
+    _stdout, stderr, status = run_generator(source)
+    refute status.success?
+    assert_match(/incompatible successful response kinds/, stderr)
+
+    spec = fixture("metadata-invalid-success-shapes.yaml")
+    spec.dig("paths", "/fixture/ambiguous-success", "get")["x-plaky115-success-status"] = 206
+    selected = generate_document(spec).fetch("operations").fetch(0)
+    assert_equal 206, selected.dig("success", "status")
+    assert_equal "json-array", selected.dig("success", "kind")
+  end
+
+  def test_success_unresolved_response_schema_fails
+    spec = fixture("metadata-json.yaml")
+    spec.dig("paths", "/fixture/widgets/{widgetId}", "post", "responses", "200", "content",
+             "application/json")["schema"] = { "$ref" => "#/components/schemas/MissingResponse" }
+    _stdout, stderr, status = run_generator_document(spec)
+    refute status.success?
+    assert_match(/key not found.*MissingResponse/, stderr)
+  end
+
   def test_request_bodyless_put_is_explicit_none
     operation = generate(File.join(FIXTURES, "metadata-bodyless-put.yaml")).fetch("operations").fetch(0)
     assert_equal({ "kind" => "none", "required" => false }, operation.fetch("request"))

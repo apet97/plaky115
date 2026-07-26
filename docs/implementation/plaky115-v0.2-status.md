@@ -18,7 +18,7 @@
 - [x] `M001` | Phase 2 — Metadata | DONE | Create and validate transport-quadrant OpenAPI fixtures
 - [x] `M002` | Phase 2 — Metadata | DONE | Make parameter metadata contract-derived
 - [x] `M003` | Phase 2 — Metadata | DONE | Derive explicit request kind and multipart parts
-- [ ] `M004` | Phase 2 — Metadata | NOT STARTED | Derive primary success status and response kind
+- [x] `M004` | Phase 2 — Metadata | DONE | Derive primary success status and response kind
 - [ ] `M005` | Phase 2 — Metadata | NOT STARTED | Annotate the existing 20 operations with explicit semantics and regenerate rich metadata
 - [ ] `G001` | Phase 3 — Generators | NOT STARTED | Add one shared metadata loader and validator for JavaScript generators
 - [ ] `G002` | Phase 3 — Generators | NOT STARTED | Make MCP generator use request/success/parameter metadata
@@ -136,3 +136,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Multipart requires at least one binary part and rejects nested object parts; ambiguous supported media requires an overlay selection.
 - The legacy `bodyRequired` field remains temporarily with an in-source deprecation marker for G006 removal.
 - Request slice: 6 tests and 25 assertions passed; legacy metadata tests remain green.
+
+### M004
+
+- Success metadata selects an explicit overlay status or the lowest numeric 2xx and emits status, kind, media type, and source schema ref.
+- No-content 200 and 204/205 are `void`; JSON arrays are `json-array`; other successful JSON schemas are `json-object`.
+- Additional incompatible 2xx kinds fail without an explicit selection; compatible statuses remain deterministic.
+- List classification uses pagination metadata or the selected response schema, including bare arrays, without method-specific response rules.
+- Success slice: 6 tests and 26 assertions passed; bodyless archive and bare file-list fixture behavior are pinned.
