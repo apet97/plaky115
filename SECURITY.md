@@ -42,10 +42,22 @@ surface is local credential handling, transport, and the request/response path.
 
 ### Idempotency and replay
 
-- Mutating requests attach an idempotency key by default, and write retries only
-  occur when a key is present. This makes retried writes safe against
-  duplication but is not an authentication or anti-tamper mechanism. Treat the
-  API key as the only authentication credential.
+- Mutating requests attach an idempotency key only when the caller supplies one,
+  and mutations are never retried automatically. An idempotency key can help the
+  server deduplicate a caller-managed replay, but it is not an authentication or
+  anti-tamper mechanism. Treat the API key as the only authentication credential.
+
+### Signed download links
+
+- Item-file download URLs are short-lived bearer capabilities. Anyone who has a
+  still-valid link may be able to download the file without an API key.
+- Return a requested link directly to the requesting MCP client, but do not log,
+  persist, include, or paste the URL in live-sweep summaries, bug reports, chat,
+  screenshots, or diagnostics. The live harness validates the link in memory and
+  records only that a URL was present plus its expiry duration.
+- Do not prefetch or follow a signed link as part of validation. If a link leaks,
+  treat it as sensitive until it expires and rotate or replace the underlying
+  file when the exposure warrants it.
 
 ### Webhooks (none exposed)
 
@@ -63,8 +75,8 @@ annotations instead:
 
 - Each tool carries hints such as `destructiveHint`, `readOnlyHint`, and
   `idempotentHint`, derived from the operation metadata.
-- The two destructive operations (`deleteItem`, `deleteItemComment`) are marked
-  `destructiveHint: true` and require the `destructive` scope to be enabled.
+- Destructive operations are marked `destructiveHint: true` and require the
+  `destructive` scope to be enabled.
 - The MCP host (for example Claude Desktop) is responsible for honoring these
   annotations and prompting the user before running destructive tools.
 

@@ -36,3 +36,12 @@ test("live sweep reads structured MCP responses before text JSON fallback", () =
   assert.match(liveSweep, /if \(response\.structuredContent\) return response\.structuredContent;/);
   assert.match(liveSweep, /Array\.isArray\(docs\?\.hits\) \? docs\.hits\.length : undefined/);
 });
+
+test("live sweep validates sensitive MCP output in memory and never records its URL", () => {
+  assert.match(liveSweep, /if \(tool\.sensitiveOutput\)/);
+  assert.match(liveSweep, /new URL\(value\.url\)/);
+  assert.match(liveSweep, /urlPresent: true/);
+  assert.match(liveSweep, /expiresInSeconds: value\.expiresInSeconds/);
+  assert.doesNotMatch(liveSweep, /record\([^\n]*value\.url/);
+  assert.doesNotMatch(liveSweep, /summary\.push\([^\n]*value\.url/);
+});

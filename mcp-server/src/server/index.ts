@@ -1,9 +1,27 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { PlakyApiError, PlakyClient, PlakyError } from "plaky115";
-import { selectTools, type Mode } from "./modes.js";
+import { CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import {
+  PlakyAbortError,
+  PlakyApiError,
+  PlakyClient,
+  PlakyConnectionError,
+  PlakyDecodeError,
+  PlakyError,
+  PlakyTimeoutError,
+  redact,
+} from "plaky115";
+import { ZodError } from "zod/v3";
+import { selectTools, UsageError, type Mode } from "./modes.js";
 import { filterByScopes } from "./scopes.js";
 import { compactByKind, serializeForMcp, structuredForMcp } from "../runtime/compaction.js";
-import type { McpScope, McpToolContext, McpToolDefinition, McpToolResponse } from "../runtime/types.js";
+import type {
+  McpScope,
+  McpToolContext,
+  McpToolDefinition,
+  McpToolError,
+  McpToolErrorEnvelope,
+  McpToolResponse,
+} from "../runtime/types.js";
 
 export type ServerOptions = {
   apiKey: string;
@@ -26,34 +44,26 @@ export function buildServer(opts: ServerOptions): { server: McpServer; tools: Mc
     },
   );
 
-  for (const tool of tools) {
-    const handler = async (input: unknown): Promise<McpToolResponse> => {
-      const ctx: McpToolContext = {
-        client,
-        requestOptions: client.requestOptions(),
-        respond(value, ro): McpToolResponse {
-          const compacted = ro?.compactKind
-            ? compactByKind(value, ro.compactKind, { includeRaw: ro.includeRaw === true })
-            : value;
-          const structuredContent = structuredForMcp(compacted);
-          return {
-            content: [{ type: "text", text: serializeForMcp(structuredContent) }],
-            structuredContent,
-          };
-        },
-        progress: () => {
-          /* no-op for now */
-        },
+  const ctx: McpToolContext = {
+    client,
+    requestOptions: client.requestOptions(),
+    respond(value, ro): McpToolResponse {
+      const compacted = ro?.compactKind
+        ? compactByKind(value, ro.compactKind, { includeRaw: ro.includeRaw === true })
+        : value;
+      const structuredContent = structuredForMcp(compacted);
+      return {
+        content: [{ type: "text", text: serializeForMcp(structuredContent) }],
+        structuredContent,
       };
-      try {
-        const result = await tool.handler(input, ctx);
-        if (isMcpResponse(result)) return result;
-        return ctx.respond(result);
-      } catch (error) {
-        if (isKnownToolError(error)) return errorResponse(error);
-        throw error;
-      }
-    };
+    },
+    progress: () => {
+      /* no-op for now */
+    },
+  };
+
+  for (const tool of tools) {
+    const handler = (input: unknown): Promise<McpToolResponse> => invokeTool(tool, input, ctx);
     server.registerTool(
       tool.name,
       {
@@ -67,33 +77,52 @@ export function buildServer(opts: ServerOptions): { server: McpServer; tools: Mc
     );
   }
 
+  const toolsByName = new Map(tools.map((tool) => [tool.name, tool]));
+  server.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const tool = toolsByName.get(request.params.name);
+    if (!tool) return toToolErrorResponse(new UsageError(`Tool ${request.params.name} not found.`));
+    if (request.params.task !== undefined) {
+      return toToolErrorResponse(new UsageError(`Tool ${request.params.name} does not support task execution.`));
+    }
+
+    let input: unknown;
+    try {
+      input = await tool.inputSchema.parseAsync(request.params.arguments ?? {});
+    } catch (error) {
+      return toToolErrorResponse(error, tool.name);
+    }
+    return invokeTool(tool, input, ctx);
+  });
+
   return { server, tools };
+}
+
+async function invokeTool(tool: McpToolDefinition, input: unknown, ctx: McpToolContext): Promise<McpToolResponse> {
+  try {
+    const result = await tool.handler(input, ctx);
+    const response = isMcpResponse(result) ? result : ctx.respond(result);
+    if (response.isError !== true && tool.outputSchema !== undefined) {
+      if (response.structuredContent === undefined) {
+        throw new Error(`Tool ${tool.name} returned no structured content.`);
+      }
+      const output = await tool.outputSchema.safeParseAsync(response.structuredContent);
+      if (!output.success) throw new Error(`Tool ${tool.name} returned invalid structured content.`);
+    }
+    return response;
+  } catch (error) {
+    return toToolErrorResponse(error, tool.name);
+  }
 }
 
 function isMcpResponse(value: unknown): value is McpToolResponse {
   return typeof value === "object" && value !== null && "content" in value && Array.isArray((value as McpToolResponse).content);
 }
 
-function isKnownToolError(error: unknown): error is PlakyError {
-  return error instanceof PlakyError;
-}
-
-function errorResponse(error: PlakyError): McpToolResponse {
-  const payload: Record<string, unknown> = {
-    error: {
-      name: error.name,
-      message: error.message,
-      ...(error instanceof PlakyApiError
-        ? {
-            status: error.status,
-            requestId: error.requestId,
-            code: error.code,
-            retryAfterMs: error.retryAfterMs,
-          }
-        : {}),
-    },
-  };
-  const structuredContent = structuredForMcp(payload);
+export function toToolErrorResponse(error: unknown, toolName?: string): McpToolResponse {
+  const detail = classifyToolError(error, toolName);
+  if (detail === undefined) throw redactedError(error);
+  const payload: McpToolErrorEnvelope = { error: detail };
+  const structuredContent = structuredForMcp(payload) as McpToolErrorEnvelope;
   return {
     content: [{ type: "text", text: serializeForMcp(structuredContent) }],
     structuredContent,
@@ -101,4 +130,78 @@ function errorResponse(error: PlakyError): McpToolResponse {
   };
 }
 
-export type { Mode, McpScope, McpToolDefinition };
+function classifyToolError(error: unknown, toolName?: string): McpToolError | undefined {
+  if (error instanceof PlakyApiError) {
+    return withApiDetails(error, {
+      category: "api",
+      name: error.name,
+      message: redact(error.message),
+      retryable: error.status === 429 || error.status >= 500,
+    });
+  }
+  if (error instanceof PlakyTimeoutError) return plakyDetail("timeout", error, true);
+  if (error instanceof PlakyConnectionError) return plakyDetail("connection", error, true);
+  if (error instanceof PlakyDecodeError) {
+    return {
+      ...plakyDetail("decode", error, false),
+      ...(error.status !== undefined ? { status: error.status } : {}),
+      ...(error.requestId !== undefined ? { requestId: error.requestId } : {}),
+    };
+  }
+  if (error instanceof PlakyAbortError) return plakyDetail("abort", error, false);
+  if (error instanceof PlakyError) return plakyDetail("plaky", error, false);
+  if (error instanceof ZodError) {
+    return {
+      category: "validation",
+      name: error.name,
+      message: redact(formatZodError(error)),
+      retryable: false,
+    };
+  }
+  if (error instanceof UsageError) {
+    return { category: "usage", name: error.name, message: redact(error.message), retryable: false };
+  }
+  if (toolName === "plaky_upload_item_file" && isUploadValidationError(error)) {
+    return {
+      category: "validation",
+      name: "UploadValidationError",
+      message: redact(error.message),
+      retryable: false,
+    };
+  }
+  return undefined;
+}
+
+function plakyDetail(category: McpToolError["category"], error: PlakyError, retryable: boolean): McpToolError {
+  return { category, name: error.name, message: redact(error.message), retryable };
+}
+
+function withApiDetails(error: PlakyApiError, detail: McpToolError): McpToolError {
+  return {
+    ...detail,
+    status: error.status,
+    ...(error.code !== undefined ? { code: error.code } : {}),
+    ...(error.requestId !== undefined ? { requestId: error.requestId } : {}),
+    ...(error.retryAfterMs !== undefined ? { retryAfterMs: error.retryAfterMs } : {}),
+  };
+}
+
+function formatZodError(error: ZodError): string {
+  return error.issues
+    .map((issue) => `${issue.path.length > 0 ? issue.path.join(".") : "input"}: ${issue.message}`)
+    .join("; ");
+}
+
+function isUploadValidationError(error: unknown): error is Error {
+  if (!(error instanceof Error)) return false;
+  return /(?:fileBase64|fileName|contentType|maxBytes|decoded upload|PLAKY115_MCP_MAX_UPLOAD_BYTES)/i.test(error.message);
+}
+
+function redactedError(error: unknown): Error {
+  const message = error instanceof Error ? error.message : String(error);
+  const safe = new Error(redact(message));
+  safe.name = error instanceof Error ? error.name : "Error";
+  return safe;
+}
+
+export type { McpToolError, McpToolErrorEnvelope, Mode, McpScope, McpToolDefinition };

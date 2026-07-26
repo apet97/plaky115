@@ -15,6 +15,23 @@ export type McpToolResponse = {
   isError?: boolean;
 };
 
+export type McpToolErrorCategory = "api" | "timeout" | "connection" | "decode" | "abort" | "validation" | "usage" | "plaky";
+
+export type McpToolError = {
+  category: McpToolErrorCategory;
+  name: string;
+  message: string;
+  retryable: boolean;
+  status?: number;
+  code?: string;
+  requestId?: string;
+  retryAfterMs?: number;
+};
+
+export type McpToolErrorEnvelope = {
+  error: McpToolError;
+};
+
 export type McpToolContext = {
   client: PlakyClient;
   requestOptions: PlakyRequestOptions;

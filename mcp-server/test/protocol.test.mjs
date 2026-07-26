@@ -63,9 +63,11 @@ test("known Plaky API errors stay structured through public callTool", async () 
   try {
     const response = await client.callTool({ name: "plaky_list_spaces", arguments: { page: 1 } });
     assert.equal(response.isError, true);
+    assert.equal(response.structuredContent.error.category, "api");
     assert.equal(response.structuredContent.error.name, "PlakyNotFoundError");
     assert.equal(response.structuredContent.error.status, 404);
     assert.equal(response.structuredContent.error.requestId, "req_public");
+    assert.equal(response.structuredContent.error.retryable, false);
   } finally {
     await server.close();
     globalThis.fetch = previousFetch;
@@ -83,12 +85,16 @@ test("unknown tool calls use the public SDK's in-band not-found response", async
   }
 });
 
-test("invalid known-tool arguments remain in-band tool errors", async () => {
+test("invalid known-tool arguments return the standard validation envelope", async () => {
   const { client, server } = await connectedPair();
   try {
     const response = await client.callTool({ name: "plaky_search_docs", arguments: {} });
     assert.equal(response.isError, true);
-    assert.match(response.content[0].text, /query/i);
+    assert.deepEqual(Object.keys(response.structuredContent.error).sort(), ["category", "message", "name", "retryable"]);
+    assert.equal(response.structuredContent.error.category, "validation");
+    assert.equal(response.structuredContent.error.name, "ZodError");
+    assert.equal(response.structuredContent.error.retryable, false);
+    assert.match(response.structuredContent.error.message, /query/i);
   } finally {
     await server.close();
   }
@@ -99,9 +105,78 @@ test("missing required body surfaces as an in-band tool error over the protocol"
   try {
     const response = await client.callTool({ name: "plaky_create_item", arguments: { spaceId: 1, boardId: 2 } });
     assert.equal(response.isError, true);
-    assert.match(response.content[0].text, /body/i);
+    assert.equal(response.structuredContent.error.category, "validation");
+    assert.match(response.structuredContent.error.message, /body/i);
   } finally {
     await server.close();
+  }
+});
+
+test("upload validation failures return the standard validation envelope", async () => {
+  const { client, server } = await connectedPair({ mode: "generated", scopes: ["write"] });
+  try {
+    const response = await client.callTool({
+      name: "plaky_upload_item_file",
+      arguments: { spaceId: 1, boardId: 2, itemId: 3, fileBase64: "not canonical!", fileName: "x.txt" },
+    });
+    assert.equal(response.isError, true);
+    assert.equal(response.structuredContent.error.category, "validation");
+    assert.equal(response.structuredContent.error.name, "UploadValidationError");
+    assert.equal(response.structuredContent.error.retryable, false);
+    assert.match(response.structuredContent.error.message, /canonical base64/i);
+  } finally {
+    await server.close();
+  }
+});
+
+test("connection and decode failures use safe retry-aware envelopes", async () => {
+  const previousFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => {
+      throw new TypeError("connection refused");
+    };
+    let pair = await connectedPair({ mode: "generated", scopes: ["read"], serverURL: "https://example.test" });
+    try {
+      const response = await pair.client.callTool({ name: "plaky_list_spaces", arguments: {} });
+      assert.equal(response.structuredContent.error.category, "connection");
+      assert.equal(response.structuredContent.error.retryable, true);
+    } finally {
+      await pair.server.close();
+    }
+
+    globalThis.fetch = async () => new Response("not-json", { status: 200, headers: { "content-type": "application/json", "x-request-id": "req_decode" } });
+    pair = await connectedPair({ mode: "generated", scopes: ["read"], serverURL: "https://example.test" });
+    try {
+      const response = await pair.client.callTool({ name: "plaky_list_spaces", arguments: {} });
+      assert.equal(response.structuredContent.error.category, "decode");
+      assert.equal(response.structuredContent.error.requestId, "req_decode");
+      assert.equal(response.structuredContent.error.retryable, false);
+    } finally {
+      await pair.server.close();
+    }
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("sensitive download URLs remain available only in the direct tool response", async () => {
+  const previousFetch = globalThis.fetch;
+  const signedURL = "https://download.example.test/file?signature=direct-response-only";
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ url: signedURL, expiresInSeconds: 60 }), {
+      headers: { "content-type": "application/json" },
+    });
+  const { client, server } = await connectedPair({ mode: "generated", scopes: ["read"], serverURL: "https://example.test" });
+  try {
+    const response = await client.callTool({
+      name: "plaky_get_item_file_download",
+      arguments: { spaceId: 1, boardId: 2, itemId: 3, itemFileId: 4 },
+    });
+    assert.equal(response.structuredContent.url, signedURL);
+    assert.equal(response.structuredContent.expiresInSeconds, 60);
+  } finally {
+    await server.close();
+    globalThis.fetch = previousFetch;
   }
 });
 

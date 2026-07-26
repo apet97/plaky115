@@ -4,7 +4,8 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { buildServer } from "../esm/server/index.js";
+import { PlakyTimeoutError } from "plaky115";
+import { buildServer, toToolErrorResponse } from "../esm/server/index.js";
 import { parseMode, selectTools } from "../esm/server/modes.js";
 import { filterByScopes, parseScopes } from "../esm/server/scopes.js";
 
@@ -86,15 +87,53 @@ test("Plaky API errors are returned as tool errors", async () => {
     try {
       const response = await client.callTool({ name: "plaky_list_spaces", arguments: { page: 1 } });
       assert.equal(response.isError, true);
+      assert.equal(response.structuredContent.error.category, "api");
       assert.equal(response.structuredContent.error.name, "PlakyNotFoundError");
       assert.equal(response.structuredContent.error.status, 404);
       assert.equal(response.structuredContent.error.requestId, "req_123");
+      assert.equal(response.structuredContent.error.retryable, false);
       assert.ok(response.content[0].text.includes("space not found"));
     } finally {
       await server.close();
     }
   } finally {
     globalThis.fetch = previousFetch;
+  }
+});
+
+test("timeout errors are structured and marked retryable", () => {
+  const response = toToolErrorResponse(new PlakyTimeoutError("request timed out"));
+  assert.equal(response.isError, true);
+  assert.deepEqual(response.structuredContent, {
+    error: {
+      category: "timeout",
+      name: "PlakyTimeoutError",
+      message: "request timed out",
+      retryable: true,
+    },
+  });
+});
+
+test("unexpected programmer errors propagate as redacted protocol errors", async () => {
+  const tool = selectTools("curated").find((candidate) => candidate.name === "plaky_search_docs");
+  assert.ok(tool);
+  const originalHandler = tool.handler;
+  tool.handler = async () => {
+    throw new Error("programmer bug exposed plk_super_secret_value");
+  };
+  const { client, server } = await connectedServer({ apiKey: "plk_test", mode: "curated", scopes: ["read"] });
+  try {
+    await assert.rejects(
+      client.callTool({ name: tool.name, arguments: { query: "spaces" } }),
+      (error) => {
+        assert.doesNotMatch(error.message, /plk_super_secret_value/);
+        assert.match(error.message, /plk_\*\*\*/);
+        return true;
+      },
+    );
+  } finally {
+    tool.handler = originalHandler;
+    await server.close();
   }
 });
 

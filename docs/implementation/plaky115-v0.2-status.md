@@ -43,7 +43,7 @@
 - [x] `MCP002` | Phase 7 — MCP | DONE | Make modes, scopes, and argument parsing fail closed
 - [x] `MCP003` | Phase 7 — MCP | DONE | Remove private MCP SDK access and pin the dependency
 - [x] `MCP004` | Phase 7 — MCP | DONE | Replace generic workflow records with exact read/mutation schemas
-- [ ] `MCP005` | Phase 7 — MCP | NOT STARTED | Standardize structured errors and sensitive-output test handling
+- [x] `MCP005` | Phase 7 — MCP | DONE | Standardize structured errors and sensitive-output test handling
 - [ ] `CLI001` | Phase 8 — CLI | NOT STARTED | Validate all generated raw request kinds and new operation behavior
 - [ ] `CLI002` | Phase 8 — CLI | NOT STARTED | Add minimal curated Item Group and Item file commands
 - [ ] `CLI003` | Phase 8 — CLI | NOT STARTED | Repair monorepo CLI release and installer targets
@@ -336,3 +336,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Kept `plaky_execute_workflow` as a deprecated, broad-scope compatibility tool over the same discriminated union and both entity-key spellings. The compile-safe item search adapter carries the required `W002` follow-up marker.
 - `plaky_plan_mutation` now accepts only the exact three mutation variants. Default read scope exposes read execution and planning but not mutation execution.
 - MCP build and `git diff --check` exited 0; all 38 focused workflow/server/protocol tests and all 33 exact parity tests passed.
+
+### MCP005
+
+- All expected tool failures now use one safe structured envelope with category, concrete name, redacted message, retryability, and only applicable status/code/request-id/retry-after metadata. Request headers and response bodies are never included.
+- Public protocol dispatch validates tool inputs into structured Zod errors, maps API/timeout/connection/decode/abort/usage/upload failures in-band, and rethrows unexpected programmer errors only after redacting API-key values. Successful tool output validation remains enforced.
+- The live MCP harness retains sensitive download results only in memory, verifies an HTTPS URL plus a finite expiry, and writes only `urlPresent` and `expiresInSeconds` to the summary. Direct MCP clients still receive the requested signed URL unchanged.
+- SECURITY guidance now treats signed links as short-lived bearer capabilities and forbids logging, persistence, prefetching, and summary inclusion. Its idempotency and destructive-operation descriptions were corrected to current behavior.
+- MCP build completed; all 43 focused server/protocol tests and all 5 live-sweep source tests passed. `npm run secret:scan` and `git diff --check` exited 0. The optional MCP lint command still reports the inherited `no-control-regex` warning in untouched `src/runtime/upload.ts` and exits 1 under `--deny-warnings`; lint is not a listed MCP005 gate.

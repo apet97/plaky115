@@ -345,7 +345,25 @@ async function invokeMcpTool(tools, ctx, name, input) {
   if (!tool) throw new Error(`MCP tool not found: ${name}`);
   const result = await tool.handler(input, ctx);
   const response = isMcpResponse(result) ? result : ctx.respond(result);
-  return parseMcpResponse(response);
+  const value = parseMcpResponse(response);
+  if (tool.sensitiveOutput) {
+    record("mcp", `tool ${name} sensitive output`, summarizeSensitiveMcpOutput(value));
+  }
+  return value;
+}
+
+function summarizeSensitiveMcpOutput(value) {
+  if (!value || typeof value !== "object" || typeof value.url !== "string") {
+    throw new Error("Sensitive MCP output is missing its URL.");
+  }
+  const parsedURL = new URL(value.url);
+  if (parsedURL.protocol !== "https:") {
+    throw new Error("Sensitive MCP output URL must use HTTPS.");
+  }
+  if (typeof value.expiresInSeconds !== "number" || !Number.isFinite(value.expiresInSeconds)) {
+    throw new Error("Sensitive MCP output is missing a finite expiry.");
+  }
+  return { urlPresent: true, expiresInSeconds: value.expiresInSeconds };
 }
 
 function isMcpResponse(value) {
