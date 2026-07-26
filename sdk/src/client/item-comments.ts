@@ -1,7 +1,7 @@
 import type { PlakyClient } from "./client.js";
 import { pathSegment } from "./path.js";
 import { paginate, type PaginatedIterator } from "../runtime/pagination.js";
-import { resolveIdempotencyKey } from "../runtime/idempotency.js";
+import { resolveExplicitIdempotencyKey } from "../runtime/idempotency.js";
 import type { PlakyRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId, ItemId, CommentId } from "../runtime/ids.js";
 import type { PagedResult, CommentShape } from "./shapes.js";
@@ -59,7 +59,7 @@ export class ItemCommentsResource {
 
   /**
    * Create a comment on an item. The request field is `text`; the response field
-   * is `content`. Attaches a generated idempotency key by default.
+   * is `content`. Sends an idempotency key only when supplied explicitly.
    *
    * @param params - `spaceId`, `boardId`, `itemId`, `body` ({@link CommentWriteBody}),
    *   optional `idempotencyKey`.
@@ -71,7 +71,7 @@ export class ItemCommentsResource {
    * ```
    */
   async create(params: CommentScopeParams & { body: CommentWriteBody; idempotencyKey?: string }, options?: PlakyRequestOverrides): Promise<CommentShape> {
-    const idempotencyKey = resolveIdempotencyKey(params, options, "comment");
+    const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     return this.client.request<CommentShape>(
       {
         method: "POST",
@@ -95,7 +95,7 @@ export class ItemCommentsResource {
     params: CommentScopeParams & { itemCommentId: CommentId | string | number; body: CommentWriteBody; idempotencyKey?: string },
     options?: PlakyRequestOverrides,
   ): Promise<CommentShape> {
-    const idempotencyKey = resolveIdempotencyKey(params, options, "comment-up");
+    const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     return this.client.request<CommentShape>(
       {
         method: "PUT",
@@ -108,14 +108,14 @@ export class ItemCommentsResource {
   }
 
   /**
-   * Delete a comment. Destructive. Attaches a generated idempotency key by default.
+   * Delete a comment. Destructive. Sends no implicit idempotency key.
    *
    * @param params - `spaceId`, `boardId`, `itemId`, `itemCommentId`, optional `idempotencyKey`.
    * @param options - Per-request overrides.
    * @returns Nothing; resolves once the API confirms deletion.
    */
   async delete(params: CommentScopeParams & { itemCommentId: CommentId | string | number; idempotencyKey?: string }, options?: PlakyRequestOverrides): Promise<void> {
-    const idempotencyKey = resolveIdempotencyKey(params, options, "comment-del");
+    const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     await this.client.request<void>(
       {
         method: "DELETE",

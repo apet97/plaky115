@@ -22,8 +22,8 @@ export function canRetryError(
   return canRetry(req, opts);
 }
 
-export function canRetry(req: RawRequest, opts: Pick<PlakyRequestOptions, "idempotencyKey">): boolean {
-  return req.method === "GET" || opts.idempotencyKey !== undefined;
+export function canRetry(req: RawRequest, _opts: Pick<PlakyRequestOptions, "idempotencyKey">): boolean {
+  return req.method === "GET";
 }
 
 export function retryDelay(response: Response | undefined, attempt: number): number {

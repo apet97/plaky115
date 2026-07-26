@@ -39,8 +39,11 @@ test("shouldRetryResponse does not retry unsafe mutation without idempotency key
   assert.equal(shouldRetryResponse({ method: "POST", path: "/v1/x" }, {}, response, 0, 1), false);
 });
 
-test("canRetry allows writes only with an idempotency key", () => {
+test("canRetry allows GET only, regardless of an idempotency key", () => {
   assert.equal(canRetry({ method: "GET", path: "/v1/x" }, {}), true);
   assert.equal(canRetry({ method: "POST", path: "/v1/x" }, {}), false);
-  assert.equal(canRetry({ method: "POST", path: "/v1/x" }, { idempotencyKey: "idem" }), true);
+  assert.equal(canRetry({ method: "POST", path: "/v1/x" }, { idempotencyKey: "idem" }), false);
+  assert.equal(canRetry({ method: "PUT", path: "/v1/x" }, { idempotencyKey: "idem" }), false);
+  assert.equal(canRetry({ method: "PATCH", path: "/v1/x" }, { idempotencyKey: "idem" }), false);
+  assert.equal(canRetry({ method: "DELETE", path: "/v1/x" }, { idempotencyKey: "idem" }), false);
 });

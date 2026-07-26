@@ -1,7 +1,7 @@
 import type { PlakyClient } from "./client.js";
 import { pathSegment } from "./path.js";
 import { paginate, type PaginatedIterator } from "../runtime/pagination.js";
-import { resolveIdempotencyKey } from "../runtime/idempotency.js";
+import { resolveExplicitIdempotencyKey } from "../runtime/idempotency.js";
 import type { PlakyRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId, ItemId, FieldKey } from "../runtime/ids.js";
 import type { PagedResult, ItemShape } from "./shapes.js";
@@ -171,8 +171,8 @@ export class ItemsResource {
   }
 
   /**
-   * Create an item on a board. Attaches a generated idempotency key by default,
-   * so retried writes do not duplicate. Returns the created item (HTTP 201).
+   * Create an item on a board. An idempotency header is sent only when supplied
+   * explicitly. Returns the created item (HTTP 201).
    *
    * @param params - `spaceId`, `boardId`, `body` ({@link ItemCreateBody}),
    *   optional `idempotencyKey`, and `dryRun`.
@@ -192,7 +192,7 @@ export class ItemsResource {
     if (params.dryRun === true) {
       return planMutation("createItem", { spaceId: params.spaceId, boardId: params.boardId, body: params.body });
     }
-    const idempotencyKey = resolveIdempotencyKey(params, options, "item");
+    const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     return this.client.request<ItemShape>(
       {
         method: "POST",
@@ -205,7 +205,7 @@ export class ItemsResource {
   }
 
   /**
-   * Delete an item. Destructive. Attaches a generated idempotency key by default.
+   * Delete an item. Destructive. Sends no implicit idempotency key.
    *
    * @param params - `spaceId`, `boardId`, `itemId`, optional `idempotencyKey`.
    * @param options - Per-request overrides.
@@ -213,7 +213,7 @@ export class ItemsResource {
    * @throws {import("../runtime/errors.js").PlakyNotFoundError} If the item does not exist.
    */
   async delete(params: ItemDeleteParams, options?: PlakyRequestOverrides): Promise<void> {
-    const idempotencyKey = resolveIdempotencyKey(params, options, "item-del");
+    const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     await this.client.request<void>(
       {
         method: "DELETE",
@@ -235,7 +235,7 @@ export class ItemsResource {
    * @returns The updated {@link ItemShape}.
    */
   async updateField(params: ItemUpdateFieldParams, options?: PlakyRequestOverrides): Promise<ItemShape> {
-    const idempotencyKey = resolveIdempotencyKey(params, options, "item-field");
+    const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     return this.client.request<ItemShape>(
       {
         method: "PATCH",
@@ -261,7 +261,7 @@ export class ItemsResource {
     if (params.dryRun === true) {
       return planMutation("updateItemFields", { spaceId: params.spaceId, boardId: params.boardId, itemId: params.itemId, body: params.body });
     }
-    const idempotencyKey = resolveIdempotencyKey(params, options, "item-fields");
+    const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     return this.client.request<ItemShape>(
       {
         method: "PATCH",

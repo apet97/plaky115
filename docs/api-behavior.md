@@ -16,6 +16,20 @@ a sacrificial workspace; no secrets or production data are included.
 - The toolkit does not hardcode a tenant host as the default; deriving the host
   from the account is the caller's responsibility.
 
+## Retries and idempotency keys
+
+The SDK retries retryable `GET` failures only. `POST`, `PUT`, `PATCH`, and
+`DELETE` requests are attempted once, even when `maxRetries` and an explicit
+idempotency key are present. Plaky's public contract does not document write
+deduplication, so the SDK does not infer that a key makes a mutation safe to
+repeat.
+
+Resource methods do not generate or attach idempotency keys automatically. A
+caller-supplied `params.idempotencyKey` takes precedence over the per-request
+`options.idempotencyKey`; when neither is supplied, the header is omitted.
+`newIdempotencyKey()` remains available for applications that want to create and
+manage a stable request identifier explicitly.
+
 ## Pagination
 
 The API is strictly page-based. Confirmed live:

@@ -33,7 +33,7 @@ export type PlakyRequestOptions = {
   serverURL: string;
   /** Per-request timeout in milliseconds (default `30000`). */
   timeoutMs?: number | undefined;
-  /** Max retries for retryable failures (writes retry only with an idempotency key). */
+  /** Max retries for retryable GET failures. Mutations are never retried. */
   maxRetries?: number | undefined;
   /** Extra headers to merge in. */
   headers?: HeaderProvider | undefined;

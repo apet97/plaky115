@@ -33,7 +33,7 @@
 - [x] `O002` | Phase 5 — Official contract | DONE | Overlay all six Item Group operations against the candidate
 - [x] `O003` | Phase 5 — Official contract | DONE | Overlay all six Item file operations against the candidate
 - [x] `O004` | Phase 5 — Official contract | DONE | Accept the official candidate, regenerate all surfaces, and review the complete diff
-- [ ] `S001` | Phase 6 — TypeScript SDK | NOT STARTED | Remove automatic mutation retries and resource-generated idempotency keys
+- [x] `S001` | Phase 6 — TypeScript SDK | DONE | Remove automatic mutation retries and resource-generated idempotency keys
 - [ ] `S002` | Phase 6 — TypeScript SDK | NOT STARTED | Validate dynamic API keys and server URL at the runtime boundary
 - [ ] `S003` | Phase 6 — TypeScript SDK | NOT STARTED | Add IDs/file/group shapes and correct existing generated unions
 - [ ] `S004` | Phase 6 — TypeScript SDK | NOT STARTED | Implement the typed Item Groups SDK resource
@@ -261,3 +261,10 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - The task packet omitted five owning generator/test files required by its own metadata-removal, correct-request-kind, and codegen-test steps. Scope expanded only to `scripts/generate-operation-metadata.rb`, `scripts/lib/operation-metadata.mjs`, `scripts/lib/codegen-cli.mjs`, `scripts/test-operation-metadata-v2.rb`, and `test/fixtures/codegen/cli-operations-v2.go`; an exact changed-file audit found nothing else outside the packet list plus these necessities, and no forbidden SDK resource, MCP curated/server, or CLI curated file changed.
 - A final second generation produced a byte-identical 689,202-byte patch before and after; both SHA-256 values are `79b1164010e1cc1ec566057b46c2d838e9b31140ee8aed20730fcf3634b98116`.
 - Overlay/lint/metadata v1+v2, expected-contract, upstream-manifest, generator drift/determinism/goldens, Go suite, MCP build, and strict surface status all exited 0. Full SDK/CLI/MCP request parity remains intentionally scheduled for S006 after typed resources exist.
+
+### S001
+
+- Transport retry eligibility is now `GET`-only; every mutation method remains single-attempt even with `maxRetries` and an explicit idempotency key.
+- Added `resolveExplicitIdempotencyKey` with params-over-options precedence and no fallback. All eight existing hand-written mutations use it and omit the header when the caller supplies no key.
+- Kept the public subpath `resolveIdempotencyKey(params, options, prefix): string` behavior intact and marked it deprecated; `newIdempotencyKey` remains an explicit caller utility without deduplication claims.
+- Focused retry/idempotency/HTTP suite passed 61 tests, including each mutation with and without a key; SDK build and type tests exited 0.

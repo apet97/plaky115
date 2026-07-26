@@ -410,29 +410,24 @@ test("maxRetries does not retry mutations without an idempotency key", async () 
   assert.equal(calls, 1);
 });
 
-test("maxRetries retries mutations when an idempotency key is present", async () => {
+test("maxRetries does not retry mutations when an idempotency key is present", async () => {
   let calls = 0;
   globalThis.fetch = async () => {
     calls++;
-    if (calls === 1) {
-      return new Response(JSON.stringify({ message: "temporary" }), {
-        status: 500,
-        headers: { "content-type": "application/json" },
-      });
-    }
-    return new Response(JSON.stringify({ id: 123 }), {
-      status: 200,
+    return new Response(JSON.stringify({ message: "do not retry" }), {
+      status: 500,
       headers: { "content-type": "application/json" },
     });
   };
 
-  const result = await request(
-    { method: "POST", path: "/v1/public/spaces/1/boards/2/items", body: { title: "x" }, operationId: "createItem" },
-    { apiKey: "plk_test", serverURL: "https://example.test", maxRetries: 1, idempotencyKey: "idem-1" },
+  await assert.rejects(
+    request(
+      { method: "POST", path: "/v1/public/spaces/1/boards/2/items", body: { title: "x" }, operationId: "createItem" },
+      { apiKey: "plk_test", serverURL: "https://example.test", maxRetries: 3, idempotencyKey: "idem-1" },
+    ),
+    PlakyServerError,
   );
-
-  assert.deepEqual(result, { id: 123 });
-  assert.equal(calls, 2);
+  assert.equal(calls, 1);
 });
 
 test("malformed 2xx JSON throws PlakyDecodeError and is NOT retried", async () => {
