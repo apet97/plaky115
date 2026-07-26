@@ -1,0 +1,14 @@
+openapi: 3.1.0
+info: { title: Metadata bodyless PUT fixture, version: 1.0.0 }
+paths:
+  /fixture/widgets/{widgetId}/archive:
+    put:
+      operationId: fixtureArchiveWidget
+      parameters:
+        - name: widgetId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: Archived

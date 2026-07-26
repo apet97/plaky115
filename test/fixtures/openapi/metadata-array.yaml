@@ -1,0 +1,25 @@
+openapi: 3.1.0
+info: { title: Metadata array fixture, version: 1.0.0 }
+paths:
+  /fixture/widgets/{widgetId}/files:
+    get:
+      operationId: fixtureListWidgetFiles
+      parameters:
+        - name: widgetId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/File' }
+components:
+  schemas:
+    File:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }

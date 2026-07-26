@@ -1,0 +1,22 @@
+openapi: 3.1.0
+info: { title: Metadata ambiguous request fixture, version: 1.0.0 }
+paths:
+  /fixture/ambiguous-request:
+    post:
+      operationId: fixtureAmbiguousRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: object }

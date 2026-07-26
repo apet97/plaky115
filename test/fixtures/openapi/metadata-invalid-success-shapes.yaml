@@ -1,0 +1,17 @@
+openapi: 3.1.0
+info: { title: Metadata incompatible success fixture, version: 1.0.0 }
+paths:
+  /fixture/ambiguous-success:
+    get:
+      operationId: fixtureAmbiguousSuccess
+      responses:
+        '200':
+          description: Object
+          content:
+            application/json:
+              schema: { type: object }
+        '206':
+          description: Array
+          content:
+            application/json:
+              schema: { type: array, items: { type: object } }

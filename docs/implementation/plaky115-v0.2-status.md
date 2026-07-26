@@ -15,7 +15,7 @@
 - [x] `C001` | Phase 1 — Contract acquisition | DONE | Create official-source parser fixtures and a deterministic YAML helper
 - [x] `C002` | Phase 1 — Contract acquisition | DONE | Implement candidate fetch, parsing, canonicalization, and provenance
 - [x] `C003` | Phase 1 — Contract acquisition | DONE | Add semantic contract diff, manifest checks, and freshness workflow
-- [ ] `M001` | Phase 2 — Metadata | NOT STARTED | Create and validate transport-quadrant OpenAPI fixtures
+- [x] `M001` | Phase 2 — Metadata | DONE | Create and validate transport-quadrant OpenAPI fixtures
 - [ ] `M002` | Phase 2 — Metadata | NOT STARTED | Make parameter metadata contract-derived
 - [ ] `M003` | Phase 2 — Metadata | NOT STARTED | Derive explicit request kind and multipart parts
 - [ ] `M004` | Phase 2 — Metadata | NOT STARTED | Derive primary success status and response kind
@@ -110,3 +110,12 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Schema and runtime validation require complete fetch and acceptance provenance.
 - Added a read-only scheduled/manual freshness workflow with concurrency cancellation, ignored evidence upload, and no commit/PR/token path.
 - Semantic/acceptance suite: 11 tests passed, covering descriptions, additions/removals, location, media/response kinds, required fields, enum widening/narrowing, explicit consent, hashes, expected operations, and manifest verification.
+
+### M001
+
+- `metadata-json.yaml`: required JSON request, object response, typed int64 path and exploded array query parameters.
+- `metadata-bodyless-put.yaml`: bodyless PUT with a void 200 response.
+- `metadata-multipart.yaml`: required binary multipart part with a 201 object response.
+- `metadata-array.yaml`: bare JSON array response.
+- Invalid fixtures independently pin ambiguous request media and incompatible success shapes.
+- Fixture integrity: 6 tests and 23 assertions passed with aliases disabled and globally unique fake operation IDs.
