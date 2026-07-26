@@ -41,7 +41,7 @@
 - [x] `S006` | Phase 6 — TypeScript SDK | DONE | Lock SDK public surface, package exports, and consumer behavior
 - [x] `MCP001` | Phase 7 — MCP | DONE | Add dedicated compactors and response envelopes for new resource kinds
 - [x] `MCP002` | Phase 7 — MCP | DONE | Make modes, scopes, and argument parsing fail closed
-- [ ] `MCP003` | Phase 7 — MCP | NOT STARTED | Remove private MCP SDK access and pin the dependency
+- [x] `MCP003` | Phase 7 — MCP | DONE | Remove private MCP SDK access and pin the dependency
 - [ ] `MCP004` | Phase 7 — MCP | NOT STARTED | Replace generic workflow records with exact read/mutation schemas
 - [ ] `MCP005` | Phase 7 — MCP | NOT STARTED | Standardize structured errors and sensitive-output test handling
 - [ ] `CLI001` | Phase 8 — CLI | NOT STARTED | Validate all generated raw request kinds and new operation behavior
@@ -321,3 +321,10 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Help is processed before API-key lookup and succeeds without secrets. Missing credentials after valid parsing still exit 1 with the existing key guidance.
 - README/install snippets now use the positional-free invocation and state safe defaults; broad Cursor configuration requests every mode/scope explicitly.
 - MCP build, help command, and `git diff --check` exited 0; all 30 focused server/protocol tests passed, including subprocess exit-code gates.
+
+### MCP003
+
+- Removed the private call-handler override, private registry/request-handler reads, and registration cast. Tools now register through typed public `McpServer.registerTool`; optional output schemas are omitted rather than passed as `undefined`.
+- Pinned `@modelcontextprotocol/sdk` exactly to reviewed version `1.29.0` in package and lockfile; a clean `npm ci` completed against that lock.
+- Server tests now discover and invoke exclusively through public `Client`/`InMemoryTransport` calls. Protocol coverage pins list/known/unknown/filtered/schema/API-error behavior, including the public SDK's in-band not-found response.
+- MCP build and `git diff --check` exited 0; 33 focused public-protocol/server tests and all 33 exact parity tests passed. The required private-field/cast search returned no matches.

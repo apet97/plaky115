@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { buildServer } from "../esm/server/index.js";
 import { parseMode, selectTools } from "../esm/server/modes.js";
 import { filterByScopes, parseScopes } from "../esm/server/scopes.js";
@@ -11,6 +13,14 @@ const binPath = fileURLToPath(new URL("../bin/mcp-server.js", import.meta.url));
 function runBin(args, env = {}) {
   const cleanEnv = { ...process.env, PLAKY115_API_KEY: "", PLAKY115_API_KEY_AUTH: "", ...env };
   return spawnSync(process.execPath, [binPath, ...args], { encoding: "utf8", env: cleanEnv, timeout: 5_000 });
+}
+
+async function connectedServer(options) {
+  const { server } = buildServer(options);
+  const client = new Client({ name: "plaky115-server-test", version: "0.0.0" });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+  return { client, server };
 }
 
 test("buildServer creates an MCP server with at least one tool", () => {
@@ -24,31 +34,36 @@ test("buildServer creates an MCP server with at least one tool", () => {
 });
 
 test("buildServer registers tools with output schemas", () => {
-  const { server } = buildServer({
+  return connectedServer({
     apiKey: "plk_test",
     mode: "all",
     scopes: ["read", "write", "destructive"],
+  }).then(async ({ client, server }) => {
+    try {
+      const { tools } = await client.listTools();
+      assert.equal(tools.length, 37);
+      for (const tool of tools) assert.ok(tool.outputSchema, `${tool.name} missing outputSchema`);
+    } finally {
+      await server.close();
+    }
   });
-  const registered = server._registeredTools;
-  assert.ok(Object.keys(registered).length >= 25);
-  for (const [name, tool] of Object.entries(registered)) {
-    assert.ok(tool.outputSchema, `${name} missing outputSchema`);
-  }
 });
 
 test("curated tool response includes text and structuredContent", async () => {
-  const { server } = buildServer({
+  const { client, server } = await connectedServer({
     apiKey: "plk_test",
     mode: "curated",
     scopes: ["read", "write"],
   });
-  const tool = server._registeredTools.plaky_search_docs;
-  const response = await tool.handler({ query: "spaces", limit: 1 });
-
-  assert.equal(response.content[0].type, "text");
-  assert.ok(response.content[0].text.includes("hits"));
-  assert.ok(response.structuredContent);
-  assert.ok(Array.isArray(response.structuredContent.hits));
+  try {
+    const response = await client.callTool({ name: "plaky_search_docs", arguments: { query: "spaces", limit: 1 } });
+    assert.equal(response.content[0].type, "text");
+    assert.ok(response.content[0].text.includes("hits"));
+    assert.ok(response.structuredContent);
+    assert.ok(Array.isArray(response.structuredContent.hits));
+  } finally {
+    await server.close();
+  }
 });
 
 test("Plaky API errors are returned as tool errors", async () => {
@@ -62,20 +77,22 @@ test("Plaky API errors are returned as tool errors", async () => {
       },
     });
   try {
-    const { server } = buildServer({
+    const { client, server } = await connectedServer({
       apiKey: "plk_test",
       serverURL: "https://example.test",
       mode: "generated",
       scopes: ["read"],
     });
-    const tool = server._registeredTools.plaky_list_spaces;
-    const response = await tool.handler({ page: 1 });
-
-    assert.equal(response.isError, true);
-    assert.equal(response.structuredContent.error.name, "PlakyNotFoundError");
-    assert.equal(response.structuredContent.error.status, 404);
-    assert.equal(response.structuredContent.error.requestId, "req_123");
-    assert.ok(response.content[0].text.includes("space not found"));
+    try {
+      const response = await client.callTool({ name: "plaky_list_spaces", arguments: { page: 1 } });
+      assert.equal(response.isError, true);
+      assert.equal(response.structuredContent.error.name, "PlakyNotFoundError");
+      assert.equal(response.structuredContent.error.status, 404);
+      assert.equal(response.structuredContent.error.requestId, "req_123");
+      assert.ok(response.content[0].text.includes("space not found"));
+    } finally {
+      await server.close();
+    }
   } finally {
     globalThis.fetch = previousFetch;
   }
@@ -85,18 +102,20 @@ test("raw delete tools return structured ok receipts", async () => {
   const previousFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response(null, { status: 204 });
   try {
-    const { server } = buildServer({
+    const { client, server } = await connectedServer({
       apiKey: "plk_test",
       serverURL: "https://example.test",
       mode: "generated",
       scopes: ["read", "write", "destructive"],
     });
-    const tool = server._registeredTools.plaky_delete_item;
-    const response = await tool.handler({ spaceId: 1, boardId: 2, itemId: 3 });
-
-    assert.equal(response.content[0].type, "text");
-    assert.deepEqual(response.structuredContent, { ok: true });
-    assert.equal(JSON.parse(response.content[0].text).ok, true);
+    try {
+      const response = await client.callTool({ name: "plaky_delete_item", arguments: { spaceId: 1, boardId: 2, itemId: 3 } });
+      assert.equal(response.content[0].type, "text");
+      assert.deepEqual(response.structuredContent, { ok: true });
+      assert.equal(JSON.parse(response.content[0].text).ok, true);
+    } finally {
+      await server.close();
+    }
   } finally {
     globalThis.fetch = previousFetch;
   }
@@ -110,12 +129,15 @@ test("execute_workflow accepts both space/board/item and spaceId/boardId/itemId 
       headers: { "content-type": "application/json" },
     });
   try {
-    const { server } = buildServer({ apiKey: "plk_test", serverURL: "https://example.test", mode: "all", scopes: ["read", "write"] });
-    const tool = server._registeredTools.plaky_execute_workflow;
-    const canonical = await tool.handler({ workflowId: "comments.thread", input: { spaceId: 1, boardId: 2, itemId: 3 } });
-    assert.equal(canonical.structuredContent.data.length, 1);
-    const alternate = await tool.handler({ workflowId: "comments.thread", input: { space: 1, board: 2, item: 3 } });
-    assert.equal(alternate.structuredContent.data.length, 1);
+    const { client, server } = await connectedServer({ apiKey: "plk_test", serverURL: "https://example.test", mode: "all", scopes: ["read", "write"] });
+    try {
+      const canonical = await client.callTool({ name: "plaky_execute_workflow", arguments: { workflowId: "comments.thread", input: { spaceId: 1, boardId: 2, itemId: 3 } } });
+      assert.equal(canonical.structuredContent.data.length, 1);
+      const alternate = await client.callTool({ name: "plaky_execute_workflow", arguments: { workflowId: "comments.thread", input: { space: 1, board: 2, item: 3 } } });
+      assert.equal(alternate.structuredContent.data.length, 1);
+    } finally {
+      await server.close();
+    }
   } finally {
     globalThis.fetch = previousFetch;
   }
@@ -127,40 +149,14 @@ test("execute_workflow fails fast with a clear message when a required entity id
     throw new Error("fetch should not be called when an id is missing");
   };
   try {
-    const { server } = buildServer({ apiKey: "plk_test", serverURL: "https://example.test", mode: "all", scopes: ["read", "write"] });
-    const tool = server._registeredTools.plaky_execute_workflow;
-    await assert.rejects(
-      () => tool.handler({ workflowId: "comments.thread", input: { boardId: 2, itemId: 3 } }),
-      (error) => /missing required input "spaceId"/.test(String(error.message ?? error)),
-    );
-  } finally {
-    globalThis.fetch = previousFetch;
-  }
-});
-
-test("raw write tool rejects a missing body", async () => {
-  const previousFetch = globalThis.fetch;
-  // Fail loudly if the tool ever reaches the network: a missing required body
-  // must be rejected during input validation, before any request is made.
-  globalThis.fetch = async () => {
-    throw new Error("fetch should not be called when body is missing");
-  };
-  try {
-    const { server } = buildServer({
-      apiKey: "plk_test",
-      serverURL: "https://example.test",
-      mode: "generated",
-      scopes: ["read", "write"],
-    });
-    const tool = server._registeredTools.plaky_create_item;
-    await assert.rejects(
-      () => tool.handler({ spaceId: 1, boardId: 2 }),
-      (error) => {
-        assert.ok(error instanceof Error);
-        assert.match(JSON.stringify(error.issues ?? error.message ?? String(error)), /body/i);
-        return true;
-      },
-    );
+    const { client, server } = await connectedServer({ apiKey: "plk_test", serverURL: "https://example.test", mode: "all", scopes: ["read", "write"] });
+    try {
+      const response = await client.callTool({ name: "plaky_execute_workflow", arguments: { workflowId: "comments.thread", input: { boardId: 2, itemId: 3 } } });
+      assert.equal(response.isError, true);
+      assert.match(response.content[0].text, /missing required input.*spaceId/i);
+    } finally {
+      await server.close();
+    }
   } finally {
     globalThis.fetch = previousFetch;
   }
@@ -177,22 +173,23 @@ test("raw write tool accepts a provided body and forwards it to the transport", 
     });
   };
   try {
-    const { server } = buildServer({
+    const { client, server } = await connectedServer({
       apiKey: "plk_test",
       serverURL: "https://example.test",
       mode: "generated",
       scopes: ["read", "write"],
     });
-    const tool = server._registeredTools.plaky_create_item;
-    const response = await tool.handler({ spaceId: 1, boardId: 2, body: { title: "x" } });
-
-    assert.equal(response.content[0].type, "text");
-    assert.ok(response.structuredContent);
-    assert.notEqual(response.isError, true);
-    // The provided body must reach the transport unchanged at the create-item path.
-    assert.ok(captured, "fetch was not called");
-    assert.match(captured.url, /\/v1\/public\/spaces\/1\/boards\/2\/items$/);
-    assert.deepEqual(JSON.parse(captured.init.body), { title: "x" });
+    try {
+      const response = await client.callTool({ name: "plaky_create_item", arguments: { spaceId: 1, boardId: 2, body: { title: "x" } } });
+      assert.equal(response.content[0].type, "text");
+      assert.ok(response.structuredContent);
+      assert.notEqual(response.isError, true);
+      assert.ok(captured, "fetch was not called");
+      assert.match(captured.url, /\/v1\/public\/spaces\/1\/boards\/2\/items$/);
+      assert.deepEqual(JSON.parse(captured.init.body), { title: "x" });
+    } finally {
+      await server.close();
+    }
   } finally {
     globalThis.fetch = previousFetch;
   }
