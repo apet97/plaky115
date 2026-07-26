@@ -13,6 +13,7 @@ export const deleteWidgetTool: McpToolDefinition = {
   title: "deleteWidget",
   description: "deleteWidget fixture",
   scopes: ["write","destructive"],
+  sensitiveOutput: false,
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,

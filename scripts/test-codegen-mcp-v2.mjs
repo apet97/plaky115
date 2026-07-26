@@ -64,6 +64,25 @@ const cases = [
     confirmation: "destructive",
     mutation: true,
   })],
+  ["mcp-multipart.ts", operation({
+    operationId: "uploadWidgetFile",
+    method: "POST",
+    path: "/v1/widgets/{widgetId}/files",
+    parameters: [parameter("widgetId", "path", { type: "string" }, true, "Widget identifier.")],
+    request: {
+      kind: "multipart",
+      required: true,
+      mediaType: "multipart/form-data",
+      parts: [{ name: "file", required: true, type: "string", format: "binary" }],
+    },
+    success: { status: 201, kind: "json-object", mediaType: "application/json" },
+    scopes: ["write"],
+    readOnly: false,
+    idempotent: false,
+    compactKind: "itemFile",
+    sensitiveOutput: true,
+    mutation: true,
+  })],
 ];
 
 for (const [fixture, metadata] of cases) {
@@ -78,6 +97,25 @@ test("MCP generator has no method/path transport or compaction heuristics", () =
   assert.doesNotMatch(source, /hasBody\s*=\s*op\.method/);
   assert.doesNotMatch(source, /op\.method\s*===\s*["']DELETE["']/);
   assert.doesNotMatch(source, /function pickCompact|op\.path\.includes/);
+});
+
+test("MCP multipart generation rejects every shape except one required binary file part", () => {
+  const base = cases.find(([fixture]) => fixture === "mcp-multipart.ts")[1];
+  for (const parts of [
+    [],
+    [{ name: "upload", required: true, type: "string", format: "binary" }],
+    [{ name: "file", required: false, type: "string", format: "binary" }],
+    [{ name: "file", required: true, type: "string", format: "text" }],
+    [
+      { name: "file", required: true, type: "string", format: "binary" },
+      { name: "caption", required: false, type: "string" },
+    ],
+  ]) {
+    assert.throws(
+      () => buildRawToolModule({ ...base, request: { ...base.request, parts } }),
+      /single required binary multipart part named file/,
+    );
+  }
 });
 
 function operation(overrides = {}) {

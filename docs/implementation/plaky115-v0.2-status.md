@@ -22,7 +22,7 @@
 - [x] `M005` | Phase 2 — Metadata | DONE | Annotate the existing 20 operations with explicit semantics and regenerate rich metadata
 - [x] `G001` | Phase 3 — Generators | DONE | Add one shared metadata loader and validator for JavaScript generators
 - [x] `G002` | Phase 3 — Generators | DONE | Make MCP generator use request/success/parameter metadata
-- [ ] `G003` | Phase 3 — Generators | NOT STARTED | Generate safe MCP multipart upload tools
+- [x] `G003` | Phase 3 — Generators | DONE | Generate safe MCP multipart upload tools
 - [ ] `G004` | Phase 3 — Generators | NOT STARTED | Make Cobra command generation transport- and confirmation-aware
 - [ ] `G005` | Phase 3 — Generators | NOT STARTED | Generate Go operation methods and runner functions from one descriptor
 - [ ] `G006` | Phase 3 — Generators | NOT STARTED | Delete stale outputs deterministically and make parity count dynamic
@@ -168,3 +168,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Five exact-text goldens cover typed enum/integer/array inputs, required JSON, bodyless PUT void, bare-array output, and destructive annotations.
 - MCP v2 suite: 6 tests passed. The full 4-test determinism suite passed in an isolated real checkout so production generated tools remained untouched.
 - `git diff --check` exited 0.
+
+### G003
+
+- Added a runtime-only canonical base64 decoder and single-file FormData builder with a 10 MiB default, configurable positive-integer limit, and rejecting 25 MiB hard ceiling.
+- Size is estimated and rejected before decoding; filename/media type validation and the generated helper call occur before any API request.
+- Multipart generation accepts only one required binary part named `file`, exposes base64/name/media-type inputs, and emits no filesystem path or JSON-body input.
+- Extended MCP types for `itemGroup`, `itemFile`, `downloadLink`, and sensitive-output metadata.
+- MCP build exited 0; upload suite passed 8 tests; MCP generator suite passed 8 tests; `git diff --check` exited 0.

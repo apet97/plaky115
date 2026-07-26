@@ -13,6 +13,7 @@ export const createWidgetTool: McpToolDefinition = {
   title: "createWidget",
   description: "createWidget fixture",
   scopes: ["write"],
+  sensitiveOutput: false,
   annotations: {
     readOnlyHint: false,
     destructiveHint: false,

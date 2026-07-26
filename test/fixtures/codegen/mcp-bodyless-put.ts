@@ -13,6 +13,7 @@ export const archiveWidgetTool: McpToolDefinition = {
   title: "archiveWidget",
   description: "archiveWidget fixture",
   scopes: ["write"],
+  sensitiveOutput: false,
   annotations: {
     readOnlyHint: false,
     destructiveHint: false,

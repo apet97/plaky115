@@ -2,7 +2,7 @@ import type { ZodTypeAny } from "zod/v3";
 import type { PlakyClient, PlakyRequestOptions } from "plaky115";
 
 export type McpScope = "read" | "write" | "destructive";
-export type CompactKind = "raw" | "item" | "board" | "space" | "comment";
+export type CompactKind = "raw" | "item" | "board" | "space" | "comment" | "itemGroup" | "itemFile" | "downloadLink";
 
 export type McpRespondOptions = {
   compactKind?: CompactKind;
@@ -34,6 +34,7 @@ export type McpToolDefinition = {
   title: string;
   description: string;
   scopes: McpScope[];
+  sensitiveOutput?: boolean;
   annotations: McpToolAnnotations;
   inputSchema: ZodTypeAny;
   outputSchema?: ZodTypeAny;

@@ -13,6 +13,7 @@ export const listWidgetFilesTool: McpToolDefinition = {
   title: "listWidgetFiles",
   description: "listWidgetFiles fixture",
   scopes: ["read"],
+  sensitiveOutput: false,
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,

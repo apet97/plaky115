@@ -16,6 +16,7 @@ export const getWidgetTool: McpToolDefinition = {
   title: "getWidget",
   description: "getWidget fixture",
   scopes: ["read"],
+  sensitiveOutput: false,
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
