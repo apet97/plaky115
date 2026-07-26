@@ -11,7 +11,7 @@
 
 - [x] `B001` | Phase 0 — Baseline | DONE | Create the branch, status ledger, and task guardrails
 - [x] `B002` | Phase 0 — Baseline | DONE | Capture reproducible baseline inventory and gate results
-- [ ] `B003` | Phase 0 — Baseline | NOT STARTED | Add the intentional 32-operation expected manifest
+- [x] `B003` | Phase 0 — Baseline | DONE | Add the intentional 32-operation expected manifest
 - [ ] `C001` | Phase 1 — Contract acquisition | NOT STARTED | Create official-source parser fixtures and a deterministic YAML helper
 - [ ] `C002` | Phase 1 — Contract acquisition | NOT STARTED | Implement candidate fetch, parsing, canonicalization, and provenance
 - [ ] `C003` | Phase 1 — Contract acquisition | NOT STARTED | Add semantic contract diff, manifest checks, and freshness workflow
@@ -79,3 +79,10 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Two inventory runs were byte-identical.
 - All packet gates exited 0; full `npm run verify` also exited 0 from this real Git checkout.
 - External freshness, live mutation, and publishing gates remain intentionally unrun and are listed in the baseline document.
+
+### B003
+
+- Added the ordered 32-operation expected manifest and exact-set comparison command.
+- Strict comparison fails during migration; `--allow-missing` is diagnostic-only.
+- Current diagnostic: exactly 12 missing Item Group/file operations and 0 unexpected operations.
+- Duplicate operation IDs and method/path keys fail closed.
