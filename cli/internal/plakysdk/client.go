@@ -3,11 +3,16 @@
 package plakysdk
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"net/url"
 	"strings"
 	"time"
@@ -49,11 +54,22 @@ func New(opts ClientOptions) (*Client, error) {
 }
 
 type Request struct {
-	Method      string
-	Path        string
-	Query       url.Values
+	Method    string
+	Path      string
+	Query     url.Values
+	JSONBody  any
+	Multipart *MultipartFileBody
+	// Body is retained only until the tracked generated operations migrate to JSONBody in O004.
+	// Deprecated: use JSONBody.
 	Body        any
 	Idempotency string
+}
+
+type MultipartFileBody struct {
+	FieldName   string
+	FileName    string
+	ContentType string
+	Reader      io.Reader
 }
 
 func (c *Client) Do(ctx context.Context, req Request, out any) error {
@@ -64,13 +80,9 @@ func (c *Client) Do(ctx context.Context, req Request, out any) error {
 	if req.Query != nil {
 		u.RawQuery = req.Query.Encode()
 	}
-	var body io.Reader
-	if req.Body != nil {
-		b, err := json.Marshal(req.Body)
-		if err != nil {
-			return err
-		}
-		body = strings.NewReader(string(b))
+	body, contentType, startBody, bodyDone, err := prepareRequestBody(ctx, req)
+	if err != nil {
+		return operationError(req, "prepare request body", err)
 	}
 	httpReq, err := http.NewRequestWithContext(ctx, req.Method, u.String(), body)
 	if err != nil {
@@ -78,17 +90,30 @@ func (c *Client) Do(ctx context.Context, req Request, out any) error {
 	}
 	httpReq.Header.Set("X-API-Key", c.opts.APIKey)
 	httpReq.Header.Set("Accept", "application/json")
-	if req.Body != nil {
-		httpReq.Header.Set("Content-Type", "application/json")
+	if contentType != "" {
+		httpReq.Header.Set("Content-Type", contentType)
 	}
 	if req.Idempotency != "" {
 		httpReq.Header.Set("Idempotency-Key", req.Idempotency)
 	}
 	httpReq.Header.Set("User-Agent", c.opts.UserAgent)
 
-	resp, err := c.http.Do(httpReq)
-	if err != nil {
-		return operationError(req, "send request", err)
+	if startBody != nil {
+		startBody()
+	}
+	resp, sendErr := c.http.Do(httpReq)
+	if body != nil {
+		_ = body.Close()
+	}
+	var streamErr error
+	if bodyDone != nil {
+		streamErr = <-bodyDone
+	}
+	if streamErr != nil && !(sendErr != nil && errors.Is(streamErr, io.ErrClosedPipe)) {
+		return operationError(req, "write request body", streamErr)
+	}
+	if sendErr != nil {
+		return operationError(req, "send request", sendErr)
 	}
 	defer resp.Body.Close()
 	raw, err := readResponseBody(resp.Body)
@@ -105,6 +130,96 @@ func (c *Client) Do(ctx context.Context, req Request, out any) error {
 		return operationError(req, "decode response body", err)
 	}
 	return nil
+}
+
+func prepareRequestBody(
+	ctx context.Context,
+	req Request,
+) (io.ReadCloser, string, func(), <-chan error, error) {
+	jsonBody := req.JSONBody
+	if req.Body != nil {
+		if jsonBody != nil {
+			return nil, "", nil, nil, fmt.Errorf("Body and JSONBody are mutually exclusive")
+		}
+		jsonBody = req.Body
+	}
+	if jsonBody != nil && req.Multipart != nil {
+		return nil, "", nil, nil, fmt.Errorf("JSONBody and Multipart are mutually exclusive")
+	}
+	if jsonBody != nil {
+		encoded, err := json.Marshal(jsonBody)
+		if err != nil {
+			return nil, "", nil, nil, err
+		}
+		return io.NopCloser(bytes.NewReader(encoded)), "application/json", nil, nil, nil
+	}
+	if req.Multipart == nil {
+		return nil, "", nil, nil, nil
+	}
+	return prepareMultipartBody(ctx, req.Multipart)
+}
+
+func prepareMultipartBody(
+	ctx context.Context,
+	body *MultipartFileBody,
+) (io.ReadCloser, string, func(), <-chan error, error) {
+	if body.Reader == nil {
+		return nil, "", nil, nil, fmt.Errorf("multipart reader is required")
+	}
+	fieldName := body.FieldName
+	if fieldName == "" {
+		fieldName = "file"
+	}
+	if body.FileName == "" {
+		return nil, "", nil, nil, fmt.Errorf("multipart filename is required")
+	}
+	contentType := body.ContentType
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	pipeReader, pipeWriter := io.Pipe()
+	writer := multipart.NewWriter(pipeWriter)
+	formContentType := writer.FormDataContentType()
+	done := make(chan error, 1)
+	start := func() {
+		go func() {
+			header := make(textproto.MIMEHeader)
+			header.Set("Content-Disposition", mime.FormatMediaType("form-data", map[string]string{
+				"name":     fieldName,
+				"filename": body.FileName,
+			}))
+			header.Set("Content-Type", contentType)
+			part, err := writer.CreatePart(header)
+			if err == nil {
+				_, err = io.Copy(part, &contextReader{ctx: ctx, reader: body.Reader})
+			}
+			if err == nil {
+				err = writer.Close()
+			}
+			if err != nil {
+				_ = pipeWriter.CloseWithError(err)
+			} else {
+				err = pipeWriter.Close()
+			}
+			done <- err
+		}()
+	}
+	return pipeReader, formContentType, start, done, nil
+}
+
+type contextReader struct {
+	ctx    context.Context
+	reader io.Reader
+}
+
+func (reader *contextReader) Read(buffer []byte) (int, error) {
+	select {
+	case <-reader.ctx.Done():
+		return 0, reader.ctx.Err()
+	default:
+		return reader.reader.Read(buffer)
+	}
 }
 
 func readResponseBody(body io.Reader) ([]byte, error) {

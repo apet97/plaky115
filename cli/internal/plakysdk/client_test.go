@@ -2,13 +2,18 @@ package plakysdk
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 )
 
 func TestClientDoReturnsResponseReadError(t *testing.T) {
@@ -87,6 +92,167 @@ func TestClientDoReturnsStructuredAPIError(t *testing.T) {
 	}
 }
 
+func TestJSONBodyWritesExactBytesAndContentType(t *testing.T) {
+	var gotBody []byte
+	var gotContentType string
+	client := testClient(t, roundTripperFunc(func(request *http.Request) (*http.Response, error) {
+		gotContentType = request.Header.Get("Content-Type")
+		gotBody, _ = io.ReadAll(request.Body)
+		return jsonResponse(http.StatusOK, `{}`), nil
+	}))
+	if err := client.Do(t.Context(), Request{
+		Method:   http.MethodPost,
+		Path:     "/json",
+		JSONBody: map[string]any{"name": "fixture", "count": 2},
+	}, new(any)); err != nil {
+		t.Fatal(err)
+	}
+	if string(gotBody) != `{"count":2,"name":"fixture"}` {
+		t.Fatalf("body = %s", gotBody)
+	}
+	if gotContentType != "application/json" {
+		t.Fatalf("content type = %q", gotContentType)
+	}
+}
+
+func TestMultipartStreamsPartMetadataAndBytes(t *testing.T) {
+	payload := bytes.Repeat([]byte("streaming-fixture-"), 256*1024)
+	reader := &chunkTrackingReader{reader: bytes.NewReader(payload)}
+	var gotField, gotName, gotType string
+	var gotBody []byte
+	client := testClient(t, roundTripperFunc(func(request *http.Request) (*http.Response, error) {
+		mediaType, params, err := mime.ParseMediaType(request.Header.Get("Content-Type"))
+		if err != nil || mediaType != "multipart/form-data" {
+			t.Fatalf("content type = %q, %v", request.Header.Get("Content-Type"), err)
+		}
+		part, err := multipart.NewReader(request.Body, params["boundary"]).NextPart()
+		if err != nil {
+			t.Fatal(err)
+		}
+		gotField, gotName, gotType = part.FormName(), part.FileName(), part.Header.Get("Content-Type")
+		gotBody, err = io.ReadAll(part)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return jsonResponse(http.StatusCreated, `{}`), nil
+	}))
+	err := client.Do(t.Context(), Request{
+		Method: http.MethodPost,
+		Path:   "/multipart",
+		Multipart: &MultipartFileBody{
+			FieldName:   "file",
+			FileName:    "fixture.bin",
+			ContentType: "application/x-fixture",
+			Reader:      reader,
+		},
+	}, new(any))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotField != "file" || gotName != "fixture.bin" || gotType != "application/x-fixture" {
+		t.Fatalf("part = field %q name %q type %q", gotField, gotName, gotType)
+	}
+	if !bytes.Equal(gotBody, payload) {
+		t.Fatalf("multipart bytes = %d, want %d", len(gotBody), len(payload))
+	}
+	if reader.maxRead >= len(payload) {
+		t.Fatalf("upload was pre-buffered in one read: max=%d total=%d", reader.maxRead, len(payload))
+	}
+}
+
+func TestJSONBodyAndMultipartAreMutuallyExclusive(t *testing.T) {
+	called := false
+	client := testClient(t, roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		called = true
+		return jsonResponse(http.StatusOK, `{}`), nil
+	}))
+	err := client.Do(t.Context(), Request{
+		Method:   http.MethodPost,
+		Path:     "/ambiguous",
+		JSONBody: map[string]any{"ok": true},
+		Multipart: &MultipartFileBody{
+			FieldName: "file",
+			FileName:  "fixture",
+			Reader:    strings.NewReader("fixture"),
+		},
+	}, nil)
+	if err == nil || !strings.Contains(err.Error(), "mutually exclusive") {
+		t.Fatalf("error = %v", err)
+	}
+	if called {
+		t.Fatal("ambiguous request reached transport")
+	}
+}
+
+func TestMultipartCopyFailureReachesCaller(t *testing.T) {
+	copyErr := errors.New("fixture copy failure")
+	client := testClient(t, roundTripperFunc(func(request *http.Request) (*http.Response, error) {
+		_, err := io.Copy(io.Discard, request.Body)
+		if err != nil {
+			return nil, err
+		}
+		return jsonResponse(http.StatusOK, `{}`), nil
+	}))
+	err := client.Do(t.Context(), Request{
+		Method: http.MethodPost,
+		Path:   "/copy-error",
+		Multipart: &MultipartFileBody{
+			FieldName: "file",
+			FileName:  "fixture",
+			Reader:    &failingReader{err: copyErr},
+		},
+	}, nil)
+	if !errors.Is(err, copyErr) {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestMultipartContextCancellationTerminatesCopy(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	reader := &cancelReader{ctx: ctx, started: make(chan struct{})}
+	client := testClient(t, roundTripperFunc(func(request *http.Request) (*http.Response, error) {
+		_, err := io.Copy(io.Discard, request.Body)
+		return nil, err
+	}))
+	done := make(chan error, 1)
+	go func() {
+		done <- client.Do(ctx, Request{
+			Method: http.MethodPost,
+			Path:   "/cancel",
+			Multipart: &MultipartFileBody{
+				FieldName: "file",
+				FileName:  "fixture",
+				Reader:    reader,
+			},
+		}, nil)
+	}()
+	<-reader.started
+	cancel()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("error = %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("multipart copy goroutine did not terminate")
+	}
+}
+
+func TestJSONBodylessRequestHasNoContentType(t *testing.T) {
+	client := testClient(t, roundTripperFunc(func(request *http.Request) (*http.Response, error) {
+		if value := request.Header.Get("Content-Type"); value != "" {
+			t.Fatalf("content type = %q", value)
+		}
+		if request.Body != nil {
+			t.Fatal("bodyless request has a body")
+		}
+		return jsonResponse(http.StatusOK, ""), nil
+	}))
+	if err := client.Do(t.Context(), Request{Method: http.MethodGet, Path: "/bodyless"}, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func serverClient(t *testing.T, status int, body string, requestID string) *Client {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
@@ -129,3 +295,41 @@ type errorReadCloser struct {
 
 func (reader *errorReadCloser) Read([]byte) (int, error) { return 0, reader.err }
 func (reader *errorReadCloser) Close() error             { return nil }
+
+func jsonResponse(status int, body string) *http.Response {
+	return &http.Response{
+		StatusCode: status,
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+		Body:       io.NopCloser(strings.NewReader(body)),
+	}
+}
+
+type chunkTrackingReader struct {
+	reader  io.Reader
+	maxRead int
+}
+
+func (reader *chunkTrackingReader) Read(buffer []byte) (int, error) {
+	if len(buffer) > reader.maxRead {
+		reader.maxRead = len(buffer)
+	}
+	return reader.reader.Read(buffer)
+}
+
+type failingReader struct {
+	err error
+}
+
+func (reader *failingReader) Read([]byte) (int, error) { return 0, reader.err }
+
+type cancelReader struct {
+	ctx     context.Context
+	started chan struct{}
+	once    sync.Once
+}
+
+func (reader *cancelReader) Read([]byte) (int, error) {
+	reader.once.Do(func() { close(reader.started) })
+	<-reader.ctx.Done()
+	return 0, reader.ctx.Err()
+}
