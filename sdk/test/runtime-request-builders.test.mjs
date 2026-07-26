@@ -62,3 +62,36 @@ test("buildHeaders resolves auth and custom header providers", async () => {
   assert.equal(headers.get("user-agent"), "plaky-test");
   assert.equal(headers.get("content-type"), "application/json");
 });
+
+test("buildHeaders rejects whitespace provider keys without exposing their value", async () => {
+  let providerCalls = 0;
+  await assert.rejects(
+    buildHeaders(
+      { method: "GET", path: "/v1/items" },
+      {
+        apiKey: async () => {
+          providerCalls++;
+          return " \t secret-marker \n".replace("secret-marker", "");
+        },
+        serverURL: "https://example.test",
+      },
+    ),
+    (error) => {
+      assert.doesNotMatch(error.message, /secret-marker/);
+      assert.match(error.message, /api key/i);
+      return true;
+    },
+  );
+  assert.equal(providerCalls, 1);
+});
+
+test("buildHeaders propagates provider rejection", async () => {
+  const providerError = new Error("provider unavailable");
+  await assert.rejects(
+    buildHeaders(
+      { method: "GET", path: "/v1/items" },
+      { apiKey: async () => { throw providerError; }, serverURL: "https://example.test" },
+    ),
+    (error) => error === providerError,
+  );
+});

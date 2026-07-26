@@ -173,6 +173,26 @@ test("withOptions returns new instance preserving apiKey by default", () => {
 
 test("constructor throws without apiKey", () => {
   assert.throws(() => new PlakyClient({ apiKey: "" }), /apiKey is required/);
+  assert.throws(() => new PlakyClient({ apiKey: " \t\n" }), /apiKey is required/);
+});
+
+test("constructor rejects malformed or unsafe server URLs", () => {
+  for (const serverURL of [
+    "/relative",
+    "not a URL",
+    "ftp://example.test/api",
+    "https:///missing-host",
+    "https://user:pass@example.test/api",
+    "https://example.test/api?token=value",
+    "https://example.test/api#fragment",
+  ]) {
+    assert.throws(() => new PlakyClient({ apiKey: "plk_test", serverURL }), /serverURL/);
+  }
+});
+
+test("constructor normalizes trailing slashes and preserves valid custom base paths", () => {
+  const client = new PlakyClient({ apiKey: "plk_test", serverURL: "https://example.test/proxy/plaky///" });
+  assert.equal(client.options.serverURL, "https://example.test/proxy/plaky");
 });
 
 test("constructor rejects negative or NaN timeoutMs/maxRetries", () => {
@@ -182,12 +202,13 @@ test("constructor rejects negative or NaN timeoutMs/maxRetries", () => {
   assert.throws(() => new PlakyClient({ apiKey: "plk_test", maxRetries: Number.NaN }), /maxRetries must be a non-negative number/);
   assert.throws(() => new PlakyClient({ apiKey: "plk_test", maxRetries: Number.POSITIVE_INFINITY }), /maxRetries must be a non-negative number/);
   assert.throws(() => new PlakyClient({ apiKey: "plk_test", timeoutMs: Number.POSITIVE_INFINITY }), /timeoutMs must be a non-negative number/);
+  assert.throws(() => new PlakyClient({ apiKey: "plk_test", maxRetries: 1.5 }), /maxRetries must be a non-negative integer/);
 });
 
 test("constructor accepts maxRetries:0 and large finite timeouts without clamping", () => {
-  const client = new PlakyClient({ apiKey: "plk_test", maxRetries: 0, timeoutMs: 3_600_000 });
+  const client = new PlakyClient({ apiKey: "plk_test", maxRetries: 0, timeoutMs: 3_600_000.5 });
   assert.equal(client.options.maxRetries, 0);
-  assert.equal(client.options.timeoutMs, 3_600_000);
+  assert.equal(client.options.timeoutMs, 3_600_000.5);
 });
 
 test("redact handles API-key-shaped tokens with separators", () => {

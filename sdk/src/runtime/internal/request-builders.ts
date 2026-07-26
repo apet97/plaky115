@@ -80,7 +80,11 @@ export function serializeBody(body: unknown, headers: Headers): BodyInit | undef
 }
 
 async function resolveApiKey(apiKey: PlakyRequestOptions["apiKey"]): Promise<string> {
-  return typeof apiKey === "function" ? apiKey() : apiKey;
+  const resolved = await (typeof apiKey === "function" ? apiKey() : apiKey);
+  if (typeof resolved !== "string" || resolved.trim() === "") {
+    throw new Error("PlakyClient: api key provider returned an invalid value");
+  }
+  return resolved;
 }
 
 function setContentTypeIfNeeded(body: unknown, headers: Headers): void {

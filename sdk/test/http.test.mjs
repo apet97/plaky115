@@ -180,6 +180,25 @@ test("async api key and header providers resolve for each request", async () => 
   assert.equal(seen[1].get("x-request-number"), "2");
 });
 
+test("invalid dynamic api key fails before fetch", async () => {
+  let fetchCalls = 0;
+  await assert.rejects(
+    request(
+      { method: "GET", path: "/v1/a", operationId: "a" },
+      {
+        apiKey: async () => "   ",
+        serverURL: "https://example.test",
+        fetch: async () => {
+          fetchCalls++;
+          return new Response("{}");
+        },
+      },
+    ),
+    /api key/i,
+  );
+  assert.equal(fetchCalls, 0);
+});
+
 test("requestWithResponse returns metadata and data", async () => {
   globalThis.fetch = async () =>
     new Response(JSON.stringify({ ok: true }), {

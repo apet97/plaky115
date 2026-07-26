@@ -27,8 +27,8 @@ import { TeamsResource } from "./teams.js";
  *   set this to your account host when the generic host does not route. See
  *   `docs/api-behavior.md`.
  * @property timeoutMs - Per-request timeout in milliseconds. Defaults to `30000`.
- * @property maxRetries - Maximum automatic retries. Defaults to `2`. `GET`
- *   requests can retry; writes retry only when an idempotency key is present.
+ * @property maxRetries - Maximum automatic retries. Defaults to `2`. Only
+ *   `GET` requests are retried automatically.
  * @property headers - Static or async extra headers merged into every request.
  * @property fetch - Custom `fetch` implementation for tests or edge runtimes.
  * @property interceptors - Request/response interceptors.
@@ -90,20 +90,21 @@ export class PlakyClient {
 
   /**
    * @param opts - See {@link PlakyClientOptions}.
-   * @throws {Error} If `apiKey` is an empty string, or if `timeoutMs` /
-   *   `maxRetries` is negative or `NaN`. `maxRetries: 0` and large finite
-   *   timeouts are accepted (no clamping).
+   * @throws {Error} If a literal `apiKey` is blank, `serverURL` is unsafe or
+   *   malformed, `timeoutMs` is not a finite non-negative number, or
+   *   `maxRetries` is not a finite non-negative integer. `maxRetries: 0` and
+   *   large finite timeouts are accepted (no clamping).
    */
   constructor(opts: PlakyClientOptions) {
-    if (typeof opts.apiKey === "string" && !opts.apiKey) throw new Error("PlakyClient: apiKey is required");
+    if (typeof opts.apiKey === "string") assertApiKey(opts.apiKey);
     const resolved: Resolved = {
       apiKey: opts.apiKey,
-      serverURL: opts.serverURL ?? DEFAULT_SERVER_URL,
+      serverURL: normalizeServerURL(opts.serverURL ?? DEFAULT_SERVER_URL),
       timeoutMs: opts.timeoutMs ?? 30_000,
       maxRetries: opts.maxRetries ?? 2,
     };
     assertNonNegativeNumber(resolved.timeoutMs, "timeoutMs");
-    assertNonNegativeNumber(resolved.maxRetries, "maxRetries");
+    assertNonNegativeInteger(resolved.maxRetries, "maxRetries");
     if (opts.headers !== undefined) resolved.headers = opts.headers;
     if (opts.fetch !== undefined) resolved.fetch = opts.fetch;
     if (opts.interceptors !== undefined) resolved.interceptors = opts.interceptors;
@@ -198,6 +199,46 @@ function assertNonNegativeNumber(value: number, name: string): void {
   if (Number.isNaN(value) || value < 0 || !Number.isFinite(value)) {
     throw new Error(`PlakyClient: ${name} must be a non-negative number`);
   }
+}
+
+function assertNonNegativeInteger(value: number, name: string): void {
+  assertNonNegativeNumber(value, name);
+  if (!Number.isInteger(value)) {
+    throw new Error(`PlakyClient: ${name} must be a non-negative integer`);
+  }
+}
+
+function assertApiKey(apiKey: string): void {
+  if (apiKey.trim() === "") {
+    throw new Error("PlakyClient: apiKey is required");
+  }
+}
+
+function normalizeServerURL(serverURL: string): string {
+  const invalidMessage = "PlakyClient: serverURL must be an absolute HTTP(S) URL with a host";
+  if (serverURL.trim() !== serverURL || !/^https?:\/\/[^/]/i.test(serverURL)) {
+    throw new Error(invalidMessage);
+  }
+
+  let url: URL;
+  try {
+    url = new URL(serverURL);
+  } catch {
+    throw new Error(invalidMessage);
+  }
+
+  if ((url.protocol !== "http:" && url.protocol !== "https:") || !url.host) {
+    throw new Error(invalidMessage);
+  }
+  if (url.username || url.password) {
+    throw new Error("PlakyClient: serverURL must not include credentials");
+  }
+  if (url.search || url.hash) {
+    throw new Error("PlakyClient: serverURL must not include a query or fragment");
+  }
+
+  url.pathname = url.pathname.replace(/\/+$/, "");
+  return url.toString().replace(/\/$/, "");
 }
 
 function mergeHeaderProviders(left: HeaderProvider | undefined, right: HeaderProvider | undefined): HeaderProvider | undefined {

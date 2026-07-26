@@ -34,7 +34,7 @@
 - [x] `O003` | Phase 5 — Official contract | DONE | Overlay all six Item file operations against the candidate
 - [x] `O004` | Phase 5 — Official contract | DONE | Accept the official candidate, regenerate all surfaces, and review the complete diff
 - [x] `S001` | Phase 6 — TypeScript SDK | DONE | Remove automatic mutation retries and resource-generated idempotency keys
-- [ ] `S002` | Phase 6 — TypeScript SDK | NOT STARTED | Validate dynamic API keys and server URL at the runtime boundary
+- [x] `S002` | Phase 6 — TypeScript SDK | DONE | Validate dynamic API keys and server URL at the runtime boundary
 - [ ] `S003` | Phase 6 — TypeScript SDK | NOT STARTED | Add IDs/file/group shapes and correct existing generated unions
 - [ ] `S004` | Phase 6 — TypeScript SDK | NOT STARTED | Implement the typed Item Groups SDK resource
 - [ ] `S005` | Phase 6 — TypeScript SDK | NOT STARTED | Implement the typed Item files SDK resource
@@ -268,3 +268,10 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Added `resolveExplicitIdempotencyKey` with params-over-options precedence and no fallback. All eight existing hand-written mutations use it and omit the header when the caller supplies no key.
 - Kept the public subpath `resolveIdempotencyKey(params, options, prefix): string` behavior intact and marked it deprecated; `newIdempotencyKey` remains an explicit caller utility without deduplication claims.
 - Focused retry/idempotency/HTTP suite passed 61 tests, including each mutation with and without a key; SDK build and type tests exited 0.
+
+### S002
+
+- Literal API keys are trim-validated at construction, while sync/async provider results are validated after resolution and before fetch; validation errors never include the key value.
+- Server URLs are parsed and normalized once, require absolute HTTP(S) syntax and a host, reject credentials/query/fragment, preserve valid base paths, and remove trailing slashes.
+- `timeoutMs` remains any finite non-negative number; `maxRetries` is now constrained to a finite non-negative integer without clamping either option.
+- SDK build and typecheck exited 0; the focused client/request-builder/HTTP suite passed 58 tests; `git diff --check` exited 0.
