@@ -1,22 +1,37 @@
 import { expectAssignable, expectType } from "tsd";
 import {
+  FolderId,
+  ItemFileId,
+  ItemGroupId,
   PlakyClient,
   PlakyApiError,
   PlakyRateLimitError,
+  type BoardShape,
   type FetchLike,
   type CommentShape,
+  type FolderIdType,
+  type FolderShape,
   type ItemExpand,
+  type ItemFileDownloadShape,
+  type ItemFileIdType,
+  type ItemFileShape,
+  type ItemGroupIdType,
+  type ItemGroupShape,
+  type ItemShape,
   type PlakyOpenApiComponents,
   type PlakyOpenApiOperations,
   type PlakyApiResponse,
   type PlakyClientOptions,
   type PlakyRequestOverrides,
   type SpaceExpand,
+  type SpaceIdType,
+  type SpaceShape,
   type SubitemsBehaviour,
+  type TeamShape,
+  type TeamShortShape,
   type UserStatus,
   type UserType,
 } from "plaky115";
-import type { SpaceShape } from "plaky115";
 
 const fetchLike: FetchLike = async (input, init) => fetch(input, init);
 
@@ -95,3 +110,49 @@ type SpaceResponseSchema = PlakyOpenApiComponents["schemas"]["SpaceResponse"];
 expectAssignable<SpaceResponseSchema>({});
 type ListSpacesOperation = PlakyOpenApiOperations["listSpaces"];
 expectAssignable<ListSpacesOperation["parameters"]["query"]>({ expand: ["board"] });
+
+const itemGroupId = ItemGroupId(11);
+const itemFileId = ItemFileId("12");
+const folderId = FolderId(13);
+expectType<ItemGroupIdType>(itemGroupId);
+expectType<ItemFileIdType>(itemFileId);
+expectType<FolderIdType>(folderId);
+
+const folder = {} as FolderShape;
+expectType<FolderIdType | undefined>(folder.id);
+expectType<string | undefined>(folder.ranking);
+expectType<string | undefined>(folder.title);
+
+const teamShort = {} as TeamShortShape;
+expectType<boolean | undefined>(teamShort.allUsersTeam);
+expectType<string | undefined>(teamShort.title);
+
+const itemGroup = {} as ItemGroupShape;
+expectType<ItemGroupIdType | undefined>(itemGroup.id);
+expectType<string | undefined>(itemGroup.color);
+expectType<string | undefined>(itemGroup.ranking);
+expectType<string | undefined>(itemGroup.title);
+
+const itemFile = {} as ItemFileShape;
+expectType<ItemFileIdType | undefined>(itemFile.id);
+expectType<string | undefined>(itemFile.createdAt);
+expectType<string | undefined>(itemFile.description);
+expectType<string | undefined>(itemFile.extension);
+expectType<string | undefined>(itemFile.fileType);
+expectType<string | undefined>(itemFile.name);
+expectType<number | undefined>(itemFile.size);
+expectType<number | undefined>(itemFile.uploadedBy);
+
+const itemFileDownload = {} as ItemFileDownloadShape;
+expectType<string | undefined>(itemFileDownload.url);
+expectType<number | undefined>(itemFileDownload.expiresInSeconds);
+
+const boardShape = {} as BoardShape;
+expectType<FolderShape | number | null | undefined>(boardShape.folder);
+expectType<SpaceIdType | SpaceShape | undefined>(boardShape.space);
+
+const teamShape = {} as TeamShape;
+expectType<number[] | undefined>(teamShape.members);
+
+const itemShape = {} as ItemShape;
+expectType<(TeamShortShape | number)[] | null | undefined>(itemShape.subscribedTeams);

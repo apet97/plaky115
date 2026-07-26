@@ -15,6 +15,9 @@ export type CommentId = Branded<string | number, "CommentId">;
 export type FieldKey = Branded<string, "FieldKey">;
 export type UserId = Branded<string | number, "UserId">;
 export type TeamId = Branded<string | number, "TeamId">;
+export type ItemGroupId = Branded<string | number, "ItemGroupId">;
+export type ItemFileId = Branded<string | number, "ItemFileId">;
+export type FolderId = Branded<string | number, "FolderId">;
 
 /**
  * Brand constructors. Each takes a raw id and returns the branded type with no
@@ -32,6 +35,9 @@ export const CommentId = (v: string | number): CommentId => v as CommentId;
 export const FieldKey = (v: string): FieldKey => v as FieldKey;
 export const UserId = (v: string | number): UserId => v as UserId;
 export const TeamId = (v: string | number): TeamId => v as TeamId;
+export const ItemGroupId = (v: string | number): ItemGroupId => v as ItemGroupId;
+export const ItemFileId = (v: string | number): ItemFileId => v as ItemFileId;
+export const FolderId = (v: string | number): FolderId => v as FolderId;
 
 /**
  * `as*` aliases for the brand constructors, for places where the API returns a
@@ -45,3 +51,6 @@ export const asCommentId = (v: string | number): CommentId => CommentId(v);
 export const asUserId = (v: string | number): UserId => UserId(v);
 export const asTeamId = (v: string | number): TeamId => TeamId(v);
 export const asFieldKey = (v: string): FieldKey => FieldKey(v);
+export const asItemGroupId = (v: string | number): ItemGroupId => ItemGroupId(v);
+export const asItemFileId = (v: string | number): ItemFileId => ItemFileId(v);
+export const asFolderId = (v: string | number): FolderId => FolderId(v);

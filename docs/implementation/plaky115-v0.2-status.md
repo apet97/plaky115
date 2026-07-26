@@ -35,7 +35,7 @@
 - [x] `O004` | Phase 5 — Official contract | DONE | Accept the official candidate, regenerate all surfaces, and review the complete diff
 - [x] `S001` | Phase 6 — TypeScript SDK | DONE | Remove automatic mutation retries and resource-generated idempotency keys
 - [x] `S002` | Phase 6 — TypeScript SDK | DONE | Validate dynamic API keys and server URL at the runtime boundary
-- [ ] `S003` | Phase 6 — TypeScript SDK | NOT STARTED | Add IDs/file/group shapes and correct existing generated unions
+- [x] `S003` | Phase 6 — TypeScript SDK | DONE | Add IDs/file/group shapes and correct existing generated unions
 - [ ] `S004` | Phase 6 — TypeScript SDK | NOT STARTED | Implement the typed Item Groups SDK resource
 - [ ] `S005` | Phase 6 — TypeScript SDK | NOT STARTED | Implement the typed Item files SDK resource
 - [ ] `S006` | Phase 6 — TypeScript SDK | NOT STARTED | Lock SDK public surface, package exports, and consumer behavior
@@ -275,3 +275,10 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Server URLs are parsed and normalized once, require absolute HTTP(S) syntax and a host, reject credentials/query/fragment, preserve valid base paths, and remove trailing slashes.
 - `timeoutMs` remains any finite non-negative number; `maxRetries` is now constrained to a finite non-negative integer without clamping either option.
 - SDK build and typecheck exited 0; the focused client/request-builder/HTTP suite passed 58 tests; `git diff --check` exited 0.
+
+### S003
+
+- Added and root-exported `ItemGroupId`, `ItemFileId`, and `FolderId` brands, constructors, and `as*` aliases.
+- Item Group, Item file, download, folder, and short-team response shapes now derive from the accepted generated schemas, with branded IDs overlaid where applicable.
+- Board folder/space expansions, numeric team members, and short-team item subscriptions now match the generated 32-operation contract while deprecated compatibility fields remain intact.
+- Public type tests pin every new brand/shape and expanded/unexpanded union; SDK build, type tests, typecheck, the 20-test client suite, and `git diff --check` exited 0. No generated file changed.

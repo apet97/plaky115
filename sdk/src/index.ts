@@ -79,6 +79,9 @@ export {
   FieldKey,
   UserId,
   TeamId,
+  ItemGroupId,
+  ItemFileId,
+  FolderId,
   asSpaceId,
   asBoardId,
   asItemId,
@@ -86,6 +89,9 @@ export {
   asFieldKey,
   asUserId,
   asTeamId,
+  asItemGroupId,
+  asItemFileId,
+  asFolderId,
 } from "./runtime/ids.js";
 export type {
   SpaceId as SpaceIdType,
@@ -95,6 +101,9 @@ export type {
   FieldKey as FieldKeyType,
   UserId as UserIdType,
   TeamId as TeamIdType,
+  ItemGroupId as ItemGroupIdType,
+  ItemFileId as ItemFileIdType,
+  FolderId as FolderIdType,
   Branded,
 } from "./runtime/ids.js";
 
@@ -103,6 +112,10 @@ export type {
   FieldShape,
   ItemFieldShape,
   ItemGroupShape,
+  FolderShape,
+  TeamShortShape,
+  ItemFileShape,
+  ItemFileDownloadShape,
   BoardKind,
   BoardShape,
   SpaceKind,

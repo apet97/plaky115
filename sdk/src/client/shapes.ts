@@ -8,7 +8,21 @@
 // of truth) and the fields confirmed against the live API. Fields that the
 // API does not actually emit are kept as `@deprecated` optionals for
 // backwards compatibility rather than removed.
-import type { SpaceId, BoardId, ItemId, CommentId, UserId, TeamId } from "../runtime/ids.js";
+import type { components } from "../generated/types.js";
+import type {
+  SpaceId,
+  BoardId,
+  ItemId,
+  CommentId,
+  UserId,
+  TeamId,
+  ItemGroupId,
+  ItemFileId,
+  FolderId,
+} from "../runtime/ids.js";
+
+type Schemas = components["schemas"];
+type WithBrandedId<T, Id> = Omit<T, "id"> & { id?: Id | undefined };
 
 export type PagedResult<T> = {
   data?: T[] | undefined;
@@ -36,12 +50,15 @@ export type ItemFieldShape = FieldShape & {
   itemId?: ItemId | undefined;
 };
 
-export type ItemGroupShape = {
-  id?: number | string | undefined;
-  title?: string | undefined;
-  color?: string | undefined;
-  ranking?: string | undefined;
-};
+export type ItemGroupShape = WithBrandedId<Schemas["ItemGroupResponse"], ItemGroupId>;
+
+export type FolderShape = WithBrandedId<Schemas["FolderResponse"], FolderId>;
+
+export type TeamShortShape = WithBrandedId<Schemas["TeamShortResponse"], TeamId>;
+
+export type ItemFileShape = WithBrandedId<Schemas["ItemFileResponse"], ItemFileId>;
+
+export type ItemFileDownloadShape = Schemas["ItemFileDownloadResponse"];
 
 /** "PUBLIC" | "PRIVATE" — left open in case Plaky adds more. */
 export type BoardKind = string;
@@ -52,14 +69,14 @@ export type BoardShape = {
   description?: string | null | undefined;
   fields?: FieldShape[] | undefined;
   groups?: ItemGroupShape[] | undefined;
-  space?: SpaceId | undefined;
+  space?: SpaceId | SpaceShape | undefined;
   /** @deprecated The API emits `space` (a numeric space id); use {@link BoardShape.space}. */
   spaceId?: SpaceId | undefined;
   kind?: BoardKind | undefined;
   defaultBoard?: boolean | undefined;
   defaultValues?: unknown;
   editPermissionsMode?: string | undefined;
-  folder?: string | null | undefined;
+  folder?: FolderShape | number | null | undefined;
   ranking?: string | undefined;
   template?: boolean | undefined;
 };
@@ -110,7 +127,7 @@ export type TeamShape = {
   /** Team icon URL; null when unset. Mirrors generated `TeamResponse.iconUrl`. */
   iconUrl?: string | null | undefined;
   /** User ids of the team's members. The API returns ids, not user objects. */
-  members?: (ShortUserShape | number)[] | undefined;
+  members?: number[] | undefined;
   /** @deprecated Not emitted by the API; teams use `title`. */
   name?: string | undefined;
   /** @deprecated Not emitted by the API. */
@@ -205,7 +222,7 @@ export type ItemShape = {
   fileCount?: number | undefined;
   /** Subitems; null when not embedded. */
   subitems?: ItemShape[] | null | undefined;
-  subscribedTeams?: (TeamShape | number)[] | null | undefined;
+  subscribedTeams?: (TeamShortShape | number)[] | null | undefined;
   subscribedUsers?: (ShortUserShape | number)[] | null | undefined;
   createdAt?: string | undefined;
   /** @deprecated Not present in generated `ItemResponse`; the API does not emit `updatedAt` on an item. */
