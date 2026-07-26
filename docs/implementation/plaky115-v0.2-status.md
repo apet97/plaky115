@@ -26,7 +26,7 @@
 - [x] `G004` | Phase 3 — Generators | DONE | Make Cobra command generation transport- and confirmation-aware
 - [x] `G005` | Phase 3 — Generators | DONE | Generate Go operation methods and runner functions from one descriptor
 - [x] `G006` | Phase 3 — Generators | DONE | Delete stale outputs deterministically and make parity count dynamic
-- [ ] `GO001` | Phase 4 — Go transport | NOT STARTED | Propagate body read errors and preserve generic JSON numbers
+- [x] `GO001` | Phase 4 — Go transport | DONE | Propagate body read errors and preserve generic JSON numbers
 - [ ] `GO002` | Phase 4 — Go transport | NOT STARTED | Add explicit JSON/multipart body forms and streaming upload
 - [ ] `GO003` | Phase 4 — Go transport | NOT STARTED | Harden Go client option and URL validation
 - [ ] `O001` | Phase 5 — Official contract | NOT STARTED | Fetch and validate a current 32-operation candidate
@@ -200,3 +200,10 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Drift snapshots include generated runners; surface body classification now uses request metadata.
 - Cross-surface parity is metadata-count-driven, builds requests from typed request/parameter metadata, stubs responses by success kind, and invokes MCP tools through the public protocol instead of private server fields.
 - Determinism/parity/surface command passed 29 tests; transport-quadrant generator suites passed 16 tests; `git diff --check` exited 0.
+
+### GO001
+
+- Go response reads now propagate errors with method/path operation context and never include request headers or credentials.
+- Successful empty 200/204 responses and nil outputs return cleanly; API errors retain status, request ID, redacted body, and `APIError` typing.
+- Response decoding uses `json.Decoder.UseNumber`, rejects a second JSON value/trailing syntax, and retains integers beyond the exact IEEE-754 range as `json.Number`; safe legacy numbers remain compatible with current CLI workflows.
+- Focused client/decode tests and the full Go suite exited 0; `git diff --check` exited 0.
