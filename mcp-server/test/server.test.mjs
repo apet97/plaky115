@@ -41,7 +41,7 @@ test("buildServer registers tools with output schemas", () => {
   }).then(async ({ client, server }) => {
     try {
       const { tools } = await client.listTools();
-      assert.equal(tools.length, 37);
+      assert.equal(tools.length, 39);
       for (const tool of tools) assert.ok(tool.outputSchema, `${tool.name} missing outputSchema`);
     } finally {
       await server.close();
@@ -199,12 +199,12 @@ test("--mode generated returns 32 raw tools", () => {
   assert.equal(selectTools("generated").length, 32);
 });
 
-test("--mode curated returns 5 curated tools", () => {
-  assert.equal(selectTools("curated").length, 5);
+test("--mode curated returns 7 curated tools", () => {
+  assert.equal(selectTools("curated").length, 7);
 });
 
-test("--mode all returns 37 tools total", () => {
-  assert.equal(selectTools("all").length, 37);
+test("--mode all returns 39 tools total", () => {
+  assert.equal(selectTools("all").length, 39);
 });
 
 test("--scope read filters out write/destructive tools", () => {
@@ -272,7 +272,7 @@ test("explicit broad mode and scopes remain valid", () => {
   assert.equal(parseMode("all"), "all");
   const scopes = parseScopes(["read", "write", "destructive"]);
   assert.deepEqual(scopes, ["read", "write", "destructive"]);
-  assert.equal(filterByScopes(selectTools("all"), new Set(scopes)).length, 37);
+  assert.equal(filterByScopes(selectTools("all"), new Set(scopes)).length, 39);
 
   const result = runBin(["--mode", "all", "--scope", "read", "--scope", "write", "--scope", "destructive"]);
   assert.equal(result.status, 1, result.stderr);

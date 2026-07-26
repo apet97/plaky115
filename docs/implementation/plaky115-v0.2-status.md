@@ -42,7 +42,7 @@
 - [x] `MCP001` | Phase 7 — MCP | DONE | Add dedicated compactors and response envelopes for new resource kinds
 - [x] `MCP002` | Phase 7 — MCP | DONE | Make modes, scopes, and argument parsing fail closed
 - [x] `MCP003` | Phase 7 — MCP | DONE | Remove private MCP SDK access and pin the dependency
-- [ ] `MCP004` | Phase 7 — MCP | NOT STARTED | Replace generic workflow records with exact read/mutation schemas
+- [x] `MCP004` | Phase 7 — MCP | DONE | Replace generic workflow records with exact read/mutation schemas
 - [ ] `MCP005` | Phase 7 — MCP | NOT STARTED | Standardize structured errors and sensitive-output test handling
 - [ ] `CLI001` | Phase 8 — CLI | NOT STARTED | Validate all generated raw request kinds and new operation behavior
 - [ ] `CLI002` | Phase 8 — CLI | NOT STARTED | Add minimal curated Item Group and Item file commands
@@ -328,3 +328,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Pinned `@modelcontextprotocol/sdk` exactly to reviewed version `1.29.0` in package and lockfile; a clean `npm ci` completed against that lock.
 - Server tests now discover and invoke exclusively through public `Client`/`InMemoryTransport` calls. Protocol coverage pins list/known/unknown/filtered/schema/API-error behavior, including the public SDK's in-band not-found response.
 - MCP build and `git diff --check` exited 0; 33 focused public-protocol/server tests and all 33 exact parity tests passed. The required private-field/cast search returned no matches.
+
+### MCP004
+
+- Replaced generic workflow records with strict discriminated schemas for all seven workflows, including reusable entity references and exact search/create/update/comment/map/export inputs. Missing IDs/body/query, wrong types, and unknown fields fail before fetch.
+- Added read-scoped `plaky_execute_read_workflow` for four read workflows and read+write `plaky_execute_mutation_workflow` for three mutations. Mutations now return validated dry-run plans without network access unless `dryRun:false` is explicit.
+- Kept `plaky_execute_workflow` as a deprecated, broad-scope compatibility tool over the same discriminated union and both entity-key spellings. The compile-safe item search adapter carries the required `W002` follow-up marker.
+- `plaky_plan_mutation` now accepts only the exact three mutation variants. Default read scope exposes read execution and planning but not mutation execution.
+- MCP build and `git diff --check` exited 0; all 38 focused workflow/server/protocol tests and all 33 exact parity tests passed.

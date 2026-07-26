@@ -4,8 +4,18 @@ import { workspaceContextTool } from "./workspace-context.js";
 import { findTool } from "./find.js";
 import { planMutationTool } from "./plan-mutation.js";
 import { executeWorkflowTool } from "./execute-workflow.js";
+import { executeReadWorkflowTool } from "./read-workflow.js";
+import { executeMutationWorkflowTool } from "./mutation-workflow.js";
 
-export { searchDocsTool, workspaceContextTool, findTool, planMutationTool, executeWorkflowTool };
+export {
+  searchDocsTool,
+  workspaceContextTool,
+  findTool,
+  planMutationTool,
+  executeWorkflowTool,
+  executeReadWorkflowTool,
+  executeMutationWorkflowTool,
+};
 export { searchDocs } from "./search-docs.js";
 
 export const curatedTools: McpToolDefinition[] = [
@@ -14,4 +24,6 @@ export const curatedTools: McpToolDefinition[] = [
   findTool,
   planMutationTool,
   executeWorkflowTool,
+  executeReadWorkflowTool,
+  executeMutationWorkflowTool,
 ];

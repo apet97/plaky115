@@ -21,7 +21,7 @@ test("public listTools exposes registered tools and output schemas", async () =>
   const { client, server } = await connectedPair();
   try {
     const { tools } = await client.listTools();
-    assert.equal(tools.length, 37);
+    assert.equal(tools.length, 39);
     assert.ok(tools.some((tool) => tool.name === "plaky_search_docs"));
     assert.ok(tools.some((tool) => tool.name === "plaky_upload_item_file"));
     for (const tool of tools) assert.ok(tool.outputSchema, `${tool.name} missing outputSchema`);
@@ -119,6 +119,112 @@ test("listed tool input parameters include useful descriptions", async () => {
       }
     }
     assert.deepEqual(missing, []);
+  } finally {
+    await server.close();
+  }
+});
+
+test("read workflows are available under read scope while mutation execution is absent", async () => {
+  const { client, server } = await connectedPair({ mode: "curated", scopes: ["read"] });
+  try {
+    const { tools } = await client.listTools();
+    assert.ok(tools.some((tool) => tool.name === "plaky_execute_read_workflow"));
+    assert.ok(tools.some((tool) => tool.name === "plaky_plan_mutation"));
+    assert.ok(!tools.some((tool) => tool.name === "plaky_execute_mutation_workflow"));
+  } finally {
+    await server.close();
+  }
+});
+
+test("every read workflow accepts its exact valid input", async () => {
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const path = new URL(url.toString()).pathname;
+    if (path.endsWith("/comments")) return new Response("[]", { headers: { "content-type": "application/json" } });
+    if (path.endsWith("/items")) return new Response(JSON.stringify({ data: [], hasMore: false }), { headers: { "content-type": "application/json" } });
+    if (path.endsWith("/boards")) return new Response(JSON.stringify({ data: [{ id: 2, title: "Board" }], hasMore: false }), { headers: { "content-type": "application/json" } });
+    return new Response(JSON.stringify({ data: [{ id: 1, title: "Space" }], hasMore: false }), { headers: { "content-type": "application/json" } });
+  };
+  const { client, server } = await connectedPair({ mode: "curated", scopes: ["read"], serverURL: "https://example.test" });
+  try {
+    const inputs = [
+      { workflowId: "workspace.map", input: {} },
+      { workflowId: "items.search", input: { spaceId: 1, boardId: 2, query: "needle", limit: 5 } },
+      { workflowId: "comments.thread", input: { spaceId: 1, boardId: 2, itemId: 3, limit: 5 } },
+      { workflowId: "export.items", input: { spaceId: 1, boardId: 2, format: "jsonl" } },
+    ];
+    for (const args of inputs) {
+      const response = await client.callTool({ name: "plaky_execute_read_workflow", arguments: args });
+      assert.notEqual(response.isError, true, `${args.workflowId}: ${response.content[0].text}`);
+    }
+  } finally {
+    await server.close();
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("every mutation workflow and mutation plan accepts exact valid input without writing by default", async () => {
+  let fetchCalls = 0;
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    fetchCalls++;
+    throw new Error("dry-run workflow must not fetch");
+  };
+  const { client, server } = await connectedPair({ mode: "curated", scopes: ["read", "write"], serverURL: "https://example.test" });
+  try {
+    const inputs = [
+      { workflowId: "items.create", input: { spaceId: 1, boardId: 2, body: { title: "New" } } },
+      { workflowId: "items.updateFields", input: { spaceId: 1, boardId: 2, updates: [{ itemId: 3, body: { Status: "Done" } }] } },
+      { workflowId: "comments.add", input: { spaceId: 1, boardId: 2, itemId: 3, text: "Note" } },
+    ];
+    for (const args of inputs) {
+      const executed = await client.callTool({ name: "plaky_execute_mutation_workflow", arguments: args });
+      assert.notEqual(executed.isError, true, `${args.workflowId}: ${executed.content[0].text}`);
+      assert.equal(executed.structuredContent.dryRun, true);
+      const planned = await client.callTool({ name: "plaky_plan_mutation", arguments: args });
+      assert.notEqual(planned.isError, true, `${args.workflowId}: ${planned.content[0].text}`);
+      assert.equal(planned.structuredContent.dryRun, true);
+    }
+    assert.equal(fetchCalls, 0);
+  } finally {
+    await server.close();
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("workflow schemas reject missing IDs/body/query, wrong types, and unknown fields before fetch", async () => {
+  let fetchCalls = 0;
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    fetchCalls++;
+    throw new Error("invalid workflow must not fetch");
+  };
+  const { client, server } = await connectedPair({ mode: "curated", scopes: ["read", "write"], serverURL: "https://example.test" });
+  try {
+    const invalid = [
+      ["plaky_execute_read_workflow", { workflowId: "items.search", input: { boardId: 2, query: "x" } }],
+      ["plaky_execute_read_workflow", { workflowId: "items.search", input: { spaceId: 1, boardId: 2 } }],
+      ["plaky_execute_read_workflow", { workflowId: "comments.thread", input: { spaceId: 1, boardId: 2, itemId: false } }],
+      ["plaky_execute_mutation_workflow", { workflowId: "items.create", input: { spaceId: 1, boardId: 2 } }],
+      ["plaky_execute_mutation_workflow", { workflowId: "comments.add", input: { spaceId: 1, boardId: 2, itemId: 3, text: "x", extra: true } }],
+    ];
+    for (const [name, args] of invalid) {
+      const response = await client.callTool({ name, arguments: args });
+      assert.equal(response.isError, true, `${name} should reject ${JSON.stringify(args)}`);
+    }
+    assert.equal(fetchCalls, 0);
+  } finally {
+    await server.close();
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("plan mutation accepts only mutation workflow IDs", async () => {
+  const { client, server } = await connectedPair({ mode: "curated", scopes: ["read"] });
+  try {
+    const response = await client.callTool({ name: "plaky_plan_mutation", arguments: { workflowId: "workspace.map", input: {} } });
+    assert.equal(response.isError, true);
+    assert.match(response.content[0].text, /workflowId|invalid/i);
   } finally {
     await server.close();
   }

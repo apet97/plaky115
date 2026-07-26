@@ -35,7 +35,16 @@ mcp --mode all --scope read --scope write --scope destructive
 - `plaky_workspace_context`
 - `plaky_find`
 - `plaky_plan_mutation`
-- `plaky_execute_workflow`
+- `plaky_execute_read_workflow`
+- `plaky_execute_mutation_workflow`
+- `plaky_execute_workflow` (deprecated compatibility tool)
+
+Workflow arguments use strict, workflow-specific schemas. The read tool covers
+`workspace.map`, `items.search`, `comments.thread`, and `export.items` under the
+default read scope. The mutation tool covers `items.create`,
+`items.updateFields`, and `comments.add`; it stays in dry-run mode unless
+`dryRun: false` is supplied. `plaky_plan_mutation` accepts only those three
+mutation workflow IDs.
 
 Curated responses are compact by default. Pass `includeRaw: true` when a client
 needs the original Plaky API payload.
