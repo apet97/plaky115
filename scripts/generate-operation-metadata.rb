@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "json"
+require "optparse"
 require "yaml"
 
 ROOT = File.expand_path("..", __dir__)
@@ -14,21 +15,22 @@ HTTP_METHODS = %w[get post put patch delete head options trace].freeze
 # they are excluded from the generic query-param list.
 PAGINATION_QUERY_PARAMS = %w[page pageSize limit offset].freeze
 
-# Non-pagination query params threaded onto the raw CLI/MCP surfaces so the SDK,
-# CLI, and MCP reach the same server-side filters. Array params (emails) are
-# emitted with `array: true` and serialized as repeated keys; `expand` carries
-# `explode: false` so it stays comma-joined.
-THREADED_QUERY_PARAMS = %w[expand emails status type boardViewId parentId subitemsBehaviour].freeze
-
 def load_yaml(path)
   YAML.safe_load(File.read(path), aliases: true)
 end
 
-def fetch_ref(schema, spec)
+def fetch_ref(schema, spec, seen = [])
   return schema unless schema.is_a?(Hash) && schema["$ref"]
 
-  pointer = schema.fetch("$ref").delete_prefix("#/").split("/")
-  pointer.reduce(spec) { |node, part| node.fetch(part) }
+  reference = schema.fetch("$ref")
+  raise ArgumentError, "only local $ref values are supported: #{reference}" unless reference.start_with?("#/")
+  raise ArgumentError, "cyclic local $ref: #{reference}" if seen.include?(reference)
+
+  pointer = reference.delete_prefix("#/").split("/").map do |part|
+    part.gsub("~1", "/").gsub("~0", "~")
+  end
+  resolved = pointer.reduce(spec) { |node, part| node.fetch(part) }
+  fetch_ref(resolved, spec, seen + [reference])
 end
 
 def response_schema(operation, spec)
@@ -75,82 +77,171 @@ def collapse_whitespace(text)
   text.gsub(/\s+/, " ").strip
 end
 
-def query_parameters(operation, path_item, spec)
-  raw = Array(path_item["parameters"]) + Array(operation["parameters"])
-  raw
-    .map { |param| fetch_ref(param, spec) }
-    .select { |param| param.is_a?(Hash) && param["in"] == "query" }
-    .reject { |param| PAGINATION_QUERY_PARAMS.include?(param["name"]) }
-    .select { |param| THREADED_QUERY_PARAMS.include?(param["name"]) }
-    .map do |param|
-      schema = fetch_ref(param["schema"] || {}, spec)
+def merged_parameters(operation, path_item, spec)
+  merged = {}
+  (Array(path_item["parameters"]) + Array(operation["parameters"])).each do |raw_parameter|
+    parameter = fetch_ref(raw_parameter, spec)
+    next unless parameter.is_a?(Hash) && %w[path query].include?(parameter["in"])
+
+    key = [parameter.fetch("in"), parameter.fetch("name")]
+    merged[key] = parameter
+  end
+  merged.values
+end
+
+def parameter_schema(schema, spec, parameter_name)
+  resolved = fetch_ref(schema || {}, spec)
+  raise ArgumentError, "parameter #{parameter_name} schema must be an object" unless resolved.is_a?(Hash)
+
+  type = resolved["type"]
+  supported = %w[string integer number boolean array]
+  raise ArgumentError, "unsupported parameter #{parameter_name} schema type #{type.inspect}" unless supported.include?(type)
+
+  output = { "type" => type }
+  output["format"] = resolved["format"] if resolved["format"]
+  output["enum"] = resolved["enum"] if resolved.key?("enum")
+  output["default"] = resolved["default"] if resolved.key?("default")
+  output["items"] = parameter_schema(resolved["items"], spec, parameter_name) if type == "array"
+  output
+end
+
+def parameter_metadata(parameter, spec)
+  name = parameter.fetch("name")
+  location = parameter.fetch("in")
+  style = parameter["style"] || (location == "query" ? "form" : "simple")
+  resolved_schema = fetch_ref(parameter["schema"] || {}, spec)
+  if location == "query" && (style == "deepObject" || resolved_schema["type"] == "object")
+    raise ArgumentError,
+          "unsupported query parameter #{name}: style=#{style} schema=#{resolved_schema['type']}"
+  end
+  schema = parameter_schema(resolved_schema, spec, name)
+  explode = parameter.key?("explode") ? parameter["explode"] : style == "form"
+
+  {
+    "name" => name,
+    "in" => location,
+    "required" => location == "path" ? true : parameter["required"] == true,
+    "description" => collapse_whitespace(parameter["description"]),
+    "schema" => schema,
+    "style" => style,
+    "explode" => explode,
+  }.compact
+end
+
+def operation_parameter_metadata(operation, path_item, spec)
+  merged_parameters(operation, path_item, spec).map { |parameter| parameter_metadata(parameter, spec) }
+end
+
+def generic_parameters(parameters)
+  parameters.reject do |parameter|
+    parameter["in"] == "query" && PAGINATION_QUERY_PARAMS.include?(parameter["name"])
+  end
+end
+
+def pagination_parameters(parameters)
+  parameters.select do |parameter|
+    parameter["in"] == "query" && PAGINATION_QUERY_PARAMS.include?(parameter["name"])
+  end
+end
+
+def query_parameters(parameters)
+  parameters
+    .select { |parameter| parameter["in"] == "query" }
+    .reject { |parameter| PAGINATION_QUERY_PARAMS.include?(parameter["name"]) }
+    .map do |parameter|
+      schema = parameter.fetch("schema")
       entry = {
-        "name" => param.fetch("name"),
-        "description" => collapse_whitespace(param["description"]),
+        "name" => parameter.fetch("name"),
+        "description" => parameter["description"],
       }.compact
-      entry["array"] = true if schema.is_a?(Hash) && schema["type"] == "array"
-      entry["explode"] = false if param["explode"] == false
+      entry["array"] = true if schema["type"] == "array"
+      entry["explode"] = false if parameter["explode"] == false
       entry
     end
 end
 
-spec = load_yaml(SOURCE)
-operations = []
-examples = {}
+def generate_metadata(source)
+  spec = load_yaml(source)
+  operations = []
+  examples = {}
 
-spec.fetch("paths").each do |path, path_item|
-  path_item.each do |method, operation|
-    next unless HTTP_METHODS.include?(method)
+  spec.fetch("paths").each do |path, path_item|
+    path_item.each do |method, operation|
+      next unless HTTP_METHODS.include?(method)
 
-    operation_id = operation.fetch("operationId")
-    mcp = operation["x-plaky115-mcp"] || {}
-    pagination = operation["x-plaky115-pagination"]
-    usage_example = operation["x-plaky115-usage-example"]
-    scopes = default_scopes(operation, method)
-    destructive = destructive?(operation, method)
+      operation_id = operation.fetch("operationId")
+      mcp = operation["x-plaky115-mcp"] || {}
+      pagination = operation["x-plaky115-pagination"]
+      usage_example = operation["x-plaky115-usage-example"]
+      scopes = default_scopes(operation, method)
+      destructive = destructive?(operation, method)
+      parameters = operation_parameter_metadata(operation, path_item, spec)
 
-    entry = {
-      "operationId" => operation_id,
-      "method" => method.upcase,
-      "path" => path,
-      "summary" => operation["summary"],
-      "mcpName" => mcp["name"],
-      "mcpTitle" => mcp["title"],
-      "scopes" => scopes,
-      "readOnly" => mcp.fetch("readOnlyHint", method == "get"),
-      "destructive" => destructive,
-      "idempotent" => mcp.fetch("idempotentHint", %w[get head put delete].include?(method)),
-      "openWorld" => mcp.fetch("openWorldHint", true),
-      "list" => list_operation?(operation, method, spec),
-      "mutation" => !%w[get head].include?(method),
-      "bodyRequired" => body_required?(operation),
-    }
+      entry = {
+        "operationId" => operation_id,
+        "method" => method.upcase,
+        "path" => path,
+        "summary" => operation["summary"],
+        "mcpName" => mcp["name"],
+        "mcpTitle" => mcp["title"],
+        "scopes" => scopes,
+        "readOnly" => mcp.fetch("readOnlyHint", method == "get"),
+        "destructive" => destructive,
+        "idempotent" => mcp.fetch("idempotentHint", %w[get head put delete].include?(method)),
+        "openWorld" => mcp.fetch("openWorldHint", true),
+        "list" => list_operation?(operation, method, spec),
+        "mutation" => !%w[get head].include?(method),
+        "bodyRequired" => body_required?(operation),
+      }
 
-    if pagination
-      entry["pagination"] = {
-        "type" => pagination["type"],
-        "results" => pagination.dig("outputs", "results"),
-      }.compact
+      generic = generic_parameters(parameters)
+      entry["parameters"] = generic unless generic.empty?
+      if pagination
+        entry["pagination"] = {
+          "type" => pagination["type"],
+          "results" => pagination.dig("outputs", "results"),
+          "inputs" => pagination_parameters(parameters),
+        }.compact
+        entry["pagination"].delete("inputs") if entry["pagination"]["inputs"].empty?
+      end
+
+      query = query_parameters(parameters)
+      entry["query"] = query unless query.empty?
+
+      operations << entry
+      examples[operation_id] = usage_example if usage_example
     end
-
-    query = query_parameters(operation, path_item, spec)
-    entry["query"] = query unless query.empty?
-
-    operations << entry
-    examples[operation_id] = usage_example if usage_example
   end
+
+  {
+    "generatedAt" => "deterministic",
+    "source" => source == SOURCE ? "openapi/plaky115-dx.openapi.yaml" : source,
+    "operations" => operations,
+    "paths" => operations.map { |operation| operation.slice("method", "path", "operationId") },
+    "scopes" => operations.each_with_object({}) { |operation, out| out[operation.fetch("operationId")] = operation.fetch("scopes") },
+    "listEndpoints" => operations.select { |operation| operation.fetch("list") }.map { |operation| operation.fetch("operationId") },
+    "mutations" => operations.select { |operation| operation.fetch("mutation") }.map { |operation| operation.fetch("operationId") },
+    "destructive" => operations.select { |operation| operation.fetch("destructive") }.map { |operation| operation.fetch("operationId") },
+    "examples" => examples,
+  }
 end
 
-payload = {
-  "generatedAt" => "deterministic",
-  "source" => "openapi/plaky115-dx.openapi.yaml",
-  "operations" => operations,
-  "paths" => operations.map { |operation| operation.slice("method", "path", "operationId") },
-  "scopes" => operations.each_with_object({}) { |operation, out| out[operation.fetch("operationId")] = operation.fetch("scopes") },
-  "listEndpoints" => operations.select { |operation| operation.fetch("list") }.map { |operation| operation.fetch("operationId") },
-  "mutations" => operations.select { |operation| operation.fetch("mutation") }.map { |operation| operation.fetch("operationId") },
-  "destructive" => operations.select { |operation| operation.fetch("destructive") }.map { |operation| operation.fetch("operationId") },
-  "examples" => examples,
-}
+def parse_options(argv)
+  options = { source: SOURCE, out: OUT }
+  OptionParser.new do |parser|
+    parser.on("--source PATH") { |path| options[:source] = path }
+    parser.on("--out PATH") { |path| options[:out] = path }
+  end.parse!(argv)
+  options
+end
 
-File.write(OUT, "#{JSON.pretty_generate(payload)}\n")
+if $PROGRAM_NAME == __FILE__
+  begin
+    options = parse_options(ARGV)
+    payload = generate_metadata(options.fetch(:source))
+    File.write(options.fetch(:out), "#{JSON.pretty_generate(payload)}\n")
+  rescue StandardError => e
+    warn "generate-operation-metadata: #{e.message}"
+    exit 1
+  end
+end

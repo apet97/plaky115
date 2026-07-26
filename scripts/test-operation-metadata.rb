@@ -27,13 +27,7 @@ class OperationMetadataTest < Minitest::Test
 
   HTTP_METHODS = %w[get post put patch delete head options trace].freeze
 
-  # Mirror of the allow-lists in scripts/generate-operation-metadata.rb. Spec
-  # query params deliberately NOT threaded onto raw CLI/MCP surfaces are listed
-  # here explicitly, so a NEW spec query param fails this test until it is either
-  # threaded (THREADED_QUERY_PARAMS in the generator) or ignored on purpose here.
   PAGINATION_QUERY_PARAMS = %w[page pageSize limit offset].freeze
-  THREADED_QUERY_PARAMS = %w[expand emails status type boardViewId parentId subitemsBehaviour].freeze
-  KNOWN_UNTHREADED_QUERY_PARAMS = %w[].freeze
 
   # Uppercase item-field type enum (ItemFieldResponse.type). Example payloads must
   # use these, not lowercase JSON-schema primitive names like "string".
@@ -92,19 +86,21 @@ class OperationMetadataTest < Minitest::Test
     assert_match(/create/i, examples.fetch("createItem").fetch("title"))
   end
 
-  def test_every_spec_query_param_is_threaded_or_explicitly_ignored
+  def test_every_nonpagination_spec_query_param_is_derived_into_metadata
     spec = load_yaml("openapi/plaky115-dx.openapi.yaml")
-    known = PAGINATION_QUERY_PARAMS + THREADED_QUERY_PARAMS + KNOWN_UNTHREADED_QUERY_PARAMS
-    unexpected = []
-    each_operation(spec) do |_id, _method, operation, path_item|
-      query_param_names(operation, path_item, spec).each do |name|
-        unexpected << name unless known.include?(name)
-      end
+    metadata = JSON.parse(File.read(File.join(ROOT, "openapi/plaky115-operation-metadata.json")))
+    generated = metadata.fetch("operations").to_h do |operation|
+      [operation.fetch("operationId"), Array(operation["query"]).map { |parameter| parameter.fetch("name") }]
     end
-    assert_equal [], unexpected.uniq.sort,
-                 "spec query params are neither threaded onto raw surfaces nor explicitly ignored; thread " \
-                 "them in generate-operation-metadata.rb or add to KNOWN_UNTHREADED_QUERY_PARAMS: " \
-                 "#{unexpected.uniq.sort.join(', ')}"
+    missing = {}
+    each_operation(spec) do |id, _method, operation, path_item|
+      expected = query_param_names(operation, path_item, spec).reject do |name|
+        PAGINATION_QUERY_PARAMS.include?(name)
+      end
+      absent = expected - generated.fetch(id, [])
+      missing[id] = absent unless absent.empty?
+    end
+    assert_equal({}, missing, "spec query params missing from generated metadata: #{missing}")
   end
 
   def test_example_payloads_match_request_and_response_shapes

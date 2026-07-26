@@ -16,7 +16,7 @@
 - [x] `C002` | Phase 1 — Contract acquisition | DONE | Implement candidate fetch, parsing, canonicalization, and provenance
 - [x] `C003` | Phase 1 — Contract acquisition | DONE | Add semantic contract diff, manifest checks, and freshness workflow
 - [x] `M001` | Phase 2 — Metadata | DONE | Create and validate transport-quadrant OpenAPI fixtures
-- [ ] `M002` | Phase 2 — Metadata | NOT STARTED | Make parameter metadata contract-derived
+- [x] `M002` | Phase 2 — Metadata | DONE | Make parameter metadata contract-derived
 - [ ] `M003` | Phase 2 — Metadata | NOT STARTED | Derive explicit request kind and multipart parts
 - [ ] `M004` | Phase 2 — Metadata | NOT STARTED | Derive primary success status and response kind
 - [ ] `M005` | Phase 2 — Metadata | NOT STARTED | Annotate the existing 20 operations with explicit semantics and regenerate rich metadata
@@ -119,3 +119,12 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - `metadata-array.yaml`: bare JSON array response.
 - Invalid fixtures independently pin ambiguous request media and incompatible success shapes.
 - Fixture integrity: 6 tests and 23 assertions passed with aliases disabled and globally unique fake operation IDs.
+
+### M002
+
+- Metadata generation is callable and supports explicit `--source` and `--out` while preserving no-argument behavior.
+- Path and nonpagination query parameters now carry contract-derived type/format/enum/default/items, required, description, style, and effective explode metadata.
+- Path-item and operation parameters merge deterministically with operation-level override; local refs unescape JSON Pointers and reject cycles.
+- Pagination inputs retain typed schemas outside generic parameters; unsupported query objects/deepObject fail loudly.
+- Removed the positive query-name allowlist. Fixture-added `labels` appears automatically; existing `expand` comma-join and `emails` repeated-key metadata remain compatible.
+- Parameter slice: 5 tests and 28 assertions passed; legacy metadata suite: 4 tests and 158 assertions passed.
