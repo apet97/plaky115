@@ -19,7 +19,7 @@
 - [x] `M002` | Phase 2 — Metadata | DONE | Make parameter metadata contract-derived
 - [x] `M003` | Phase 2 — Metadata | DONE | Derive explicit request kind and multipart parts
 - [x] `M004` | Phase 2 — Metadata | DONE | Derive primary success status and response kind
-- [ ] `M005` | Phase 2 — Metadata | NOT STARTED | Annotate the existing 20 operations with explicit semantics and regenerate rich metadata
+- [x] `M005` | Phase 2 — Metadata | DONE | Annotate the existing 20 operations with explicit semantics and regenerate rich metadata
 - [ ] `G001` | Phase 3 — Generators | NOT STARTED | Add one shared metadata loader and validator for JavaScript generators
 - [ ] `G002` | Phase 3 — Generators | NOT STARTED | Make MCP generator use request/success/parameter metadata
 - [ ] `G003` | Phase 3 — Generators | NOT STARTED | Generate safe MCP multipart upload tools
@@ -144,3 +144,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Additional incompatible 2xx kinds fail without an explicit selection; compatible statuses remain deterministic.
 - List classification uses pagination metadata or the selected response schema, including bare arrays, without method-specific response rules.
 - Success slice: 6 tests and 26 assertions passed; bodyless archive and bare file-list fixture behavior are pinned.
+
+### M005
+
+- All 20 accepted operations now carry explicit confirmation, compact kind, and sensitive-output overlay fields alongside complete MCP annotations.
+- Spaces map to `space`, boards to `board`, item reads/writes to `item`, comment reads/writes to `comment`, and the specified identity/reaction/delete operations to `raw`.
+- Only `deleteItem` and `deleteItemComment` require destructive confirmation; all current outputs are non-sensitive.
+- Generator validation rejects invalid annotations, duplicate operation IDs/MCP names, and destructive scope/confirmation inconsistencies without method/path fallbacks.
+- Regenerated DX OpenAPI and rich metadata contain explicit request/success semantics for all 20 operations; metadata tests passed (legacy 4/300 assertions, rich 21/327 assertions).

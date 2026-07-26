@@ -16,6 +16,9 @@ actions:
   - target: $.paths["/v1/public/spaces"].get
     update:
       operationId: listSpaces
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: space
+      x-plaky115-sensitive-output: false
       summary: List workspace spaces
       description: List Plaky spaces visible to the API key, optionally embedding boards.
       x-plaky115-usage-example:
@@ -46,6 +49,9 @@ actions:
   - target: $.paths["/v1/public/spaces/{spaceId}"].get
     update:
       operationId: getSpace
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: space
+      x-plaky115-sensitive-output: false
       summary: Retrieve a space
       description: Retrieve one Plaky space by ID.
       x-plaky115-usage-example:
@@ -65,6 +71,9 @@ actions:
   - target: $.paths["/v1/public/spaces/{spaceId}/boards"].get
     update:
       operationId: listBoards
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: board
+      x-plaky115-sensitive-output: false
       summary: List space boards
       description: List boards in a Plaky space.
       x-plaky115-usage-example:
@@ -95,6 +104,9 @@ actions:
   - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}"].get
     update:
       operationId: getBoard
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: board
+      x-plaky115-sensitive-output: false
       summary: Retrieve a board
       description: Retrieve one Plaky board by space ID and board ID.
       x-plaky115-usage-example:
@@ -114,6 +126,9 @@ actions:
   - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items"].get
     update:
       operationId: listItems
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: item
+      x-plaky115-sensitive-output: false
       summary: List board items
       description: List items on a Plaky board with optional view, parent, and expansion filters.
       x-plaky115-usage-example:
@@ -144,6 +159,9 @@ actions:
   - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items"].post
     update:
       operationId: createItem
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: item
+      x-plaky115-sensitive-output: false
       summary: Create an item
       description: Create a Plaky item using a title, group, parent, and optional field values.
       x-plaky115-usage-example:
@@ -190,6 +208,9 @@ actions:
   - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}"].get
     update:
       operationId: getItem
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: item
+      x-plaky115-sensitive-output: false
       summary: Retrieve an item
       description: Retrieve one Plaky item by ID.
       x-plaky115-usage-example:
@@ -209,6 +230,9 @@ actions:
   - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}"].delete
     update:
       operationId: deleteItem
+      x-plaky115-confirmation: destructive
+      x-plaky115-compact-kind: raw
+      x-plaky115-sensitive-output: false
       summary: Delete an item
       description: Delete one Plaky item by ID.
       x-plaky115-usage-example:
@@ -228,6 +252,9 @@ actions:
   - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/sub-items"].get
     update:
       operationId: listSubitems
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: item
+      x-plaky115-sensitive-output: false
       summary: List subitems
       description: List subitems under one Plaky item.
       x-plaky115-usage-example:
@@ -258,6 +285,9 @@ actions:
   - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields/{itemFieldKey}"].patch
     update:
       operationId: updateItemField
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: item
+      x-plaky115-sensitive-output: false
       summary: Update one item field
       description: Update a single field value on one Plaky item.
       x-plaky115-usage-example:
@@ -287,6 +317,9 @@ actions:
   - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields"].patch
     update:
       operationId: updateItemFields
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: item
+      x-plaky115-sensitive-output: false
       summary: Update item fields
       description: Update multiple field values on one Plaky item.
       x-plaky115-usage-example:
@@ -316,6 +349,9 @@ actions:
   - target: $.paths["/v1/public/users"].get
     update:
       operationId: listUsers
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: raw
+      x-plaky115-sensitive-output: false
       summary: List workspace users
       description: List Plaky users, optionally filtered by email, status, or role.
       x-plaky115-usage-example:
@@ -346,6 +382,9 @@ actions:
   - target: $.paths["/v1/public/users/me"].get
     update:
       operationId: getCurrentUser
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: raw
+      x-plaky115-sensitive-output: false
       summary: Retrieve current user
       description: Retrieve the user associated with the provided API key.
       x-plaky115-usage-example:
@@ -365,6 +404,9 @@ actions:
   - target: $.paths["/v1/public/teams"].get
     update:
       operationId: listTeams
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: raw
+      x-plaky115-sensitive-output: false
       summary: List workspace teams
       description: List Plaky teams visible to the API key.
       x-plaky115-usage-example:
@@ -395,6 +437,9 @@ actions:
   - target: $.paths["/v1/public/teams/{teamId}"].get
     update:
       operationId: getTeam
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: raw
+      x-plaky115-sensitive-output: false
       summary: Retrieve a team
       description: Retrieve one Plaky team by ID.
       x-plaky115-usage-example:
@@ -414,6 +459,9 @@ actions:
   - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments"].get
     update:
       operationId: listItemComments
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: comment
+      x-plaky115-sensitive-output: false
       summary: List item comments
       description: List comments on one Plaky item.
       x-plaky115-usage-example:
@@ -433,6 +481,9 @@ actions:
   - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments"].post
     update:
       operationId: createItemComment
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: comment
+      x-plaky115-sensitive-output: false
       summary: Create item comment
       description: Add a comment or reply to one Plaky item.
       x-plaky115-usage-example:
@@ -464,6 +515,9 @@ actions:
   - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}"].put
     update:
       operationId: updateItemComment
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: comment
+      x-plaky115-sensitive-output: false
       summary: Update item comment
       description: Replace the text of one Plaky item comment.
       x-plaky115-usage-example:
@@ -495,6 +549,9 @@ actions:
   - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}"].delete
     update:
       operationId: deleteItemComment
+      x-plaky115-confirmation: destructive
+      x-plaky115-compact-kind: raw
+      x-plaky115-sensitive-output: false
       summary: Delete item comment
       description: Delete one Plaky item comment by ID.
       x-plaky115-usage-example:
@@ -514,6 +571,9 @@ actions:
   - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}/reactions"].put
     update:
       operationId: replaceCommentReactions
+      x-plaky115-confirmation: none
+      x-plaky115-compact-kind: raw
+      x-plaky115-sensitive-output: false
       summary: Replace comment reactions
       description: Replace the current user's reactions on one Plaky item comment.
       x-plaky115-usage-example:

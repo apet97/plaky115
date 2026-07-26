@@ -10,6 +10,8 @@ SOURCE = File.join(ROOT, "openapi/plaky115-dx.openapi.yaml")
 OUT = File.join(ROOT, "openapi/plaky115-operation-metadata.json")
 
 HTTP_METHODS = %w[get post put patch delete head options trace].freeze
+COMPACT_KINDS = %w[raw space board item comment itemGroup itemFile downloadLink].freeze
+CONFIRMATIONS = %w[none destructive].freeze
 
 # Pagination query params are threaded through dedicated codegen branches, so
 # they are excluded from the generic query-param list.
@@ -89,25 +91,67 @@ def list_operation?(operation, success, spec)
   return true if success["kind"] == "json-array"
 
   schema = response_schema(operation, success, spec)
-  schema.is_a?(Hash) && schema.dig("properties", "hasMore")
+  !!(schema.is_a?(Hash) && schema.dig("properties", "hasMore"))
 end
 
-def default_scopes(operation, method)
-  mcp = operation["x-plaky115-mcp"] || {}
-  scopes = Array(mcp["scopes"]).uniq
-  return scopes unless scopes.empty?
+def operation_semantics(operation)
+  mcp = operation["x-plaky115-mcp"]
+  return {
+    "mcpName" => nil,
+    "mcpTitle" => nil,
+    "scopes" => [],
+    "readOnly" => false,
+    "destructive" => false,
+    "idempotent" => false,
+    "openWorld" => true,
+    "confirmation" => nil,
+    "compactKind" => nil,
+    "sensitiveOutput" => nil,
+  } unless mcp
 
-  return %w[read] if method == "get" || method == "head"
-  return %w[write destructive] if method == "delete"
+  raise ArgumentError, "x-plaky115-mcp must be an object" unless mcp.is_a?(Hash)
+  name = mcp["name"]
+  title = mcp["title"]
+  scopes = mcp["scopes"]
+  raise ArgumentError, "MCP name is invalid" unless name.is_a?(String) && name.match?(/\Aplaky_[a-z0-9_]+\z/)
+  raise ArgumentError, "MCP title is required" unless title.is_a?(String) && !title.strip.empty?
+  unless scopes.is_a?(Array) && !scopes.empty? && scopes.all? { |scope| scope.is_a?(String) } && scopes.uniq == scopes
+    raise ArgumentError, "MCP scopes must be a non-empty unique string array"
+  end
 
-  %w[write]
-end
+  hints = %w[readOnlyHint destructiveHint idempotentHint openWorldHint]
+  hints.each do |hint|
+    raise ArgumentError, "MCP #{hint} must be boolean" unless [true, false].include?(mcp[hint])
+  end
+  confirmation = operation["x-plaky115-confirmation"]
+  compact_kind = operation["x-plaky115-compact-kind"]
+  sensitive_output = operation["x-plaky115-sensitive-output"]
+  raise ArgumentError, "invalid confirmation: #{confirmation.inspect}" unless CONFIRMATIONS.include?(confirmation)
+  raise ArgumentError, "invalid compact kind: #{compact_kind.inspect}" unless COMPACT_KINDS.include?(compact_kind)
+  unless [true, false].include?(sensitive_output)
+    raise ArgumentError, "sensitive output must be boolean"
+  end
 
-def destructive?(operation, method)
-  mcp = operation["x-plaky115-mcp"] || {}
-  return mcp["destructiveHint"] unless mcp["destructiveHint"].nil?
+  destructive = mcp.fetch("destructiveHint")
+  if destructive && (!scopes.include?("destructive") || confirmation != "destructive")
+    raise ArgumentError, "destructive operation requires destructive scope and confirmation"
+  end
+  if !destructive && confirmation != "none"
+    raise ArgumentError, "non-destructive operation requires confirmation none"
+  end
 
-  method == "delete"
+  {
+    "mcpName" => name,
+    "mcpTitle" => title,
+    "scopes" => scopes,
+    "readOnly" => mcp.fetch("readOnlyHint"),
+    "destructive" => destructive,
+    "idempotent" => mcp.fetch("idempotentHint"),
+    "openWorld" => mcp.fetch("openWorldHint"),
+    "confirmation" => confirmation,
+    "compactKind" => compact_kind,
+    "sensitiveOutput" => sensitive_output,
+  }
 end
 
 def body_required?(operation)
@@ -269,6 +313,16 @@ def query_parameters(parameters)
     end
 end
 
+def validate_unique_metadata!(operations)
+  {
+    "operationId" => operations.map { |operation| operation["operationId"] },
+    "MCP name" => operations.map { |operation| operation["mcpName"] }.compact,
+  }.each do |label, values|
+    duplicate = values.group_by(&:itself).find { |_value, entries| entries.length > 1 }&.first
+    raise ArgumentError, "duplicate #{label}: #{duplicate}" if duplicate
+  end
+end
+
 def generate_metadata(source)
   spec = load_yaml(source)
   operations = []
@@ -279,11 +333,9 @@ def generate_metadata(source)
       next unless HTTP_METHODS.include?(method)
 
       operation_id = operation.fetch("operationId")
-      mcp = operation["x-plaky115-mcp"] || {}
       pagination = operation["x-plaky115-pagination"]
       usage_example = operation["x-plaky115-usage-example"]
-      scopes = default_scopes(operation, method)
-      destructive = destructive?(operation, method)
+      semantics = operation_semantics(operation)
       parameters = operation_parameter_metadata(operation, path_item, spec)
       success = success_metadata(operation, spec)
 
@@ -292,17 +344,20 @@ def generate_metadata(source)
         "method" => method.upcase,
         "path" => path,
         "summary" => operation["summary"],
-        "mcpName" => mcp["name"],
-        "mcpTitle" => mcp["title"],
-        "scopes" => scopes,
-        "readOnly" => mcp.fetch("readOnlyHint", method == "get"),
-        "destructive" => destructive,
-        "idempotent" => mcp.fetch("idempotentHint", %w[get head put delete].include?(method)),
-        "openWorld" => mcp.fetch("openWorldHint", true),
+        "mcpName" => semantics["mcpName"],
+        "mcpTitle" => semantics["mcpTitle"],
+        "scopes" => semantics.fetch("scopes"),
+        "readOnly" => semantics.fetch("readOnly"),
+        "destructive" => semantics.fetch("destructive"),
+        "idempotent" => semantics.fetch("idempotent"),
+        "openWorld" => semantics.fetch("openWorld"),
         "list" => list_operation?(operation, success, spec),
-        "mutation" => !%w[get head].include?(method),
+        "mutation" => !semantics.fetch("readOnly"),
         "request" => request_metadata(operation, spec),
         "success" => success,
+        "confirmation" => semantics["confirmation"],
+        "compactKind" => semantics["compactKind"],
+        "sensitiveOutput" => semantics["sensitiveOutput"],
         # Deprecated compatibility field; remove after generators consume request.kind in G006.
         "bodyRequired" => body_required?(operation),
       }
@@ -325,6 +380,7 @@ def generate_metadata(source)
       examples[operation_id] = usage_example if usage_example
     end
   end
+  validate_unique_metadata!(operations)
 
   {
     "generatedAt" => "deterministic",

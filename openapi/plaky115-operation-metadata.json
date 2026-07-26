@@ -18,10 +18,70 @@
       "openWorld": true,
       "list": true,
       "mutation": false,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/PublicPagedResponseV1SpaceResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "space",
+      "sensitiveOutput": false,
       "bodyRequired": false,
+      "parameters": [
+        {
+          "name": "expand",
+          "in": "query",
+          "required": false,
+          "description": "Comma-separated list of relationships to be expanded into full objects.",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "board"
+              ]
+            }
+          },
+          "style": "form",
+          "explode": false
+        }
+      ],
       "pagination": {
         "type": "offsetLimit",
-        "results": "$.data"
+        "results": "$.data",
+        "inputs": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            },
+            "style": "form",
+            "explode": true
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "Page size.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            },
+            "style": "form",
+            "explode": true
+          }
+        ]
       },
       "query": [
         {
@@ -48,10 +108,51 @@
       "openWorld": true,
       "list": true,
       "mutation": false,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/PublicPagedResponseV1TeamResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "raw",
+      "sensitiveOutput": false,
       "bodyRequired": false,
       "pagination": {
         "type": "offsetLimit",
-        "results": "$.data"
+        "results": "$.data",
+        "inputs": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            },
+            "style": "form",
+            "explode": true
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "Page size.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            },
+            "style": "form",
+            "explode": true
+          }
+        ]
       }
     },
     {
@@ -70,10 +171,100 @@
       "openWorld": true,
       "list": true,
       "mutation": false,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/PublicPagedResponseV1UserResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "raw",
+      "sensitiveOutput": false,
       "bodyRequired": false,
+      "parameters": [
+        {
+          "name": "emails",
+          "in": "query",
+          "required": false,
+          "description": "If provided, you will get list of users filtered for the provided emails",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "style": "form",
+          "explode": true
+        },
+        {
+          "name": "status",
+          "in": "query",
+          "required": false,
+          "description": "If provided, you will get list of users filtered for the provided status",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "PENDING",
+              "INACTIVE"
+            ]
+          },
+          "style": "form",
+          "explode": true
+        },
+        {
+          "name": "type",
+          "in": "query",
+          "required": false,
+          "description": "If provided, you will get list of users filtered for the provided type",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "OWNER",
+              "ADMIN",
+              "MEMBER",
+              "VIEWER"
+            ]
+          },
+          "style": "form",
+          "explode": true
+        }
+      ],
       "pagination": {
         "type": "offsetLimit",
-        "results": "$.data"
+        "results": "$.data",
+        "inputs": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            },
+            "style": "form",
+            "explode": true
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "Page size.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            },
+            "style": "form",
+            "explode": true
+          }
+        ]
       },
       "query": [
         {
@@ -107,10 +298,65 @@
       "openWorld": true,
       "list": true,
       "mutation": false,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/PublicPagedResponseV1BoardResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "board",
+      "sensitiveOutput": false,
       "bodyRequired": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ],
       "pagination": {
         "type": "offsetLimit",
-        "results": "$.data"
+        "results": "$.data",
+        "inputs": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            },
+            "style": "form",
+            "explode": true
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "Page size.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            },
+            "style": "form",
+            "explode": true
+          }
+        ]
       }
     },
     {
@@ -129,10 +375,141 @@
       "openWorld": true,
       "list": true,
       "mutation": false,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/PublicPagedResponseV1ItemResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "item",
+      "sensitiveOutput": false,
       "bodyRequired": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardViewId",
+          "in": "query",
+          "required": false,
+          "description": "Represents unique board view identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "form",
+          "explode": true
+        },
+        {
+          "name": "parentId",
+          "in": "query",
+          "required": false,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "form",
+          "explode": true
+        },
+        {
+          "name": "subitemsBehaviour",
+          "in": "query",
+          "required": false,
+          "description": "Indicates how subitems are treated in the response. By default subitems will be included. This flag is not applicable when **parentId** is set. **Options:** * **INCLUDE**: Includes subitems in the top level response. * **EXCLUDE**: Excludes subitems from the top level response. * **EMBED**: Excludes from top level and embeds into each parent with sorts and filters applied.",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "INCLUDE",
+              "EXCLUDE",
+              "EMBED"
+            ],
+            "default": "INCLUDE"
+          },
+          "style": "form",
+          "explode": true
+        },
+        {
+          "name": "expand",
+          "in": "query",
+          "required": false,
+          "description": "Comma-separated list of relationships to expand into full objects instead of IDs.",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "space",
+                "board",
+                "group",
+                "createdBy",
+                "parent",
+                "subscriptions",
+                "fields"
+              ]
+            }
+          },
+          "style": "form",
+          "explode": false
+        }
+      ],
       "pagination": {
         "type": "offsetLimit",
-        "results": "$.data"
+        "results": "$.data",
+        "inputs": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            },
+            "style": "form",
+            "explode": true
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "Page size.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            },
+            "style": "form",
+            "explode": true
+          }
+        ]
       },
       "query": [
         {
@@ -171,7 +548,48 @@
       "openWorld": true,
       "list": false,
       "mutation": true,
-      "bodyRequired": true
+      "request": {
+        "kind": "json",
+        "required": true,
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ItemCreateRequest"
+      },
+      "success": {
+        "status": 201,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ItemResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "item",
+      "sensitiveOutput": false,
+      "bodyRequired": true,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
     },
     {
       "operationId": "getSpace",
@@ -187,9 +605,53 @@
       "destructive": false,
       "idempotent": true,
       "openWorld": true,
-      "list": null,
+      "list": false,
       "mutation": false,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/SpaceResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "space",
+      "sensitiveOutput": false,
       "bodyRequired": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "expand",
+          "in": "query",
+          "required": false,
+          "description": "Comma-separated list of relationships to be expanded into full objects.",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "board"
+              ]
+            }
+          },
+          "style": "form",
+          "explode": false
+        }
+      ],
       "query": [
         {
           "name": "expand",
@@ -213,9 +675,36 @@
       "destructive": false,
       "idempotent": true,
       "openWorld": true,
-      "list": null,
+      "list": false,
       "mutation": false,
-      "bodyRequired": false
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/TeamResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "raw",
+      "sensitiveOutput": false,
+      "bodyRequired": false,
+      "parameters": [
+        {
+          "name": "teamId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique team identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
     },
     {
       "operationId": "getCurrentUser",
@@ -231,8 +720,21 @@
       "destructive": false,
       "idempotent": true,
       "openWorld": true,
-      "list": null,
+      "list": false,
       "mutation": false,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/UserResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "raw",
+      "sensitiveOutput": false,
       "bodyRequired": false
     },
     {
@@ -249,9 +751,48 @@
       "destructive": false,
       "idempotent": true,
       "openWorld": true,
-      "list": null,
+      "list": false,
       "mutation": false,
-      "bodyRequired": false
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/BoardResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "board",
+      "sensitiveOutput": false,
+      "bodyRequired": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
     },
     {
       "operationId": "listSubitems",
@@ -269,10 +810,112 @@
       "openWorld": true,
       "list": true,
       "mutation": false,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/PublicPagedResponseV1ItemResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "item",
+      "sensitiveOutput": false,
       "bodyRequired": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "expand",
+          "in": "query",
+          "required": false,
+          "description": "Comma-separated list of relationships to expand into full objects instead of IDs.",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "space",
+                "board",
+                "group",
+                "createdBy",
+                "parent",
+                "subscriptions",
+                "fields"
+              ]
+            }
+          },
+          "style": "form",
+          "explode": false
+        }
+      ],
       "pagination": {
         "type": "offsetLimit",
-        "results": "$.data"
+        "results": "$.data",
+        "inputs": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            },
+            "style": "form",
+            "explode": true
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "Page size.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            },
+            "style": "form",
+            "explode": true
+          }
+        ]
       },
       "query": [
         {
@@ -297,9 +940,83 @@
       "destructive": false,
       "idempotent": true,
       "openWorld": true,
-      "list": null,
+      "list": false,
       "mutation": false,
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ItemResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "item",
+      "sensitiveOutput": false,
       "bodyRequired": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "expand",
+          "in": "query",
+          "required": false,
+          "description": "Comma-separated list of relationships to expand into full objects instead of IDs.",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "space",
+                "board",
+                "group",
+                "createdBy",
+                "parent",
+                "subscriptions",
+                "fields"
+              ]
+            }
+          },
+          "style": "form",
+          "explode": false
+        }
+      ],
       "query": [
         {
           "name": "expand",
@@ -326,7 +1043,56 @@
       "openWorld": true,
       "list": false,
       "mutation": true,
-      "bodyRequired": false
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "void"
+      },
+      "confirmation": "destructive",
+      "compactKind": "raw",
+      "sensitiveOutput": false,
+      "bodyRequired": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
     },
     {
       "operationId": "updateItemField",
@@ -344,7 +1110,71 @@
       "openWorld": true,
       "list": false,
       "mutation": true,
-      "bodyRequired": true
+      "request": {
+        "kind": "json",
+        "required": true,
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/FieldValueChangeRequest"
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ItemResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "item",
+      "sensitiveOutput": false,
+      "bodyRequired": true,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemFieldKey",
+          "in": "path",
+          "required": true,
+          "description": "Represents key of the field.",
+          "schema": {
+            "type": "string"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
     },
     {
       "operationId": "updateItemFields",
@@ -362,7 +1192,59 @@
       "openWorld": true,
       "list": false,
       "mutation": true,
-      "bodyRequired": true
+      "request": {
+        "kind": "json",
+        "required": true,
+        "mediaType": "application/json"
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ItemResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "item",
+      "sensitiveOutput": false,
+      "bodyRequired": true,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
     },
     {
       "operationId": "listItemComments",
@@ -378,9 +1260,59 @@
       "destructive": false,
       "idempotent": true,
       "openWorld": true,
-      "list": null,
+      "list": true,
       "mutation": false,
-      "bodyRequired": false
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-array",
+        "mediaType": "application/json"
+      },
+      "confirmation": "none",
+      "compactKind": "comment",
+      "sensitiveOutput": false,
+      "bodyRequired": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
     },
     {
       "operationId": "createItemComment",
@@ -398,7 +1330,60 @@
       "openWorld": true,
       "list": false,
       "mutation": true,
-      "bodyRequired": true
+      "request": {
+        "kind": "json",
+        "required": true,
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/CommentRequest"
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/CommentResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "comment",
+      "sensitiveOutput": false,
+      "bodyRequired": true,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
     },
     {
       "operationId": "updateItemComment",
@@ -416,7 +1401,72 @@
       "openWorld": true,
       "list": false,
       "mutation": true,
-      "bodyRequired": true
+      "request": {
+        "kind": "json",
+        "required": true,
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/CommentRequest"
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/CommentResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "comment",
+      "sensitiveOutput": false,
+      "bodyRequired": true,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemCommentId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item comment identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
     },
     {
       "operationId": "deleteItemComment",
@@ -435,7 +1485,68 @@
       "openWorld": true,
       "list": false,
       "mutation": true,
-      "bodyRequired": false
+      "request": {
+        "kind": "none",
+        "required": false
+      },
+      "success": {
+        "status": 200,
+        "kind": "void"
+      },
+      "confirmation": "destructive",
+      "compactKind": "raw",
+      "sensitiveOutput": false,
+      "bodyRequired": false,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemCommentId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item comment identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
     },
     {
       "operationId": "replaceCommentReactions",
@@ -453,7 +1564,72 @@
       "openWorld": true,
       "list": false,
       "mutation": true,
-      "bodyRequired": true
+      "request": {
+        "kind": "json",
+        "required": true,
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ReactionPutRequest"
+      },
+      "success": {
+        "status": 200,
+        "kind": "json-object",
+        "mediaType": "application/json",
+        "schemaRef": "#/components/schemas/ReactionPutResponse"
+      },
+      "confirmation": "none",
+      "compactKind": "raw",
+      "sensitiveOutput": false,
+      "bodyRequired": true,
+      "parameters": [
+        {
+          "name": "spaceId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique space identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "boardId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique board identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "itemCommentId",
+          "in": "path",
+          "required": true,
+          "description": "Represents unique item comment identifier across the system.",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": "simple",
+          "explode": false
+        }
+      ]
     }
   ],
   "paths": [
@@ -628,7 +1804,8 @@
     "listUsers",
     "listBoards",
     "listItems",
-    "listSubitems"
+    "listSubitems",
+    "listItemComments"
   ],
   "mutations": [
     "createItem",

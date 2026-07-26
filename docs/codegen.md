@@ -4,8 +4,12 @@ The toolkit uses in-repo deterministic generators. The TypeScript SDK generates
 schema types only; the SDK runtime and resource API are hand-written.
 
 All generators read `openapi/plaky115-operation-metadata.json`, which is
-Ruby-generated from the overlay. Running `npm run generate:all` twice should
-produce zero diff, as checked by `scripts/test-codegen-determinism.mjs`.
+Ruby-generated from the accepted contract plus overlay. Metadata records typed
+path/query parameters, explicit request and success shapes, confirmation,
+compaction, scopes, and sensitive-output handling. Generators must consume those
+fields instead of inferring wire behavior from methods or path text. Running
+`npm run generate:all` twice should produce zero diff, as checked by
+`scripts/test-codegen-determinism.mjs`.
 
 ## Pipeline
 
@@ -63,7 +67,12 @@ const response = await client.requestWithResponse({
 ## Adding a New Operation
 
 1. Update `api-1.yaml` or the upstream source.
-2. Add metadata to `overlays/plaky115-dx.overlay.yaml`: `operationId`, `x-plaky115-mcp` annotations, and `x-plaky115-pagination` metadata if it is a list.
+2. Add explicit toolkit semantics to `overlays/plaky115-dx.overlay.yaml`:
+   `operationId`, complete `x-plaky115-mcp` annotations,
+   `x-plaky115-confirmation`, `x-plaky115-compact-kind`, and
+   `x-plaky115-sensitive-output`. Add `x-plaky115-pagination` for paged results;
+   use request-media or success-status selectors only when the contract is
+   otherwise ambiguous.
 3. Run `npm run overlay:apply` and `npm run lint:openapi`.
 4. Run `npm run metadata:generate` and `npm run metadata:test`.
 5. Run `npm run generate:all`.

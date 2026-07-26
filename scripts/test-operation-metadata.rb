@@ -81,6 +81,21 @@ class OperationMetadataTest < Minitest::Test
     assert_equal true, delete_item.fetch("destructive")
     assert_equal ["write", "destructive"], delete_item.fetch("scopes")
 
+    operations.each do |generated|
+      id = generated.fetch("operationId")
+      assert generated.fetch("request").key?("kind"), "#{id} request kind"
+      assert generated.fetch("success").key?("kind"), "#{id} success kind"
+      assert_includes %w[none destructive], generated.fetch("confirmation"), id
+      assert_includes %w[raw space board item comment itemGroup itemFile downloadLink],
+                      generated.fetch("compactKind"), id
+      assert_equal false, generated.fetch("sensitiveOutput"), id
+    end
+    assert_equal %w[deleteItem deleteItemComment],
+                 operations.select { |generated| generated.fetch("confirmation") == "destructive" }
+                           .map { |generated| generated.fetch("operationId") }
+                           .sort
+    assert_equal operations.length, operations.map { |generated| generated.fetch("mcpName") }.uniq.length
+
     examples = metadata.fetch("examples")
     assert examples.key?("createItem")
     assert_match(/create/i, examples.fetch("createItem").fetch("title"))

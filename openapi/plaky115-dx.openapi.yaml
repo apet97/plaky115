@@ -84,6 +84,9 @@
               "schema":
                 "$ref": "#/components/schemas/PublicPagedResponseV1SpaceResponse"
       "x-order": 1
+      "x-plaky115-confirmation": "none"
+      "x-plaky115-compact-kind": "space"
+      "x-plaky115-sensitive-output": false
       "description": "List Plaky spaces visible to the API key, optionally embedding boards."
       "x-plaky115-usage-example":
         "title": "List spaces"
@@ -145,6 +148,9 @@
               "schema":
                 "$ref": "#/components/schemas/PublicPagedResponseV1TeamResponse"
       "x-order": 1
+      "x-plaky115-confirmation": "none"
+      "x-plaky115-compact-kind": "raw"
+      "x-plaky115-sensitive-output": false
       "description": "List Plaky teams visible to the API key."
       "x-plaky115-usage-example":
         "title": "List teams"
@@ -239,6 +245,9 @@
               "schema":
                 "$ref": "#/components/schemas/PublicPagedResponseV1UserResponse"
       "x-order": 1
+      "x-plaky115-confirmation": "none"
+      "x-plaky115-compact-kind": "raw"
+      "x-plaky115-sensitive-output": false
       "description": "List Plaky users, optionally filtered by email, status, or role."
       "x-plaky115-usage-example":
         "title": "List users"
@@ -309,6 +318,9 @@
               "schema":
                 "$ref": "#/components/schemas/PublicPagedResponseV1BoardResponse"
       "x-order": 1
+      "x-plaky115-confirmation": "none"
+      "x-plaky115-compact-kind": "board"
+      "x-plaky115-sensitive-output": false
       "description": "List boards in a Plaky space."
       "x-plaky115-usage-example":
         "title": "List boards"
@@ -433,6 +445,9 @@
               "schema":
                 "$ref": "#/components/schemas/PublicPagedResponseV1ItemResponse"
       "x-order": 2
+      "x-plaky115-confirmation": "none"
+      "x-plaky115-compact-kind": "item"
+      "x-plaky115-sensitive-output": false
       "description": "List items on a Plaky board with optional view, parent, and expansion filters."
       "x-plaky115-usage-example":
         "title": "List board items"
@@ -499,6 +514,9 @@
               "schema":
                 "$ref": "#/components/schemas/ItemResponse"
       "x-order": 1
+      "x-plaky115-confirmation": "none"
+      "x-plaky115-compact-kind": "item"
+      "x-plaky115-sensitive-output": false
       "description": "Create a Plaky item using a title, group, parent, and optional field values."
       "x-plaky115-usage-example":
         "title": "Create an item"
@@ -582,6 +600,9 @@
               "schema":
                 "$ref": "#/components/schemas/SpaceResponse"
       "x-order": 2
+      "x-plaky115-confirmation": "none"
+      "x-plaky115-compact-kind": "space"
+      "x-plaky115-sensitive-output": false
       "description": "Retrieve one Plaky space by ID."
       "x-plaky115-usage-example":
         "title": "Get a space"
@@ -621,6 +642,9 @@
               "schema":
                 "$ref": "#/components/schemas/TeamResponse"
       "x-order": 2
+      "x-plaky115-confirmation": "none"
+      "x-plaky115-compact-kind": "raw"
+      "x-plaky115-sensitive-output": false
       "description": "Retrieve one Plaky team by ID."
       "x-plaky115-usage-example":
         "title": "Get a team"
@@ -650,6 +674,9 @@
               "schema":
                 "$ref": "#/components/schemas/UserResponse"
       "x-order": 2
+      "x-plaky115-confirmation": "none"
+      "x-plaky115-compact-kind": "raw"
+      "x-plaky115-sensitive-output": false
       "description": "Retrieve the user associated with the provided API key."
       "x-plaky115-usage-example":
         "title": "Get current user"
@@ -698,6 +725,9 @@
               "schema":
                 "$ref": "#/components/schemas/BoardResponse"
       "x-order": 2
+      "x-plaky115-confirmation": "none"
+      "x-plaky115-compact-kind": "board"
+      "x-plaky115-sensitive-output": false
       "description": "Retrieve one Plaky board by space ID and board ID."
       "x-plaky115-usage-example":
         "title": "Get a board"
@@ -792,6 +822,9 @@
               "schema":
                 "$ref": "#/components/schemas/PublicPagedResponseV1ItemResponse"
       "x-order": 3
+      "x-plaky115-confirmation": "none"
+      "x-plaky115-compact-kind": "item"
+      "x-plaky115-sensitive-output": false
       "description": "List subitems under one Plaky item."
       "x-plaky115-usage-example":
         "title": "List subitems"
@@ -881,6 +914,9 @@
               "schema":
                 "$ref": "#/components/schemas/ItemResponse"
       "x-order": 4
+      "x-plaky115-confirmation": "none"
+      "x-plaky115-compact-kind": "item"
+      "x-plaky115-sensitive-output": false
       "description": "Retrieve one Plaky item by ID."
       "x-plaky115-usage-example":
         "title": "Get an item"
@@ -933,6 +969,9 @@
         "200":
           "description": "OK"
       "x-order": 5
+      "x-plaky115-confirmation": "destructive"
+      "x-plaky115-compact-kind": "raw"
+      "x-plaky115-sensitive-output": false
       "description": "Delete one Plaky item by ID."
       "x-plaky115-usage-example":
         "title": "Delete an item"
@@ -1004,6 +1043,9 @@
               "schema":
                 "$ref": "#/components/schemas/ItemResponse"
       "x-order": 6
+      "x-plaky115-confirmation": "none"
+      "x-plaky115-compact-kind": "item"
+      "x-plaky115-sensitive-output": false
       "description": "Update a single field value on one Plaky item."
       "x-plaky115-usage-example":
         "title": "Update one item field"
@@ -1085,6 +1127,9 @@
               "schema":
                 "$ref": "#/components/schemas/ItemResponse"
       "x-order": 7
+      "x-plaky115-confirmation": "none"
+      "x-plaky115-compact-kind": "item"
+      "x-plaky115-sensitive-output": false
       "description": "Update multiple field values on one Plaky item."
       "x-plaky115-usage-example":
         "title": "Update item fields"
@@ -1154,6 +1199,9 @@
                 "type": "array"
                 "items":
                   "$ref": "#/components/schemas/CommentResponse"
+      "x-plaky115-confirmation": "none"
+      "x-plaky115-compact-kind": "comment"
+      "x-plaky115-sensitive-output": false
       "description": "List comments on one Plaky item."
       "x-plaky115-usage-example":
         "title": "List item comments"
@@ -1215,6 +1263,9 @@
             "application/json":
               "schema":
                 "$ref": "#/components/schemas/CommentResponse"
+      "x-plaky115-confirmation": "none"
+      "x-plaky115-compact-kind": "comment"
+      "x-plaky115-sensitive-output": false
       "description": "Add a comment or reply to one Plaky item."
       "x-plaky115-usage-example":
         "title": "Create item comment"
@@ -1300,6 +1351,9 @@
             "application/json":
               "schema":
                 "$ref": "#/components/schemas/CommentResponse"
+      "x-plaky115-confirmation": "none"
+      "x-plaky115-compact-kind": "comment"
+      "x-plaky115-sensitive-output": false
       "description": "Replace the text of one Plaky item comment."
       "x-plaky115-usage-example":
         "title": "Update item comment"
@@ -1374,6 +1428,9 @@
       "responses":
         "200":
           "description": "OK"
+      "x-plaky115-confirmation": "destructive"
+      "x-plaky115-compact-kind": "raw"
+      "x-plaky115-sensitive-output": false
       "description": "Delete one Plaky item comment by ID."
       "x-plaky115-usage-example":
         "title": "Delete item comment"
@@ -1446,6 +1503,9 @@
             "application/json":
               "schema":
                 "$ref": "#/components/schemas/ReactionPutResponse"
+      "x-plaky115-confirmation": "none"
+      "x-plaky115-compact-kind": "raw"
+      "x-plaky115-sensitive-output": false
       "description": "Replace the current user's reactions on one Plaky item comment."
       "x-plaky115-usage-example":
         "title": "Replace comment reactions"

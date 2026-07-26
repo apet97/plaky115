@@ -13,6 +13,85 @@ GENERATOR = File.join(ROOT, "scripts/generate-operation-metadata.rb")
 FIXTURES = File.join(ROOT, "test/fixtures/openapi")
 
 class OperationMetadataV2Test < Minitest::Test
+  def test_semantics_existing_20_are_exact_and_explicit
+    metadata = generate(File.join(ROOT, "openapi/plaky115-dx.openapi.yaml"))
+    operations = metadata.fetch("operations")
+    assert_equal 20, operations.length
+    expected_compact = {
+      "listSpaces" => "space", "getSpace" => "space",
+      "listBoards" => "board", "getBoard" => "board",
+      "listItems" => "item", "createItem" => "item", "getItem" => "item",
+      "listSubitems" => "item", "updateItemField" => "item", "updateItemFields" => "item",
+      "listItemComments" => "comment", "createItemComment" => "comment", "updateItemComment" => "comment",
+    }
+    destructive = %w[deleteItem deleteItemComment]
+    operations.each do |operation|
+      id = operation.fetch("operationId")
+      assert operation.key?("request"), "#{id} request"
+      assert operation.key?("success"), "#{id} success"
+      assert_equal expected_compact.fetch(id, "raw"), operation.fetch("compactKind"), id
+      assert_equal destructive.include?(id) ? "destructive" : "none", operation.fetch("confirmation"), id
+      assert_equal false, operation.fetch("sensitiveOutput"), id
+      assert_match(/\Aplaky_[a-z0-9_]+\z/, operation.fetch("mcpName"), id)
+      refute_empty operation.fetch("mcpTitle"), id
+      refute_empty operation.fetch("scopes"), id
+    end
+  end
+
+  def test_semantics_reject_invalid_compact_confirmation_and_sensitive_values
+    spec = semantic_fixture
+    operation = spec.dig("paths", "/fixture/widgets/{widgetId}", "post")
+    {
+      "x-plaky115-compact-kind" => ["invalid", /invalid compact kind/],
+      "x-plaky115-confirmation" => ["sometimes", /invalid confirmation/],
+      "x-plaky115-sensitive-output" => ["false", /sensitive output must be boolean/],
+    }.each do |field, (value, message)|
+      changed = Marshal.load(Marshal.dump(spec))
+      changed.dig("paths", "/fixture/widgets/{widgetId}", "post")[field] = value
+      _stdout, stderr, status = run_generator_document(changed)
+      refute status.success?
+      assert_match message, stderr
+    end
+    assert_equal "item", generate_document(spec).dig("operations", 0, "compactKind")
+    assert_equal false, operation.fetch("x-plaky115-sensitive-output")
+  end
+
+  def test_semantics_require_mcp_fields_and_destructive_consistency
+    spec = semantic_fixture
+    operation = spec.dig("paths", "/fixture/widgets/{widgetId}", "post")
+    operation.fetch("x-plaky115-mcp").delete("title")
+    _stdout, stderr, status = run_generator_document(spec)
+    refute status.success?
+    assert_match(/MCP title is required/, stderr)
+
+    spec = semantic_fixture
+    operation = spec.dig("paths", "/fixture/widgets/{widgetId}", "post")
+    operation.fetch("x-plaky115-mcp")["destructiveHint"] = true
+    _stdout, stderr, status = run_generator_document(spec)
+    refute status.success?
+    assert_match(/destructive operation requires destructive scope and confirmation/, stderr)
+
+    operation.fetch("x-plaky115-mcp")["scopes"] << "destructive"
+    operation["x-plaky115-confirmation"] = "destructive"
+    assert_equal true, generate_document(spec).dig("operations", 0, "destructive")
+  end
+
+  def test_semantics_reject_duplicate_mcp_names_and_operation_ids
+    spec = semantic_fixture
+    first = spec.dig("paths", "/fixture/widgets/{widgetId}", "post")
+    spec.fetch("paths")["/fixture/other"] = { "post" => Marshal.load(Marshal.dump(first)) }
+    spec.dig("paths", "/fixture/other", "post")["operationId"] = "otherOperation"
+    _stdout, stderr, status = run_generator_document(spec)
+    refute status.success?
+    assert_match(/duplicate MCP name/, stderr)
+
+    spec.dig("paths", "/fixture/other", "post", "x-plaky115-mcp")["name"] = "plaky_other_operation"
+    spec.dig("paths", "/fixture/other", "post")["operationId"] = first.fetch("operationId")
+    _stdout, stderr, status = run_generator_document(spec)
+    refute status.success?
+    assert_match(/duplicate operationId/, stderr)
+  end
+
   def test_success_200_and_201_json_objects_include_schema_refs
     json = generate(File.join(FIXTURES, "metadata-json.yaml")).fetch("operations").fetch(0)
     assert_equal({
@@ -261,6 +340,24 @@ class OperationMetadataV2Test < Minitest::Test
 
   def fixture(name)
     YAML.safe_load(File.read(File.join(FIXTURES, name)), aliases: false)
+  end
+
+  def semantic_fixture
+    spec = fixture("metadata-json.yaml")
+    operation = spec.dig("paths", "/fixture/widgets/{widgetId}", "post")
+    operation["x-plaky115-confirmation"] = "none"
+    operation["x-plaky115-compact-kind"] = "item"
+    operation["x-plaky115-sensitive-output"] = false
+    operation["x-plaky115-mcp"] = {
+      "name" => "plaky_fixture_create_widget",
+      "title" => "Create fixture widget",
+      "scopes" => ["write"],
+      "readOnlyHint" => false,
+      "destructiveHint" => false,
+      "idempotentHint" => false,
+      "openWorldHint" => true,
+    }
+    spec
   end
 
   def generate(source)
