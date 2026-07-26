@@ -29,7 +29,7 @@
 - [x] `GO001` | Phase 4 — Go transport | DONE | Propagate body read errors and preserve generic JSON numbers
 - [x] `GO002` | Phase 4 — Go transport | DONE | Stream multipart bodies through `io.Pipe`, preserve exact JSON bytes, and propagate copy/cancellation failures
 - [x] `GO003` | Phase 4 — Go transport | DONE | Validate API keys, timeouts, and absolute server URLs before use while preserving base paths and custom clients
-- [ ] `O001` | Phase 5 — Official contract | NOT STARTED | Fetch and validate a current 32-operation candidate
+- [x] `O001` | Phase 5 — Official contract | DONE | Fetch and validate a current 32-operation candidate
 - [ ] `O002` | Phase 5 — Official contract | NOT STARTED | Overlay all six Item Group operations against the candidate
 - [ ] `O003` | Phase 5 — Official contract | NOT STARTED | Overlay all six Item file operations against the candidate
 - [ ] `O004` | Phase 5 — Official contract | NOT STARTED | Accept the official candidate, regenerate all surfaces, and review the complete diff
@@ -207,3 +207,28 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Successful empty 200/204 responses and nil outputs return cleanly; API errors retain status, request ID, redacted body, and `APIError` typing.
 - Response decoding uses `json.Decoder.UseNumber`, rejects a second JSON value/trailing syntax, and retains integers beyond the exact IEEE-754 range as `json.Number`; safe legacy numbers remain compatible with current CLI workflows.
 - Focused client/decode tests and the full Go suite exited 0; `git diff --check` exited 0.
+
+### GO002
+
+- Go requests now distinguish JSON from multipart bodies and reject ambiguous combinations before transport.
+- JSON bodies retain the exact `json.Marshal` bytes and content type; bodyless requests emit neither a body nor `Content-Type`.
+- Multipart uploads stream through `io.Pipe` with explicit part name, filename, media type, and source reader; copy and cancellation errors reach the caller.
+- Focused JSON/multipart tests and `go test -race ./internal/plakysdk` exited 0; `git diff --check` exited 0.
+
+### GO003
+
+- Client construction trim-checks API keys without modifying the header value and rejects negative timeouts.
+- Server URLs are parsed once, require absolute HTTP(S) with a host and no query/fragment, normalize trailing slashes, and preserve configured base paths when joining operation paths.
+- Caller-provided HTTP clients are used unchanged; the requested timeout remains available through `Client.Timeout()` for reporting.
+- CLI `--timeout` rejects negative durations before client construction.
+- `go test ./internal/plakysdk ./internal/cli`, `go vet ./...`, and `git diff --check` exited 0.
+
+### O001
+
+- Official source: `https://docs.plaky.com/`, fetched `2026-07-26T22:46:49.352Z` with HTTP 200 and content type `text/html; charset=utf-8`.
+- Raw SHA-256: `e03c50ed74fcf994d670ff1eb9167f3fe437e2e83935def5bc1798f73c06984f`; canonical SHA-256: `0aa047cec4b45908b428eff54f5e6b16de1b306486a2ac182eda3b8ddb9bb5c2`.
+- Candidate inventory is exactly 32 method/path keys: all expected 32, no missing or unexpected key, and no unresolved external `$ref`.
+- Semantic diff command reported `breaking` because it compares four newly introduced required-property arrays against absence; its operation changes are exactly the 12 additive endpoints, with no removal, relocation, or transport change to the existing 20.
+- Source transport review confirmed: paged Item Group list; object get/create/update responses; required JSON create/update bodies; bodyless 200 delete/archive; binary multipart part `file` with 201 object response; bare-array file list; object details/update; `{ url, expiresInSeconds }` download link; and bodyless 200 file delete.
+- A Chrome rendering of the official docs exposed the same 12 endpoint labels. Expanded rendered sections independently confirmed multipart `file`, bare-array listing, download-link fields, and the three bodyless 200 archive/delete operations.
+- The taskbook's diagnostic example names an unsupported `--source` option; an equivalent source-derived method/path exact-set diagnostic was used without changing tracked tooling in this hold-point task.
