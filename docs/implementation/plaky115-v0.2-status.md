@@ -13,7 +13,7 @@
 - [x] `B002` | Phase 0 — Baseline | DONE | Capture reproducible baseline inventory and gate results
 - [x] `B003` | Phase 0 — Baseline | DONE | Add the intentional 32-operation expected manifest
 - [x] `C001` | Phase 1 — Contract acquisition | DONE | Create official-source parser fixtures and a deterministic YAML helper
-- [ ] `C002` | Phase 1 — Contract acquisition | NOT STARTED | Implement candidate fetch, parsing, canonicalization, and provenance
+- [x] `C002` | Phase 1 — Contract acquisition | DONE | Implement candidate fetch, parsing, canonicalization, and provenance
 - [ ] `C003` | Phase 1 — Contract acquisition | NOT STARTED | Add semantic contract diff, manifest checks, and freshness workflow
 - [ ] `M001` | Phase 2 — Metadata | NOT STARTED | Create and validate transport-quadrant OpenAPI fixtures
 - [ ] `M002` | Phase 2 — Metadata | NOT STARTED | Make parameter metadata contract-derived
@@ -93,3 +93,12 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - JSON, YAML, and complete inert-HTML fixtures are semantically equal; malformed HTML has no complete assignment.
 - Ruby YAML parsing disables aliases and object deserialization, validates an OpenAPI object root, and emits canonical JSON.
 - Canonical JSON to deterministic UTF-8 YAML to canonical JSON round-trip was byte-identical with exactly two fake paths.
+
+### C002
+
+- Added direct JSON/YAML and balanced inert-HTML parsing without executing page JavaScript.
+- Candidate acquisition follows redirects, times out after 30 seconds, supports `--file`, and never reads a non-2xx body.
+- Each successful acquisition atomically replaces ignored `.contract-candidate/current/` with raw, canonical JSON, deterministic YAML, and provenance evidence.
+- Provenance includes hashes, source/status/content type, fetch time, info, operation count, and sorted method/path keys.
+- Missing any of the 12 required new method/path keys preserves evidence and returns exit code 3.
+- Parser/fetch suite: 13 tests passed across JSON, YAML, HTML, escaped/braced strings, malformed input, redirect, timeout, invalid contract, atomic replacement, and hold-point behavior.
