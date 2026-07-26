@@ -2,12 +2,12 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadMetadata } from "./lib/codegen-common.mjs";
 import { buildDocsIndex, emitDocsIndex } from "./lib/codegen-docs-index.mjs";
+import { loadOperationMetadata } from "./lib/operation-metadata.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const out = join(root, "mcp-server/src/runtime/docs-index.ts");
 mkdirSync(dirname(out), { recursive: true });
-const entries = buildDocsIndex(root, loadMetadata(root));
+const entries = buildDocsIndex(root, loadOperationMetadata(root));
 writeFileSync(out, emitDocsIndex(entries));
 console.log(`generate-docs-index: wrote ${entries.length} entries to ${out}`);

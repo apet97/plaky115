@@ -1,0 +1,127 @@
+import assert from "node:assert/strict";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { spawnSync } from "node:child_process";
+import { test } from "node:test";
+
+import {
+  COMPACT_KINDS,
+  CONFIRMATION_VALUES,
+  REQUEST_KINDS,
+  SUCCESS_KINDS,
+  validateOperationMetadata,
+} from "./lib/operation-metadata.mjs";
+
+test("valid metadata loads without mutation or operation reordering", () => {
+  const input = metadata([operation("second"), operation("first")]);
+  const before = structuredClone(input);
+  const validated = validateOperationMetadata(input);
+  assert.deepEqual(input, before);
+  assert.deepEqual(validated.operations.map(({ operationId }) => operationId), ["second", "first"]);
+  assert.deepEqual(validated.operations[0].query, []);
+  assert.equal(validated.operations[0].pagination, null);
+  assert.deepEqual(REQUEST_KINDS, ["none", "json", "multipart"]);
+  assert.deepEqual(SUCCESS_KINDS, ["json-object", "json-array", "void"]);
+  assert.ok(COMPACT_KINDS.includes("downloadLink"));
+  assert.deepEqual(CONFIRMATION_VALUES, ["none", "destructive"]);
+});
+
+test("missing keys and unknown request, success, compact, or confirmation kinds fail with paths", () => {
+  const cases = [
+    ["request", undefined, /operation fixture at request: is required/],
+    ["request.kind", "other", /operation fixture at request\.kind: unsupported value/],
+    ["success.kind", "other", /operation fixture at success\.kind: unsupported value/],
+    ["compactKind", "other", /operation fixture at compactKind: unsupported value/],
+    ["confirmation", "other", /operation fixture at confirmation: unsupported value/],
+  ];
+  for (const [path, value, message] of cases) {
+    const candidate = metadata([operation("fixture")]);
+    setPath(candidate.operations[0], path, value);
+    assert.throws(() => validateOperationMetadata(candidate), message);
+  }
+});
+
+test("duplicate operation IDs and MCP names fail", () => {
+  assert.throws(
+    () => validateOperationMetadata(metadata([operation("same"), operation("same")])),
+    /duplicate operationId: same/,
+  );
+  const first = operation("one");
+  const second = operation("two");
+  second.mcpName = first.mcpName;
+  assert.throws(
+    () => validateOperationMetadata(metadata([first, second])),
+    /duplicate mcpName: plaky_one/,
+  );
+});
+
+test("invalid parameter schemas fail with operation and property path", () => {
+  const candidate = metadata([operation("fixture")]);
+  candidate.operations[0].parameters = [{
+    name: "filter",
+    in: "query",
+    required: false,
+    schema: { type: "object" },
+    style: "form",
+    explode: true,
+  }];
+  assert.throws(
+    () => validateOperationMetadata(candidate),
+    /operation fixture at parameters\[0\]\.schema\.type: unsupported value object/,
+  );
+});
+
+test("all JavaScript generator entry points use the same validator", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "plaky115-loader-test-"));
+  const invalidPath = join(directory, "invalid.json");
+  const invalid = metadata([operation("fixture")]);
+  invalid.operations[0].request.kind = "invalid";
+  await writeFile(invalidPath, JSON.stringify(invalid));
+  for (const script of ["generate-mcp.mjs", "generate-cli.mjs", "generate-docs-index.mjs"]) {
+    const result = spawnSync(process.execPath, [`scripts/${script}`], {
+      cwd: new URL("..", import.meta.url),
+      env: { ...process.env, PLAKY115_METADATA_PATH: invalidPath },
+      encoding: "utf8",
+    });
+    assert.notEqual(result.status, 0, script);
+    assert.match(result.stderr, /operation fixture at request\.kind: unsupported value invalid/, script);
+  }
+  await rm(directory, { recursive: true, force: true });
+});
+
+function metadata(operations) {
+  return { generatedAt: "deterministic", source: "fixture", operations };
+}
+
+function operation(operationId) {
+  return {
+    operationId,
+    method: "GET",
+    path: `/fixture/${operationId}`,
+    parameters: [],
+    request: { kind: "none", required: false },
+    success: { status: 200, kind: "json-object", mediaType: "application/json" },
+    mcpName: `plaky_${operationId}`,
+    mcpTitle: operationId,
+    scopes: ["read"],
+    readOnly: true,
+    destructive: false,
+    idempotent: true,
+    openWorld: true,
+    confirmation: "none",
+    compactKind: "raw",
+    sensitiveOutput: false,
+    list: false,
+    mutation: false,
+    bodyRequired: false,
+  };
+}
+
+function setPath(object, path, value) {
+  const parts = path.split(".");
+  const key = parts.pop();
+  const parent = parts.reduce((current, part) => current[part], object);
+  if (value === undefined) delete parent[key];
+  else parent[key] = value;
+}

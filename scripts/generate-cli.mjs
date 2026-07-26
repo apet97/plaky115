@@ -3,14 +3,15 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync, readdirSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadMetadata, slug } from "./lib/codegen-common.mjs";
+import { slug } from "./lib/codegen-common.mjs";
 import { buildCobraCommand, buildRawRoot, buildGoOperations } from "./lib/codegen-cli.mjs";
+import { loadOperationMetadata } from "./lib/operation-metadata.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const outDir = join(root, "cli/internal/cli/raw");
 mkdirSync(outDir, { recursive: true });
 
-const metadata = loadMetadata(root);
+const metadata = loadOperationMetadata(root);
 const ops = metadata.operations;
 
 const expected = new Set([...ops.map((o) => `${slug(o.operationId)}.go`), "raw.go"]);

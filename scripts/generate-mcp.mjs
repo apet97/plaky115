@@ -2,14 +2,15 @@
 import { mkdirSync, writeFileSync, readdirSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadMetadata, slug } from "./lib/codegen-common.mjs";
+import { slug } from "./lib/codegen-common.mjs";
 import { buildRawToolModule, buildRawToolIndex } from "./lib/codegen-mcp.mjs";
+import { loadOperationMetadata } from "./lib/operation-metadata.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const outDir = join(root, "mcp-server/src/tools/raw");
 mkdirSync(outDir, { recursive: true });
 
-const metadata = loadMetadata(root);
+const metadata = loadOperationMetadata(root);
 const ops = metadata.operations;
 
 const expected = new Set([...ops.map((o) => `${slug(o.operationId)}.ts`), "index.ts"]);

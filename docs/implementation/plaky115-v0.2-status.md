@@ -20,7 +20,7 @@
 - [x] `M003` | Phase 2 — Metadata | DONE | Derive explicit request kind and multipart parts
 - [x] `M004` | Phase 2 — Metadata | DONE | Derive primary success status and response kind
 - [x] `M005` | Phase 2 — Metadata | DONE | Annotate the existing 20 operations with explicit semantics and regenerate rich metadata
-- [ ] `G001` | Phase 3 — Generators | NOT STARTED | Add one shared metadata loader and validator for JavaScript generators
+- [x] `G001` | Phase 3 — Generators | DONE | Add one shared metadata loader and validator for JavaScript generators
 - [ ] `G002` | Phase 3 — Generators | NOT STARTED | Make MCP generator use request/success/parameter metadata
 - [ ] `G003` | Phase 3 — Generators | NOT STARTED | Generate safe MCP multipart upload tools
 - [ ] `G004` | Phase 3 — Generators | NOT STARTED | Make Cobra command generation transport- and confirmation-aware
@@ -152,3 +152,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Only `deleteItem` and `deleteItemComment` require destructive confirmation; all current outputs are non-sensitive.
 - Generator validation rejects invalid annotations, duplicate operation IDs/MCP names, and destructive scope/confirmation inconsistencies without method/path fallbacks.
 - Regenerated DX OpenAPI and rich metadata contain explicit request/success semantics for all 20 operations; metadata tests passed (legacy 4/300 assertions, rich 21/327 assertions).
+
+### G001
+
+- Added one non-mutating metadata loader shared by the MCP, CLI, and docs-index generator entry points.
+- Validation covers required operation fields, transport/response/compaction/confirmation enums, unique operation and MCP names, typed parameters, multipart parts, and successful statuses with operation/property paths in failures.
+- Optional parameter/query/pagination input collections normalize once without changing operation order.
+- Loader suite: 5 tests passed, including identical entry-point rejection of malformed metadata.
+- `npm run generate:docs-index` and `git diff --check` exited 0 with no generated output diff.
