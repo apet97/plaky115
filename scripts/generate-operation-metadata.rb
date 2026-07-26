@@ -71,6 +71,69 @@ def body_required?(operation)
   request_body["required"] == true
 end
 
+def request_metadata(operation, spec)
+  raw_request = operation["requestBody"]
+  return { "kind" => "none", "required" => false } unless raw_request
+
+  request = fetch_ref(raw_request, spec)
+  raise ArgumentError, "requestBody must resolve to an object" unless request.is_a?(Hash)
+
+  content = request["content"]
+  raise ArgumentError, "requestBody content must be an object" unless content.is_a?(Hash)
+
+  supported = content.keys & ["application/json", "multipart/form-data"]
+  selected = operation["x-plaky115-request-media-type"]
+  if selected
+    raise ArgumentError, "selected request media type is unavailable: #{selected}" unless supported.include?(selected)
+  elsif supported.length > 1
+    raise ArgumentError, "multiple supported request media types require x-plaky115-request-media-type"
+  else
+    selected = supported.first
+  end
+  raise ArgumentError, "unsupported request media types: #{content.keys.join(', ')}" unless selected
+
+  raw_schema = content.dig(selected, "schema")
+  raise ArgumentError, "request schema is required for #{selected}" unless raw_schema.is_a?(Hash)
+
+  schema_ref = raw_schema["$ref"]
+  schema = fetch_ref(raw_schema, spec)
+  output = {
+    "kind" => selected == "application/json" ? "json" : "multipart",
+    "required" => request["required"] == true,
+    "mediaType" => selected,
+    "schemaRef" => schema_ref,
+  }.compact
+  output["parts"] = multipart_parts(schema, spec) if selected == "multipart/form-data"
+  output
+end
+
+def multipart_parts(schema, spec)
+  unless schema.is_a?(Hash) && schema["type"] == "object" && schema["properties"].is_a?(Hash)
+    raise ArgumentError, "multipart request schema must be an object with properties"
+  end
+
+  required = Array(schema["required"])
+  parts = schema.fetch("properties").map do |name, raw_part|
+    part = fetch_ref(raw_part, spec)
+    type = part.is_a?(Hash) ? part["type"] : nil
+    unless %w[string integer number boolean].include?(type)
+      raise ArgumentError, "unsupported multipart part #{name}: #{type.inspect}"
+    end
+
+    {
+      "name" => name,
+      "required" => required.include?(name),
+      "type" => type,
+      "format" => part["format"],
+      "description" => collapse_whitespace(part["description"]),
+    }.compact
+  end
+  unless parts.any? { |part| part["type"] == "string" && part["format"] == "binary" }
+    raise ArgumentError, "multipart request requires a binary part"
+  end
+  parts
+end
+
 def collapse_whitespace(text)
   return nil if text.nil?
 
@@ -191,6 +254,8 @@ def generate_metadata(source)
         "openWorld" => mcp.fetch("openWorldHint", true),
         "list" => list_operation?(operation, method, spec),
         "mutation" => !%w[get head].include?(method),
+        "request" => request_metadata(operation, spec),
+        # Deprecated compatibility field; remove after generators consume request.kind in G006.
         "bodyRequired" => body_required?(operation),
       }
 

@@ -17,7 +17,7 @@
 - [x] `C003` | Phase 1 — Contract acquisition | DONE | Add semantic contract diff, manifest checks, and freshness workflow
 - [x] `M001` | Phase 2 — Metadata | DONE | Create and validate transport-quadrant OpenAPI fixtures
 - [x] `M002` | Phase 2 — Metadata | DONE | Make parameter metadata contract-derived
-- [ ] `M003` | Phase 2 — Metadata | NOT STARTED | Derive explicit request kind and multipart parts
+- [x] `M003` | Phase 2 — Metadata | DONE | Derive explicit request kind and multipart parts
 - [ ] `M004` | Phase 2 — Metadata | NOT STARTED | Derive primary success status and response kind
 - [ ] `M005` | Phase 2 — Metadata | NOT STARTED | Annotate the existing 20 operations with explicit semantics and regenerate rich metadata
 - [ ] `G001` | Phase 3 — Generators | NOT STARTED | Add one shared metadata loader and validator for JavaScript generators
@@ -128,3 +128,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Pagination inputs retain typed schemas outside generic parameters; unsupported query objects/deepObject fail loudly.
 - Removed the positive query-name allowlist. Fixture-added `labels` appears automatically; existing `expand` comma-join and `emails` repeated-key metadata remain compatible.
 - Parameter slice: 5 tests and 28 assertions passed; legacy metadata suite: 4 tests and 158 assertions passed.
+
+### M003
+
+- Request metadata is contract-derived as `none`, `json`, or `multipart`; bodyless PUT is explicitly `none`.
+- Required/optional state, selected media type, schema ref, and primitive multipart parts are explicit.
+- Multipart requires at least one binary part and rejects nested object parts; ambiguous supported media requires an overlay selection.
+- The legacy `bodyRequired` field remains temporarily with an in-source deprecation marker for G006 removal.
+- Request slice: 6 tests and 25 assertions passed; legacy metadata tests remain green.
