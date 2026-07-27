@@ -73,10 +73,10 @@ jobs:
         run: npm run verify
 
       - name: Inspect SDK pack
-        run: npm --prefix sdk pack --dry-run --json
+        run: (cd sdk && npm pack --dry-run --json)
 
       - name: Inspect MCP pack
-        run: npm --prefix mcp-server pack --dry-run --json
+        run: (cd mcp-server && npm pack --dry-run --json)
 
       - name: Audit package artifacts
         run: |
