@@ -3,15 +3,22 @@ import { resolveSpaceAndBoard, type EntityRef } from "../resolvers/index.js";
 import { asSpaceId, asBoardId, asItemId } from "../runtime/ids.js";
 import type { ItemShape } from "../client/shapes.js";
 
-type WithIdTitle = { id?: number | string | undefined; title?: string | undefined; name?: string | undefined };
+type WithIdTitle = {
+  id?: number | string | undefined;
+  title?: string | undefined;
+  name?: string | undefined;
+  boards?: WithIdTitle[] | undefined;
+};
 
 export async function workspaceMap(client: PlakyClient): Promise<Array<{ id: number | string | undefined; title: string | undefined; boards: WithIdTitle[] }>> {
-  const spaces = (await client.spaces.listAll()) as WithIdTitle[];
+  const spaces = (await client.spaces.listAll({ expand: ["board"] })) as WithIdTitle[];
   const out = [];
   for (const space of spaces) {
-    const boards = space.id !== undefined
-      ? ((await client.boards.listAll({ spaceId: asSpaceId(space.id) })) as WithIdTitle[])
-      : [];
+    const boards = Array.isArray(space.boards)
+      ? space.boards
+      : space.id !== undefined
+        ? ((await client.boards.listAll({ spaceId: asSpaceId(space.id) })) as WithIdTitle[])
+        : [];
     out.push({ id: space.id, title: space.title, boards });
   }
   return out;

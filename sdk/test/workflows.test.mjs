@@ -8,20 +8,101 @@ beforeEach(() => {
   globalThis.fetch = async (url, init) => fetchMock(url.toString(), init);
 });
 
-test("workspaceMap returns one entry per space with boards", async () => {
+test("workspaceMap uses expanded boards across the paginated space sequence", async () => {
+  let spaceCalls = 0;
+  let boardCalls = 0;
   fetchMock = (u) => {
     if (u.endsWith("/spaces") || u.includes("/spaces?")) {
-      return new Response(JSON.stringify({ data: [{ id: 1, title: "Ops" }], hasMore: false }), { status: 200, headers: { "content-type": "application/json" } });
+      spaceCalls++;
+      const url = new URL(u);
+      assert.equal(url.searchParams.get("expand"), "board");
+      if (url.searchParams.get("page") === "1") {
+        return new Response(JSON.stringify({ data: [{ id: 1, title: "Ops", boards: [{ id: 11, title: "Roadmap" }] }], hasMore: true }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ data: [{ id: 2, title: "Eng", boards: [{ id: 21, title: "Bugs" }] }], hasMore: false }), { status: 200, headers: { "content-type": "application/json" } });
     }
     if (u.match(/\/spaces\/\d+\/boards(\?|$)/)) {
-      return new Response(JSON.stringify({ data: [{ id: 11, title: "Roadmap" }], hasMore: false }), { status: 200, headers: { "content-type": "application/json" } });
+      boardCalls++;
+      return new Response(JSON.stringify({ data: [], hasMore: false }), { status: 200, headers: { "content-type": "application/json" } });
     }
     return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
   };
   const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   const map = await workspaceMap(c);
-  assert.equal(map.length, 1);
+  assert.deepEqual(map.map((entry) => entry.id), [1, 2]);
   assert.equal(map[0].boards[0].title, "Roadmap");
+  assert.equal(map[1].boards[0].title, "Bugs");
+  assert.equal(spaceCalls, 2);
+  assert.equal(boardCalls, 0);
+});
+
+test("workspaceMap falls back only when an expanded space omits boards", async () => {
+  let boardCalls = 0;
+  fetchMock = (u) => {
+    if (u.endsWith("/spaces") || u.includes("/spaces?")) {
+      return new Response(JSON.stringify({
+        data: [
+          { id: 1, title: "Empty", boards: [] },
+          { id: 2, title: "Legacy" },
+          { title: "Missing ID" },
+        ],
+        hasMore: false,
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    if (u.match(/\/spaces\/2\/boards(\?|$)/)) {
+      boardCalls++;
+      return new Response(JSON.stringify({ data: [{ id: 21, title: "Fallback" }], hasMore: false }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    throw new Error(`unexpected request ${u}`);
+  };
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
+
+  const map = await workspaceMap(c);
+
+  assert.deepEqual(map.map((entry) => entry.boards.map((board) => board.title)), [[], ["Fallback"], []]);
+  assert.equal(boardCalls, 1);
+});
+
+test("workspaceMap preserves an empty partial space page without board requests", async () => {
+  let spaceCalls = 0;
+  let boardCalls = 0;
+  fetchMock = (u) => {
+    if (u.endsWith("/spaces") || u.includes("/spaces?")) {
+      spaceCalls++;
+      return new Response(JSON.stringify({ data: [], hasMore: false }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    boardCalls++;
+    return new Response(JSON.stringify({ data: [], hasMore: false }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
+
+  assert.deepEqual(await workspaceMap(c), []);
+  assert.equal(spaceCalls, 1);
+  assert.equal(boardCalls, 0);
+});
+
+test("workspaceMap resolves the space collection once and preserves order", async () => {
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
+  let spaceListCalls = 0;
+  let boardListCalls = 0;
+  c.spaces.listAll = async (options) => {
+    spaceListCalls++;
+    assert.deepEqual(options, { expand: ["board"] });
+    return [
+      { id: 3, title: "Third", boards: [{ id: 31, title: "C" }] },
+      { id: 1, title: "First", boards: [{ id: 11, title: "A" }] },
+    ];
+  };
+  c.boards.listAll = async () => {
+    boardListCalls++;
+    return [];
+  };
+
+  const map = await workspaceMap(c);
+
+  assert.deepEqual(map.map((entry) => entry.id), [3, 1]);
+  assert.equal(spaceListCalls, 1);
+  assert.equal(boardListCalls, 0);
 });
 
 test("bulkUpdateItems with dryRun records dry-run per update without calling write", async () => {

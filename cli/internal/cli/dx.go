@@ -41,7 +41,7 @@ func newWorkspaceMapCommand(getClient clientFactory) *cobra.Command {
 			}
 			ctx := cmd.Context()
 			data, err := drainPaged(200, func(page, pageSize int) (any, error) {
-				return c.ListSpaces(ctx, plakysdk.ListSpacesOptions{Page: page, PageSize: pageSize})
+				return c.ListSpaces(ctx, plakysdk.ListSpacesOptions{Expand: []string{"board"}, Page: page, PageSize: pageSize})
 			})
 			if err != nil {
 				return err
@@ -49,15 +49,23 @@ func newWorkspaceMapCommand(getClient clientFactory) *cobra.Command {
 			out := []map[string]any{}
 			for _, s := range data {
 				m := s
-				idStr, _ := mustID(m["id"])
-				if idStr == "" {
-					continue
-				}
-				boards, err := drainPaged(200, func(page, pageSize int) (any, error) {
-					return c.ListBoards(ctx, plakysdk.ListBoardsOptions{SpaceId: idStr, Page: page, PageSize: pageSize})
-				})
-				if err != nil {
-					return fmt.Errorf("list boards for space %s: %w", idStr, err)
+				boards, expanded := m["boards"].([]any)
+				if !expanded {
+					idStr, _ := mustID(m["id"])
+					if idStr == "" {
+						boards = []any{}
+					} else {
+						fallback, err := drainPaged(200, func(page, pageSize int) (any, error) {
+							return c.ListBoards(ctx, plakysdk.ListBoardsOptions{SpaceId: idStr, Page: page, PageSize: pageSize})
+						})
+						if err != nil {
+							return fmt.Errorf("list boards for space %s: %w", idStr, err)
+						}
+						boards = make([]any, 0, len(fallback))
+						for _, board := range fallback {
+							boards = append(boards, board)
+						}
+					}
 				}
 				compactBoards := make([]map[string]any, 0, len(boards))
 				for _, b := range boards {

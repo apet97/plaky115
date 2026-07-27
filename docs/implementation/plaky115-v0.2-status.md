@@ -48,7 +48,7 @@
 - [x] `CLI002` | Phase 8 — CLI | DONE | Add minimal curated Item Group and Item file commands
 - [x] `CLI003` | Phase 8 — CLI | DONE | Repair monorepo CLI release and installer targets
 - [x] `SEC001` | Phase 9 — Security hygiene | DONE | Unify API-key redaction, test fixtures, and repository secret scanning
-- [ ] `W001` | Phase 10 — Workflow correctness | NOT STARTED | Remove avoidable workspace-map N+1 requests and keep a fallback
+- [x] `W001` | Phase 10 — Workflow correctness | DONE | Remove avoidable workspace-map N+1 requests and keep a fallback
 - [ ] `W002` | Phase 10 — Workflow correctness | NOT STARTED | Add detailed search completeness without breaking existing callers
 - [ ] `W003` | Phase 10 — Workflow correctness | NOT STARTED | Make TypeScript and Go CSV canonical, collision-free, and spreadsheet-safe
 - [ ] `L001` | Phase 11 — Live proof | NOT STARTED | Refactor live sweep around a run-owned artifact ledger
@@ -377,3 +377,9 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - The scanner walks bytes without following symlinks, skips NUL binaries, uses only an explicit reviewed build/cache exclusion list, scans `.live-artifacts`, emits only sorted relative path/line/count findings, and fails closed on scan/configuration errors. Five scanner tests cover the shared corpus, short/underscore/hyphen/multiple values, binary, symlink, build directory, ignored live artifact, unreadable path, invalid root, ordering, and non-disclosure.
 - `npm --prefix sdk test` passed 166 tests; `npm --prefix mcp-server test` passed 67 tests; the full Go suite and the focused Redact/Secret suite passed; SDK typecheck/type tests/lint and all six live-sweep source tests passed. The required 8-test combined scanner/SDK-redactor command and `git diff --check` exited 0.
 - The scanner correctly detected three preserved ignored planning/taskbook inputs that quote token-shaped examples, proving it does not rely on `.gitignore`. For the required clean implementation-tree scan and exact `rg` gate, those three inputs were moved temporarily, both gates exited 0, and the files were restored byte-identically at their original paths; authoritative taskbook/manifest SHA-256 values remain unchanged.
+
+### W001
+
+- `workspaceMap` now drains one `spaces.listAll({expand:["board"]})` sequence and reuses each space's embedded board array, preserving space/board order and the existing output shape. It calls the per-space board endpoint only when the expanded property is absent; an explicit empty array and a space without an ID cause no fallback request.
+- The curated CLI workspace map now requests the same expansion and uses embedded boards before its existing paginated fallback. MCP callers already delegate to the SDK workflow and required no production change.
+- Request-count tests cover a two-page expanded sequence with zero board requests, a missing-boards fallback, explicit empty boards, a missing-ID space, an empty partial page, stable order, and exactly one high-level space-list call. The focused 21 SDK workflow/resolver tests, all 67 MCP tests, the CLI package tests, and `git diff --check` exited 0.
