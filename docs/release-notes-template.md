@@ -27,7 +27,7 @@ official Plaky or CAKE.com package.
 - `npm run package:consumer-smoke`
 - Optional live: `npm run live:sweep`
 - `node scripts/check-release-version.mjs --tag v0.2.0 --registry-preflight`
-- npm trusted publishers verified for both packages (repository
+- [ ] Before release: verify npm trusted publishers for both packages (repository
   `apet97/plaky115`, workflow `release-npm.yml`, environment `npm-release`,
   permission `npm publish`)
 

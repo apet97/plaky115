@@ -120,7 +120,8 @@ After confirming the IDs are sacrificial, clean up with the raw delete command:
 ./plaky115 raw delete-item \
   --space-id "$SPACE_ID" \
   --board-id "$BOARD_ID" \
-  --item-id "$ITEM_ID"
+  --item-id "$ITEM_ID" \
+  --confirm
 ```
 
 Rotate the API key after smoke testing if the key was exposed outside an

@@ -9,20 +9,20 @@ import {
 
 const repositoryRoot = new URL("..", import.meta.url);
 
-test("current metadata has 20 unique operations and deterministic inventory", async () => {
+test("current metadata has 32 unique operations and deterministic inventory", async () => {
   const metadata = JSON.parse(
     await readFile(new URL("openapi/plaky115-operation-metadata.json", repositoryRoot), "utf8"),
   );
 
   const inventory = await buildContractInventory(metadata, repositoryRoot);
 
-  assert.equal(inventory.operationCount, 20);
-  assert.equal(inventory.operationIds.length, 20);
-  assert.equal(inventory.methodPathKeys.length, 20);
-  assert.equal(new Set(inventory.operationIds).size, 20);
-  assert.equal(new Set(inventory.methodPathKeys).size, 20);
-  assert.equal(inventory.rawSurfaceFileCounts.cli, 20);
-  assert.equal(inventory.rawSurfaceFileCounts.mcp, 20);
+  assert.equal(inventory.operationCount, 32);
+  assert.equal(inventory.operationIds.length, 32);
+  assert.equal(inventory.methodPathKeys.length, 32);
+  assert.equal(new Set(inventory.operationIds).size, 32);
+  assert.equal(new Set(inventory.methodPathKeys).size, 32);
+  assert.equal(inventory.rawSurfaceFileCounts.cli, 32);
+  assert.equal(inventory.rawSurfaceFileCounts.mcp, 32);
   assert.equal(formatContractInventory(inventory), formatContractInventory(inventory));
 });
 
