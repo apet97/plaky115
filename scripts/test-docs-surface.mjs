@@ -74,6 +74,29 @@ test("stale generated docs, examples, and local plans are not tracked", () => {
   assert.equal(result.stdout.trim(), "");
 });
 
+test("public repository docs exclude internal ledgers and include contributor entry points", () => {
+  for (const [rel, pattern] of [
+    ["CONTRIBUTING.md", /npm run verify/],
+    ["CHANGELOG.md", /## \[0\.2\.0\]/],
+  ]) {
+    assert.equal(existsSync(join(root, rel)), true, `${rel} must exist`);
+    assert.match(read(rel), pattern);
+  }
+
+  const internal = [
+    "docs/implementation/plaky115-v0.2-baseline.md",
+    "docs/implementation/plaky115-v0.2-status.md",
+    "docs/release-notes-template.md",
+    "docs/public-release-design.md",
+  ];
+  const result = spawnSync("git", ["ls-files", "--", ...internal], {
+    cwd: root,
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), "");
+});
+
 test("v0.2 docs describe the exact new public surfaces and safe defaults", () => {
   const rootReadme = read("README.md");
   const sdkReadme = read("sdk/README.md");
