@@ -2,6 +2,7 @@ import type { PlakyClient } from "../client/client.js";
 import { resolveSpaceAndBoard, type EntityRef } from "../resolvers/index.js";
 import { asSpaceId, asBoardId, asItemId } from "../runtime/ids.js";
 import type { ItemShape } from "../client/shapes.js";
+import { renderItemsCsv, type CsvSafety } from "./internal/csv.js";
 
 type WithIdTitle = {
   id?: number | string | undefined;
@@ -134,6 +135,7 @@ export type ExportItemsParams = {
   space: EntityRef;
   board: EntityRef;
   format: "jsonl" | "csv";
+  csvSafety?: CsvSafety | undefined;
 };
 
 export async function exportItems(client: PlakyClient, params: ExportItemsParams): Promise<string> {
@@ -142,45 +144,5 @@ export async function exportItems(client: PlakyClient, params: ExportItemsParams
   if (params.format === "jsonl") {
     return items.map((i) => JSON.stringify(i)).join("\n");
   }
-  if (items.length === 0) return "";
-  const escape = (v: unknown) => {
-    if (v === null || v === undefined) return "";
-    const s = typeof v === "string" ? v : JSON.stringify(v);
-    // Match Go encoding/csv's quoting rule: quote on comma, double-quote, CR, LF,
-    // or a leading whitespace rune.
-    return /[",\r\n]/.test(s) || /^\s/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-  // Expand each item's `fields[]` into real per-field columns (labeled by the
-  // first non-empty string among name/title/key); other top-level scalars keep
-  // their own columns. Column order is deterministic and identical to the Go CLI:
-  // sorted top-level keys (excluding `fields`), then sorted field labels; a field
-  // label equal to a top-level key shares that column (field value wins). The
-  // output (including the trailing newline) is byte-identical to the Go CLI's
-  // `items-export --format csv` for scalar (string/number/boolean) values; a
-  // non-scalar field value is JSON-stringified and may differ in object-key order
-  // from the Go side (json.Marshal sorts keys).
-  const topKeys = new Set<string>();
-  const fieldLabels = new Set<string>();
-  const rows = items.map((item) => {
-    const row: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(item)) {
-      if (k === "fields") continue;
-      topKeys.add(k);
-      row[k] = v;
-    }
-    const fields = item["fields"];
-    if (Array.isArray(fields)) {
-      for (const f of fields as Array<Record<string, unknown>>) {
-        const label = ([f?.["name"], f?.["title"], f?.["key"]].find((v) => typeof v === "string" && v !== "") as string | undefined) ?? "";
-        if (label === "") continue;
-        fieldLabels.add(label);
-        row[label] = f?.["value"];
-      }
-    }
-    return row;
-  });
-  const header = Array.from(new Set([...Array.from(topKeys).sort(), ...Array.from(fieldLabels).sort()]));
-  const lines = [header.map(escape).join(",")];
-  for (const row of rows) lines.push(header.map((col) => escape(row[col])).join(","));
-  return `${lines.join("\n")}\n`;
+  return renderItemsCsv(items, params.csvSafety ?? "spreadsheet");
 }

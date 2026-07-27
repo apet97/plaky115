@@ -50,7 +50,7 @@
 - [x] `SEC001` | Phase 9 — Security hygiene | DONE | Unify API-key redaction, test fixtures, and repository secret scanning
 - [x] `W001` | Phase 10 — Workflow correctness | DONE | Remove avoidable workspace-map N+1 requests and keep a fallback
 - [x] `W002` | Phase 10 — Workflow correctness | DONE | Add detailed search completeness without breaking existing callers
-- [ ] `W003` | Phase 10 — Workflow correctness | NOT STARTED | Make TypeScript and Go CSV canonical, collision-free, and spreadsheet-safe
+- [x] `W003` | Phase 10 — Workflow correctness | DONE | Make TypeScript and Go CSV canonical, collision-free, and spreadsheet-safe
 - [ ] `L001` | Phase 11 — Live proof | NOT STARTED | Refactor live sweep around a run-owned artifact ledger
 - [ ] `L002` | Phase 11 — Live proof | NOT STARTED | Exercise Item Groups and Item files through API, SDK, CLI, and MCP
 - [ ] `L003` | Phase 11 — Live proof | NOT STARTED | Add fault injection, privacy assertions, and strict live workflow preflight
@@ -391,3 +391,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - The MCP read-workflow path now returns the detailed envelope without converting truncation to `hasMore:false`; its schema accepts empty queries and only positive integer limits. A public in-memory MCP call proved a one-request capped result with `truncated:true` and `nextPage:2`.
 - CLI item find now accepts `--limit` (default 200), performs the same bounded page scan and recursive matching, and emits completeness metadata. Space and board find behavior remains unchanged.
 - Six detailed SDK tests cover complete multi-page search, nested values, truncation/no-over-fetch, exact limit completion, `nextPage`, empty/whitespace compatibility, invalid limits, and the legacy wrapper. The 16-test workflow file, SDK public type tests, all 67 MCP tests, focused/full CLI package tests, and `git diff --check` exited 0. The task packet did not allow an MCP test file, so MCP output was verified with the public client as a non-writing command rather than expanding file scope.
+
+### W003
+
+- Added separate TypeScript and Go CSV helpers implementing the same canonical contract: sorted top-level keys, field identity by key, deterministic keyless occurrence identities, sorted field descriptors, collision suffixes, and canonical JSON with sorted object keys and preserved array order. Field columns cannot overwrite top-level cells.
+- SDK `csvSafety` and CLI `--csv-safety` accept `spreadsheet` or `raw`, defaulting to spreadsheet mode. Spreadsheet mode prefixes one apostrophe to string cells whose first non-space/tab character is `=`, `+`, `-`, or `@`, plus strings beginning with tab/CR/LF; non-string values are unchanged before CSV quoting.
+- One shared JSON fixture covers every formula prefix, a whitespace formula, a leading tab, commas, quotes, embedded newlines, duplicate labels, top-level collisions, missing and empty keys, nested arrays/objects, booleans, null, Unicode, and reordered keyed fields. TypeScript and Go byte-match both reviewed safe/raw CSV files, including their trailing newline.
+- API behavior documentation now specifies deterministic columns, canonical JSON, spreadsheet-safe defaults, and the explicit raw-mode risk boundary. The previous comments allowing non-scalar cross-language drift and field-over-top-level replacement were removed.
+- The 16-test SDK workflow file, three CLI CSV modes plus invalid-mode coverage, full CLI package suite, 33-operation cross-surface parity suite, SDK typecheck/lint, and `git diff --check` exited 0.

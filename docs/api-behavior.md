@@ -89,6 +89,22 @@ reachable via `items.listSubitems`.
 and the MCP raw tools (`emails` is a repeatable `--emails` flag / `z.array`
 input). Confirmed live: `?emails=<address>` narrows the user list to the match.
 
+## CSV export
+
+SDK `exportItems(..., {format:"csv"})` and CLI `items-export --format csv`
+produce the same deterministic CSV. Top-level columns sort first. Field columns
+use field keys as identity and disambiguate duplicate labels, missing keys, and
+labels that collide with top-level columns. Arrays and objects use canonical
+JSON with sorted object keys and preserved array order, and the file ends with
+one newline.
+
+CSV string cells default to spreadsheet-safe mode. A leading apostrophe is
+added when the first non-space/tab character is `=`, `+`, `-`, or `@`, or when
+the original string begins with tab, carriage return, or line feed. Numbers,
+booleans, and null are not rewritten. Callers that need unmodified string cells
+can set SDK `csvSafety:"raw"` or CLI `--csv-safety raw`; raw CSV must not be
+opened in a spreadsheet unless its source is trusted.
+
 ## Comments listing
 
 `listItemComments` is non-paginated and returns a bare JSON array of comments,
