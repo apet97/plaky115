@@ -62,10 +62,11 @@ Passes when no generated surface reports stale, missing, or legacy output.
    publisher is saved.
 4. Confirm the protected GitHub environment `npm-release` has the intended
    reviewer policy, then tag `git tag vX.Y.Z && git push --tags`.
-5. The tag starts two root workflows. `release-npm.yml` runs the complete gates,
-   checks both exact versions are absent from npm, then publishes SDK before MCP
-   with OIDC trusted publishing and automatic provenance. `release-cli.yml`
-   runs GoReleaser from `cli/` and attaches CLI archives to the release.
+5. The tag starts two root workflows. `.github/workflows/release-npm.yml` runs
+   the complete gates, checks both exact versions are absent from npm, then
+   publishes SDK before MCP with OIDC trusted publishing and automatic
+   provenance. `.github/workflows/release-cli.yml` runs GoReleaser from `cli/`
+   and attaches CLI archives to the release.
 6. Confirm the CLI workflow produced matching Linux/macOS `.tar.gz` and Windows
    `.zip` archives plus `checksums.txt`. Do not rerun GoReleaser locally against
    the same tag.
