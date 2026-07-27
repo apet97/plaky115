@@ -12,8 +12,22 @@ commands, MCP boot checks, and real MCP curated/generated tool execution:
 export PLAKY115_API_KEY=...
 export PLAKY115_SMOKE_SPACE_ID=...
 export PLAKY115_SMOKE_BOARD_ID=...
+export PLAKY115_SMOKE_ALLOW_ARCHIVE=1
 npm run live:sweep
 ```
+
+`PLAKY115_SMOKE_ALLOW_ARCHIVE=1` is an explicit acknowledgement that the sweep
+will create, archive, and then delete one empty run-owned group per enabled
+surface. Plaky has no public unarchive endpoint. Use only a sacrificial board,
+and do not start another run if deletion of an archived group reports an exact
+artifact ID; remove that artifact first.
+
+The API, SDK, CLI, and MCP sections each cover Item Group list/get/create/update/
+archive/delete plus item-file upload/list/get/download/update/delete. The upload
+fixture is a short in-memory text value. Raw API, SDK, and CLI file listings must
+remain arrays; MCP returns its documented structured `data` envelope. Download
+links are validated in memory as non-empty HTTPS URLs with numeric expiry, but
+only `urlPresent: true` and the expiry are included in the summary.
 
 The script creates one UUID per run and prefixes every artifact with the exact
 marker `smoke:plaky115:<uuid>:`. Its in-memory ledger records each created group,

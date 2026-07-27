@@ -28,6 +28,7 @@ const boardId = String(process.env["PLAKY115_SMOKE_BOARD_ID"] ?? "");
 const wantSDK = process.env["PLAKY115_LIVE_SDK"] !== "0";
 const wantCLI = process.env["PLAKY115_LIVE_CLI"] !== "0";
 const wantMCP = process.env["PLAKY115_LIVE_MCP"] !== "0";
+const allowArchive = process.env["PLAKY115_SMOKE_ALLOW_ARCHIVE"] === "1";
 
 const runMarker = createRunMarker(randomUUID());
 const ledger = createArtifactLedger(runMarker);
@@ -36,6 +37,11 @@ const summary = [];
 async function main() {
   if (!apiKey) {
     console.error("Set PLAKY115_API_KEY (or PLAKY115_API_KEY_AUTH) before running.");
+    process.exitCode = 2;
+    return;
+  }
+  if (!allowArchive) {
+    console.error("Set PLAKY115_SMOKE_ALLOW_ARCHIVE=1 to acknowledge the empty-group archive probe.");
     process.exitCode = 2;
     return;
   }
@@ -122,6 +128,44 @@ export async function collectPages(fetchPage) {
   }
 }
 
+export function createTextFixture(marker, surface) {
+  if (typeof marker !== "string" || marker.length === 0) throw new TypeError("fixture marker is required");
+  if (typeof surface !== "string" || surface.length === 0) throw new TypeError("fixture surface is required");
+  return {
+    fileName: `${marker}fixture-${surface}.txt`,
+    contentType: "text/plain",
+    bytes: new TextEncoder().encode(`live fixture for ${surface}`),
+  };
+}
+
+export function createFixtureFormData(fixture) {
+  const form = new FormData();
+  form.append("file", new Blob([fixture.bytes], { type: fixture.contentType }), fixture.fileName);
+  return form;
+}
+
+export function assertBareFileList(value, label) {
+  if (!Array.isArray(value)) throw new Error(`${label} must return a bare array`);
+  return value;
+}
+
+export function assertVoidResult(value, label) {
+  if (value !== undefined) throw new Error(`${label} must return a void response`);
+  return value;
+}
+
+export function summarizeDownloadLink(value) {
+  if (!value || typeof value !== "object" || typeof value.url !== "string" || value.url.length === 0) {
+    throw new Error("Download link must contain a non-empty HTTPS URL.");
+  }
+  const parsedURL = new URL(value.url);
+  if (parsedURL.protocol !== "https:") throw new Error("Download link must contain a non-empty HTTPS URL.");
+  if (typeof value.expiresInSeconds !== "number" || !Number.isFinite(value.expiresInSeconds)) {
+    throw new Error("Download link must contain a finite numeric expiry.");
+  }
+  return { urlPresent: true, expiresInSeconds: value.expiresInSeconds };
+}
+
 export async function cleanupOwnedArtifacts({ ledger: targetLedger, adapters }) {
   const order = ["comments", "files", "items", "groups"];
   const failures = [];
@@ -196,18 +240,23 @@ function forgetArtifact(family, id) {
   if (index >= 0) ledger[family].splice(index, 1);
 }
 
-async function api(method, path, body) {
+async function api(method, path, body, options = {}) {
   const url = `${baseURL.replace(/\/$/, "")}${path}`;
   const headers = { "X-API-Key": apiKey, Accept: "application/json" };
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  const multipart = body instanceof FormData;
+  if (body !== undefined && !multipart) headers["Content-Type"] = "application/json";
   const init = { method, headers };
-  if (body !== undefined) init.body = JSON.stringify(body);
+  if (body !== undefined) init.body = multipart ? body : JSON.stringify(body);
   const resp = await fetch(url, init);
   const text = await resp.text();
   let parsed;
   try { parsed = text ? JSON.parse(text) : undefined; } catch { parsed = text; }
   if (!resp.ok) {
     throw new Error(`${method} ${path} -> ${resp.status}: ${redact(typeof parsed === "string" ? parsed : JSON.stringify(parsed))}`);
+  }
+  if (options.responseType === "void") {
+    if (text.trim() !== "") throw new Error(`${method} ${path} returned a body for a void operation`);
+    return undefined;
   }
   return parsed;
 }
@@ -243,11 +292,78 @@ async function directAPISweep() {
     const cId = idOf(comment);
     trackCreatedComment(newId, cId, "api", "createItemComment", content);
     record("api", "createItemComment", { commentId: cId });
+    await directAPIItemFileSweep(newId);
   }
+
+  await directAPIItemGroupSweep();
 
   record("api", "listTeams", { count: (await api("GET", "/v1/public/teams?page=1&pageSize=5"))?.data?.length ?? 0 });
   record("api", "listUsers", { count: (await api("GET", "/v1/public/users?page=1&pageSize=5"))?.data?.length ?? 0 });
   record("api", "getCurrentUser", { email: maskedEmail((await api("GET", "/v1/public/users/me")).email) });
+}
+
+async function directAPIItemGroupSweep() {
+  const path = `/v1/public/spaces/${spaceId}/boards/${boardId}/item-groups`;
+  const listed = await api("GET", `${path}?page=1&pageSize=200`);
+  record("api", "itemGroups.list", { count: listed?.data?.length ?? 0 });
+
+  const title = smokeTitle("api-group");
+  const created = await api("POST", path, { title, color: "#3366FF", ranking: "0|hzzzzz:" });
+  const groupId = idOf(created);
+  if (!groupId) throw new Error("api item group create response is missing an ID");
+  trackArtifact(ledger, "groups", { id: String(groupId), title, surface: "api", operation: "itemGroups.create" });
+  record("api", "itemGroups.create", { itemGroupId: groupId });
+
+  const current = await api("GET", `${path}/${groupId}`);
+  record("api", "itemGroups.get", { itemGroupId: groupId });
+  await api("PUT", `${path}/${groupId}`, {
+    title: smokeTitle("api-group-updated"),
+    color: current?.color ?? "#3366FF",
+    ranking: current?.ranking ?? "0|hzzzzz:",
+  });
+  record("api", "itemGroups.update", { itemGroupId: groupId });
+  assertVoidResult(await api("DELETE", `${path}/${groupId}`, undefined, { responseType: "void" }), "api item group delete");
+  forgetArtifact("groups", groupId);
+  record("api", "itemGroups.delete", { itemGroupId: groupId });
+
+  const archiveTitle = smokeTitle("api-group-archive");
+  const archiveGroup = await api("POST", path, { title: archiveTitle });
+  const archiveId = idOf(archiveGroup);
+  if (!archiveId) throw new Error("api archive-group create response is missing an ID");
+  trackArtifact(ledger, "groups", { id: String(archiveId), title: archiveTitle, surface: "api", operation: "itemGroups.archive" });
+  assertVoidResult(await api("PUT", `${path}/${archiveId}/archive`, undefined, { responseType: "void" }), "api item group archive");
+  record("api", "itemGroups.archive", { itemGroupId: archiveId });
+  try {
+    assertVoidResult(await api("DELETE", `${path}/${archiveId}`, undefined, { responseType: "void" }), "api archived item group delete");
+    forgetArtifact("groups", archiveId);
+  } catch (error) {
+    throw new Error(`archived api item group ${archiveId} could not be deleted; stop before another live run`, { cause: error });
+  }
+}
+
+async function directAPIItemFileSweep(itemId) {
+  const path = `/v1/public/spaces/${spaceId}/boards/${boardId}/items/${itemId}/files`;
+  const fixture = createTextFixture(runMarker, "api");
+  const uploaded = await api("POST", path, createFixtureFormData(fixture));
+  const itemFileId = idOf(uploaded);
+  if (!itemFileId) throw new Error("api item file upload response is missing an ID");
+  trackArtifact(ledger, "files", { itemId: String(itemId), id: String(itemFileId), name: fixture.fileName, surface: "api", operation: "itemFiles.upload" });
+  record("api", "itemFiles.upload", { itemFileId });
+
+  const files = assertBareFileList(await api("GET", path), "api itemFiles.list");
+  record("api", "itemFiles.list", { count: files.length });
+  await api("GET", `${path}/${itemFileId}`);
+  record("api", "itemFiles.get", { itemFileId });
+  const download = await api("GET", `${path}/${itemFileId}/download`);
+  record("api", "itemFiles.download", summarizeDownloadLink(download));
+  await api("PUT", `${path}/${itemFileId}`, {
+    name: `${runMarker}updated-api.txt`,
+    description: smokeText("api-file-description"),
+  });
+  record("api", "itemFiles.update", { itemFileId });
+  assertVoidResult(await api("DELETE", `${path}/${itemFileId}`, undefined, { responseType: "void" }), "api item file delete");
+  forgetArtifact("files", itemFileId);
+  record("api", "itemFiles.delete", { itemFileId });
 }
 
 // ---------- 2. SDK sweep (PlakyClient) ----------
@@ -296,9 +412,83 @@ async function sdkSweep() {
     const cId = idOf(comment);
     trackCreatedComment(newId, cId, "sdk", "comments.create", content);
     record("sdk", "client.comments.create", { commentId: cId });
+    await sdkItemFileSweep(client, { SpaceId, BoardId, ItemId }, newId);
   }
 
+  await sdkItemGroupSweep(client, { SpaceId, BoardId });
+
   record("sdk", "rateLimit.last", client.rateLimit.last);
+}
+
+async function sdkItemGroupSweep(client, ids) {
+  const scope = { spaceId: ids.SpaceId(spaceId), boardId: ids.BoardId(boardId) };
+  const listed = await client.itemGroups.list({ ...scope, page: 1, pageSize: 200 });
+  record("sdk", "itemGroups.list", { count: listed?.data?.length ?? 0 });
+
+  const title = smokeTitle("sdk-group");
+  const created = await client.itemGroups.create({ ...scope, body: { title, color: "#3366FF", ranking: "0|hzzzzz:" } });
+  const groupId = idOf(created);
+  if (!groupId) throw new Error("sdk item group create response is missing an ID");
+  trackArtifact(ledger, "groups", { id: String(groupId), title, surface: "sdk", operation: "itemGroups.create" });
+  record("sdk", "itemGroups.create", { itemGroupId: groupId });
+  const current = await client.itemGroups.get({ ...scope, itemGroupId: groupId });
+  record("sdk", "itemGroups.get", { itemGroupId: groupId });
+  await client.itemGroups.update({
+    ...scope,
+    itemGroupId: groupId,
+    body: {
+      title: smokeTitle("sdk-group-updated"),
+      color: current.color ?? "#3366FF",
+      ranking: current.ranking ?? "0|hzzzzz:",
+    },
+  });
+  record("sdk", "itemGroups.update", { itemGroupId: groupId });
+  assertVoidResult(await client.itemGroups.delete({ ...scope, itemGroupId: groupId }), "sdk item group delete");
+  forgetArtifact("groups", groupId);
+  record("sdk", "itemGroups.delete", { itemGroupId: groupId });
+
+  const archiveTitle = smokeTitle("sdk-group-archive");
+  const archiveGroup = await client.itemGroups.create({ ...scope, body: { title: archiveTitle } });
+  const archiveId = idOf(archiveGroup);
+  if (!archiveId) throw new Error("sdk archive-group create response is missing an ID");
+  trackArtifact(ledger, "groups", { id: String(archiveId), title: archiveTitle, surface: "sdk", operation: "itemGroups.archive" });
+  assertVoidResult(await client.itemGroups.archive({ ...scope, itemGroupId: archiveId }), "sdk item group archive");
+  record("sdk", "itemGroups.archive", { itemGroupId: archiveId });
+  try {
+    assertVoidResult(await client.itemGroups.delete({ ...scope, itemGroupId: archiveId }), "sdk archived item group delete");
+    forgetArtifact("groups", archiveId);
+  } catch (error) {
+    throw new Error(`archived sdk item group ${archiveId} could not be deleted; stop before another live run`, { cause: error });
+  }
+}
+
+async function sdkItemFileSweep(client, ids, itemId) {
+  const scope = { spaceId: ids.SpaceId(spaceId), boardId: ids.BoardId(boardId), itemId: ids.ItemId(itemId) };
+  const fixture = createTextFixture(runMarker, "sdk");
+  const uploaded = await client.itemFiles.upload({
+    ...scope,
+    file: new Blob([fixture.bytes], { type: fixture.contentType }),
+    fileName: fixture.fileName,
+  });
+  const itemFileId = idOf(uploaded);
+  if (!itemFileId) throw new Error("sdk item file upload response is missing an ID");
+  trackArtifact(ledger, "files", { itemId: String(itemId), id: String(itemFileId), name: fixture.fileName, surface: "sdk", operation: "itemFiles.upload" });
+  record("sdk", "itemFiles.upload", { itemFileId });
+  const files = assertBareFileList(await client.itemFiles.list(scope), "sdk itemFiles.list");
+  record("sdk", "itemFiles.list", { count: files.length });
+  await client.itemFiles.get({ ...scope, itemFileId });
+  record("sdk", "itemFiles.get", { itemFileId });
+  const download = await client.itemFiles.getDownload({ ...scope, itemFileId });
+  record("sdk", "itemFiles.download", summarizeDownloadLink(download));
+  await client.itemFiles.update({
+    ...scope,
+    itemFileId,
+    body: { name: `${runMarker}updated-sdk.txt`, description: smokeText("sdk-file-description") },
+  });
+  record("sdk", "itemFiles.update", { itemFileId });
+  assertVoidResult(await client.itemFiles.delete({ ...scope, itemFileId }), "sdk item file delete");
+  forgetArtifact("files", itemFileId);
+  record("sdk", "itemFiles.delete", { itemFileId });
 }
 
 // ---------- 3. CLI sweep ----------
@@ -323,8 +513,83 @@ async function cliSweep() {
   if (!itemId) {
     throw new Error("CLI workflow probes require a smoke item created by the API or SDK sweep");
   }
+  await cliItemGroupSweep(bin, env);
+  await cliItemFileSweep(bin, env, itemId);
   record("cli", "comments-thread", runCLI(bin, ["comments-thread", "--space-id", spaceId, "--board-id", boardId, "--item-id", itemId], env, { jsonHead: true }));
   record("cli", "reactions-replace --dry-run", runCLI(bin, ["reactions-replace", "--space-id", spaceId, "--board-id", boardId, "--item-id", itemId, "--comment-id", "0", "--body", "{\"reactions\":[{\"value\":\"1f44d\"}]}", "--dry-run"], env));
+}
+
+async function cliItemGroupSweep(bin, env) {
+  const base = ["--space-id", spaceId, "--board-id", boardId];
+  const listed = runCLIParsed(bin, ["item-groups-list", ...base], env);
+  if (!Array.isArray(listed)) throw new Error("cli itemGroups.list must return an array");
+  record("cli", "itemGroups.list", { count: listed.length });
+
+  const title = smokeTitle("cli-group");
+  const created = runCLIParsed(bin, ["item-groups-create", ...base, "--title", title, "--color", "#3366FF", "--ranking", "0|hzzzzz:"], env);
+  const groupId = idOf(created);
+  if (!groupId) throw new Error("cli item group create response is missing an ID");
+  trackArtifact(ledger, "groups", { id: String(groupId), title, surface: "cli", operation: "itemGroups.create" });
+  record("cli", "itemGroups.create", { itemGroupId: groupId });
+  const current = runCLIParsed(bin, ["raw", "get-item-group", ...base, "--item-group-id", String(groupId)], env);
+  record("cli", "itemGroups.get", { itemGroupId: groupId });
+  runCLIParsed(bin, [
+    "raw", "update-item-group", ...base, "--item-group-id", String(groupId), "--body",
+    JSON.stringify({
+      title: smokeTitle("cli-group-updated"),
+      color: current?.color ?? "#3366FF",
+      ranking: current?.ranking ?? "0|hzzzzz:",
+    }),
+  ], env);
+  record("cli", "itemGroups.update", { itemGroupId: groupId });
+  assertOkReceipt(runCLIParsed(bin, ["raw", "delete-item-group", ...base, "--item-group-id", String(groupId), "--confirm"], env), "cli item group delete");
+  forgetArtifact("groups", groupId);
+  record("cli", "itemGroups.delete", { itemGroupId: groupId });
+
+  const archiveTitle = smokeTitle("cli-group-archive");
+  const archiveGroup = runCLIParsed(bin, ["item-groups-create", ...base, "--title", archiveTitle], env);
+  const archiveId = idOf(archiveGroup);
+  if (!archiveId) throw new Error("cli archive-group create response is missing an ID");
+  trackArtifact(ledger, "groups", { id: String(archiveId), title: archiveTitle, surface: "cli", operation: "itemGroups.archive" });
+  assertOkReceipt(runCLIParsed(bin, ["item-groups-archive", ...base, "--item-group-id", String(archiveId), "--confirm"], env), "cli item group archive");
+  record("cli", "itemGroups.archive", { itemGroupId: archiveId });
+  try {
+    assertOkReceipt(runCLIParsed(bin, ["raw", "delete-item-group", ...base, "--item-group-id", String(archiveId), "--confirm"], env), "cli archived item group delete");
+    forgetArtifact("groups", archiveId);
+  } catch (error) {
+    throw new Error(`archived cli item group ${archiveId} could not be deleted; stop before another live run`, { cause: error });
+  }
+}
+
+async function cliItemFileSweep(bin, env, itemId) {
+  const base = ["--space-id", spaceId, "--board-id", boardId, "--item-id", String(itemId)];
+  const fixture = createTextFixture(runMarker, "cli");
+  const uploaded = runCLIParsed(bin, [
+    "item-files-upload", ...base, "--file", "-", "--filename", fixture.fileName, "--content-type", fixture.contentType,
+  ], env, { input: fixture.bytes });
+  const itemFileId = idOf(uploaded);
+  if (!itemFileId) throw new Error("cli item file upload response is missing an ID");
+  trackArtifact(ledger, "files", { itemId: String(itemId), id: String(itemFileId), name: fixture.fileName, surface: "cli", operation: "itemFiles.upload" });
+  record("cli", "itemFiles.upload", { itemFileId });
+  const files = assertBareFileList(runCLIParsed(bin, ["item-files-list", ...base], env), "cli itemFiles.list");
+  record("cli", "itemFiles.list", { count: files.length });
+  runCLIParsed(bin, ["raw", "get-item-file", ...base, "--item-file-id", String(itemFileId)], env);
+  record("cli", "itemFiles.get", { itemFileId });
+  const download = runCLIParsed(bin, ["item-files-download-link", ...base, "--item-file-id", String(itemFileId)], env);
+  record("cli", "itemFiles.download", summarizeDownloadLink(download));
+  runCLIParsed(bin, [
+    "raw", "update-item-file", ...base, "--item-file-id", String(itemFileId), "--body",
+    JSON.stringify({ name: `${runMarker}updated-cli.txt`, description: smokeText("cli-file-description") }),
+  ], env);
+  record("cli", "itemFiles.update", { itemFileId });
+  assertOkReceipt(runCLIParsed(bin, ["raw", "delete-item-file", ...base, "--item-file-id", String(itemFileId), "--confirm"], env), "cli item file delete");
+  forgetArtifact("files", itemFileId);
+  record("cli", "itemFiles.delete", { itemFileId });
+}
+
+function assertOkReceipt(value, label) {
+  if (!value || value.ok !== true) throw new Error(`${label} must return an ok receipt for a void operation`);
+  return value;
 }
 
 // ---------- 4. MCP sweep ----------
@@ -352,6 +617,8 @@ async function mcpSweep() {
   }
 
   const { tools, ctx } = await createMcpHarness();
+  const mcpSpaceId = Number(spaceId);
+  const mcpBoardId = Number(boardId);
 
   const docs = await invokeMcpTool(tools, ctx, "plaky_search_docs", { query: "items", limit: 3 });
   record("mcp", "tool plaky_search_docs", { hits: Array.isArray(docs?.hits) ? docs.hits.length : undefined });
@@ -370,18 +637,20 @@ async function mcpSweep() {
 
   const spaces = await invokeMcpTool(tools, ctx, "plaky_list_spaces", { pageSize: 5 });
   record("mcp", "tool plaky_list_spaces", { count: spaces?.data?.length ?? 0 });
-  await invokeMcpTool(tools, ctx, "plaky_get_space", { spaceId });
+  await invokeMcpTool(tools, ctx, "plaky_get_space", { spaceId: mcpSpaceId });
   record("mcp", "tool plaky_get_space");
-  const boards = await invokeMcpTool(tools, ctx, "plaky_list_boards", { spaceId, pageSize: 5 });
+  const boards = await invokeMcpTool(tools, ctx, "plaky_list_boards", { spaceId: mcpSpaceId, pageSize: 5 });
   record("mcp", "tool plaky_list_boards", { count: boards?.data?.length ?? 0 });
-  await invokeMcpTool(tools, ctx, "plaky_get_board", { spaceId, boardId });
+  await invokeMcpTool(tools, ctx, "plaky_get_board", { spaceId: mcpSpaceId, boardId: mcpBoardId });
   record("mcp", "tool plaky_get_board");
-  const items = await invokeMcpTool(tools, ctx, "plaky_list_items", { spaceId, boardId, pageSize: 5 });
+  const items = await invokeMcpTool(tools, ctx, "plaky_list_items", { spaceId: mcpSpaceId, boardId: mcpBoardId, pageSize: 5 });
   record("mcp", "tool plaky_list_items", { count: items?.data?.length ?? 0 });
 
+  await mcpItemGroupSweep(tools, ctx, mcpSpaceId, mcpBoardId);
+
   const created = await invokeMcpTool(tools, ctx, "plaky_create_item", {
-    spaceId,
-    boardId,
+    spaceId: mcpSpaceId,
+    boardId: mcpBoardId,
     body: { title: smokeTitle("mcp-raw") },
   });
   const itemId = idOf(created);
@@ -390,13 +659,13 @@ async function mcpSweep() {
   record("mcp", "tool plaky_create_item", { itemId });
 
   if (itemId) {
-    await invokeMcpTool(tools, ctx, "plaky_get_item", { spaceId, boardId, itemId });
+    await invokeMcpTool(tools, ctx, "plaky_get_item", { spaceId: mcpSpaceId, boardId: mcpBoardId, itemId });
     record("mcp", "tool plaky_get_item");
 
     const content = smokeText("mcp-comment");
     const comment = await invokeMcpTool(tools, ctx, "plaky_create_item_comment", {
-      spaceId,
-      boardId,
+      spaceId: mcpSpaceId,
+      boardId: mcpBoardId,
       itemId,
       body: { text: content },
     });
@@ -404,14 +673,93 @@ async function mcpSweep() {
     trackCreatedComment(itemId, commentId, "mcp", "plaky_create_item_comment", content);
     record("mcp", "tool plaky_create_item_comment", { commentId });
 
-    const comments = await invokeMcpTool(tools, ctx, "plaky_list_item_comments", { spaceId, boardId, itemId });
+    const comments = await invokeMcpTool(tools, ctx, "plaky_list_item_comments", { spaceId: mcpSpaceId, boardId: mcpBoardId, itemId });
     record("mcp", "tool plaky_list_item_comments", { count: comments?.data?.length ?? 0 });
 
-    await invokeMcpTool(tools, ctx, "plaky_delete_item", { spaceId, boardId, itemId });
+    await mcpItemFileSweep(tools, ctx, mcpSpaceId, mcpBoardId, itemId);
+
+    await invokeMcpTool(tools, ctx, "plaky_delete_item", { spaceId: mcpSpaceId, boardId: mcpBoardId, itemId });
     forgetArtifact("items", itemId);
     forgetCreatedCommentsForItem(itemId);
     record("mcp", "tool plaky_delete_item", { itemId });
   }
+}
+
+async function mcpItemGroupSweep(tools, ctx, mcpSpaceId, mcpBoardId) {
+  const scope = { spaceId: mcpSpaceId, boardId: mcpBoardId };
+  const listed = await invokeMcpTool(tools, ctx, "plaky_list_item_groups", { ...scope, page: 1, pageSize: 200 });
+  if (!listed || !Array.isArray(listed.data)) throw new Error("mcp itemGroups.list must return a structured data envelope");
+  record("mcp", "itemGroups.list", { count: listed.data.length });
+
+  const title = smokeTitle("mcp-group");
+  const created = await invokeMcpTool(tools, ctx, "plaky_create_item_group", {
+    ...scope,
+    body: { title, color: "#3366FF", ranking: "0|hzzzzz:" },
+  });
+  const groupId = idOf(created);
+  if (!groupId) throw new Error("mcp item group create response is missing an ID");
+  trackArtifact(ledger, "groups", { id: String(groupId), title, surface: "mcp", operation: "itemGroups.create" });
+  record("mcp", "itemGroups.create", { itemGroupId: groupId });
+  const current = await invokeMcpTool(tools, ctx, "plaky_get_item_group", { ...scope, itemGroupId: groupId });
+  record("mcp", "itemGroups.get", { itemGroupId: groupId });
+  await invokeMcpTool(tools, ctx, "plaky_update_item_group", {
+    ...scope,
+    itemGroupId: groupId,
+    body: {
+      title: smokeTitle("mcp-group-updated"),
+      color: current?.color ?? "#3366FF",
+      ranking: current?.ranking ?? "0|hzzzzz:",
+    },
+  });
+  record("mcp", "itemGroups.update", { itemGroupId: groupId });
+  assertOkReceipt(await invokeMcpTool(tools, ctx, "plaky_delete_item_group", { ...scope, itemGroupId: groupId }), "mcp item group delete");
+  forgetArtifact("groups", groupId);
+  record("mcp", "itemGroups.delete", { itemGroupId: groupId });
+
+  const archiveTitle = smokeTitle("mcp-group-archive");
+  const archiveGroup = await invokeMcpTool(tools, ctx, "plaky_create_item_group", { ...scope, body: { title: archiveTitle } });
+  const archiveId = idOf(archiveGroup);
+  if (!archiveId) throw new Error("mcp archive-group create response is missing an ID");
+  trackArtifact(ledger, "groups", { id: String(archiveId), title: archiveTitle, surface: "mcp", operation: "itemGroups.archive" });
+  assertOkReceipt(await invokeMcpTool(tools, ctx, "plaky_archive_item_group", { ...scope, itemGroupId: archiveId }), "mcp item group archive");
+  record("mcp", "itemGroups.archive", { itemGroupId: archiveId });
+  try {
+    assertOkReceipt(await invokeMcpTool(tools, ctx, "plaky_delete_item_group", { ...scope, itemGroupId: archiveId }), "mcp archived item group delete");
+    forgetArtifact("groups", archiveId);
+  } catch (error) {
+    throw new Error(`archived mcp item group ${archiveId} could not be deleted; stop before another live run`, { cause: error });
+  }
+}
+
+async function mcpItemFileSweep(tools, ctx, mcpSpaceId, mcpBoardId, itemId) {
+  const scope = { spaceId: mcpSpaceId, boardId: mcpBoardId, itemId };
+  const fixture = createTextFixture(runMarker, "mcp");
+  const uploaded = await invokeMcpTool(tools, ctx, "plaky_upload_item_file", {
+    ...scope,
+    fileBase64: Buffer.from(fixture.bytes).toString("base64"),
+    fileName: fixture.fileName,
+    contentType: fixture.contentType,
+  });
+  const itemFileId = idOf(uploaded);
+  if (!itemFileId) throw new Error("mcp item file upload response is missing an ID");
+  trackArtifact(ledger, "files", { itemId: String(itemId), id: String(itemFileId), name: fixture.fileName, surface: "mcp", operation: "itemFiles.upload" });
+  record("mcp", "itemFiles.upload", { itemFileId });
+  const files = await invokeMcpTool(tools, ctx, "plaky_list_item_files", scope);
+  if (!files || !Array.isArray(files.data)) throw new Error("mcp itemFiles.list must return a structured data envelope");
+  record("mcp", "itemFiles.list", { count: files.data.length });
+  await invokeMcpTool(tools, ctx, "plaky_get_item_file", { ...scope, itemFileId });
+  record("mcp", "itemFiles.get", { itemFileId });
+  const download = await invokeMcpTool(tools, ctx, "plaky_get_item_file_download", { ...scope, itemFileId });
+  record("mcp", "itemFiles.download", summarizeDownloadLink(download));
+  await invokeMcpTool(tools, ctx, "plaky_update_item_file", {
+    ...scope,
+    itemFileId,
+    body: { name: `${runMarker}updated-mcp.txt`, description: smokeText("mcp-file-description") },
+  });
+  record("mcp", "itemFiles.update", { itemFileId });
+  assertOkReceipt(await invokeMcpTool(tools, ctx, "plaky_delete_item_file", { ...scope, itemFileId }), "mcp item file delete");
+  forgetArtifact("files", itemFileId);
+  record("mcp", "itemFiles.delete", { itemFileId });
 }
 
 async function createMcpHarness() {
@@ -455,17 +803,7 @@ async function invokeMcpTool(tools, ctx, name, input) {
 }
 
 function summarizeSensitiveMcpOutput(value) {
-  if (!value || typeof value !== "object" || typeof value.url !== "string") {
-    throw new Error("Sensitive MCP output is missing its URL.");
-  }
-  const parsedURL = new URL(value.url);
-  if (parsedURL.protocol !== "https:") {
-    throw new Error("Sensitive MCP output URL must use HTTPS.");
-  }
-  if (typeof value.expiresInSeconds !== "number" || !Number.isFinite(value.expiresInSeconds)) {
-    throw new Error("Sensitive MCP output is missing a finite expiry.");
-  }
-  return { urlPresent: true, expiresInSeconds: value.expiresInSeconds };
+  return summarizeDownloadLink(value);
 }
 
 function isMcpResponse(value) {
@@ -583,6 +921,22 @@ function runCLI(bin, args, env, opts = {}) {
     }
   }
   return { status: 0, stdoutLen: stdout.length };
+}
+
+function runCLIParsed(bin, args, env, options = {}) {
+  const r = spawnSync(bin, args, {
+    encoding: "utf8",
+    env,
+    ...(options.input !== undefined ? { input: options.input } : {}),
+  });
+  if (r.status !== 0) {
+    throw new Error(`CLI ${args.join(" ")} failed: ${redact((r.stderr ?? "").slice(0, 200))}`);
+  }
+  try {
+    return JSON.parse(r.stdout ?? "");
+  } catch (error) {
+    throw new Error(`CLI ${args.join(" ")} did not return JSON`, { cause: error });
+  }
 }
 
 function runCLIWithFile(bin, args, env, fileContents) {

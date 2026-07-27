@@ -2,6 +2,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import {
+  assertBareFileList,
+  assertVoidResult,
+  createFixtureFormData,
+  createTextFixture,
+  summarizeDownloadLink,
+} from "./live-workspace-sweep.mjs";
 
 const liveSweep = readFileSync(fileURLToPath(new URL("live-workspace-sweep.mjs", import.meta.url)), "utf8");
 const liveWorkflow = readFileSync(fileURLToPath(new URL("../.github/workflows/live.yml", import.meta.url)), "utf8");
@@ -73,4 +80,49 @@ test("live workflow serializes runs per target without cancelling cleanup", () =
   assert.match(liveWorkflow, /space_id/);
   assert.match(liveWorkflow, /board_id/);
   assert.match(liveWorkflow, /cancel-in-progress:\s*false/);
+});
+
+test("live sweep covers item groups and item files on every surface", () => {
+  for (const surface of ["api", "sdk", "cli", "mcp"]) {
+    for (const operation of ["list", "get", "create", "update", "archive", "delete"]) {
+      assert.match(liveSweep, new RegExp(`record\\(\"${surface}\", \"itemGroups\\.${operation}`));
+    }
+    for (const operation of ["upload", "list", "get", "download", "update", "delete"]) {
+      assert.match(liveSweep, new RegExp(`record\\(\"${surface}\", \"itemFiles\\.${operation}`));
+    }
+  }
+  assert.match(liveSweep, /PLAKY115_SMOKE_ALLOW_ARCHIVE/);
+  assert.match(liveSweep, /FormData/);
+  assert.match(liveSweep, /fileBase64/);
+  assert.match(liveSweep, /--file", "-"/);
+});
+
+test("live sweep helpers enforce multipart, void, array, and sensitive-output contracts", () => {
+  const fixture = createTextFixture("smoke:plaky115:00000000-0000-4000-8000-000000000000:", "mock");
+  assert.equal(fixture.contentType, "text/plain");
+  assert.equal(new TextDecoder().decode(fixture.bytes), "live fixture for mock");
+  assert.ok(fixture.fileName.startsWith("smoke:plaky115:"));
+  const multipart = createFixtureFormData(fixture);
+  const part = multipart.get("file");
+  assert.ok(part instanceof Blob);
+  assert.equal(part.name, fixture.fileName);
+  assert.equal(part.type, fixture.contentType);
+  assert.equal(part.size, fixture.bytes.byteLength);
+
+  assert.deepEqual(assertBareFileList([], "mock list"), []);
+  assert.throws(() => assertBareFileList({ data: [] }, "mock list"), /bare array/);
+  assert.equal(assertVoidResult(undefined, "mock delete"), undefined);
+  assert.throws(() => assertVoidResult({ ok: true }, "mock delete"), /void response/);
+
+  assert.deepEqual(
+    summarizeDownloadLink({ url: "https://download.example.invalid/signed", expiresInSeconds: 60 }),
+    { urlPresent: true, expiresInSeconds: 60 },
+  );
+  assert.throws(() => summarizeDownloadLink({ url: "", expiresInSeconds: 60 }), /non-empty HTTPS URL/);
+  assert.throws(() => summarizeDownloadLink({ url: "https://example.invalid", expiresInSeconds: "60" }), /finite numeric expiry/);
+});
+
+test("live sweep never records download URLs or in-memory file contents", () => {
+  assert.doesNotMatch(liveSweep, /record\([^\n]*(?:download\.url|fixture\.bytes|fileBase64)/);
+  assert.doesNotMatch(liveSweep, /summary\.push\([^\n]*(?:download\.url|fixture\.bytes|fileBase64)/);
 });

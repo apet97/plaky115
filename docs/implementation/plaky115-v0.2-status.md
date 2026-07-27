@@ -52,7 +52,7 @@
 - [x] `W002` | Phase 10 — Workflow correctness | DONE | Add detailed search completeness without breaking existing callers
 - [x] `W003` | Phase 10 — Workflow correctness | DONE | Make TypeScript and Go CSV canonical, collision-free, and spreadsheet-safe
 - [x] `L001` | Phase 11 — Live proof | DONE | Refactor live sweep around a run-owned artifact ledger
-- [ ] `L002` | Phase 11 — Live proof | NOT STARTED | Exercise Item Groups and Item files through API, SDK, CLI, and MCP
+- [x] `L002` | Phase 11 — Live proof | DONE | Exercise Item Groups and Item files through API, SDK, CLI, and MCP
 - [ ] `L003` | Phase 11 — Live proof | NOT STARTED | Add fault injection, privacy assertions, and strict live workflow preflight
 - [ ] `R001` | Phase 12 — Release and verification | NOT STARTED | Update all documentation and examples to the implemented behavior
 - [ ] `R002` | Phase 12 — Release and verification | NOT STARTED | Bump versions, synchronize runtime version, and refresh package snapshots
@@ -407,3 +407,12 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - The script is import-safe for dependency-injected unit tests. Tests prove exact marker ownership, generic-prefix rejection, concurrent run preservation, child-before-parent order, pagination exhaustion, lost-response recovery, aggregate-error continuation, and a mandatory final rescan.
 - The manual workflow now uses a target space/board concurrency group with `cancel-in-progress:false`, preventing a second run from interrupting cleanup on the same target. Live-smoke documentation describes run isolation and recovery.
 - All 13 cleanup/source tests, script syntax/no-key execution, workflow YAML parsing, and `git diff --check` exited 0. No live API request or mutation was made.
+
+### L002
+
+- The direct API helper now distinguishes JSON, multipart `FormData`, and strict empty-body responses without recording request content. One small text fixture is created in memory for each surface; no fixture or signed link is written to disk.
+- API, SDK, CLI, and MCP probes each exercise Item Group list/get/create/update/archive/delete and item-file upload/list/get/download/update/delete. Normal groups/files are deleted after verification, while every archive probe uses a separate empty group and immediately deletes it by its known ID.
+- Archive probes require the explicit `PLAKY115_SMOKE_ALLOW_ARCHIVE=1` acknowledgement. A failed archived-group deletion reports its exact ID and stops the run; already deleted artifacts are removed from the ledger so final cleanup remains idempotent.
+- Raw API, SDK, and CLI file lists are asserted as bare arrays. MCP file lists are asserted as structured `data` envelopes. API/SDK void operations and CLI/MCP translated `ok` receipts are asserted.
+- Download links are validated in memory as non-empty HTTPS URLs with finite numeric expiry. Summaries contain only `urlPresent:true` and the expiry, never the URL, multipart bytes, or base64 content.
+- The 16-test combined cleanup/source command and the 11-test `npm run live:sweep:test` command passed. Script syntax, archive-acknowledgement preflight without requests, and `git diff --check` exited 0. No live API request or mutation was made.
