@@ -56,7 +56,7 @@
 - [x] `L003` | Phase 11 — Live proof | DONE | Add fault injection, privacy assertions, and strict live workflow preflight
 - [x] `R001` | Phase 12 — Release and verification | DONE | Update all documentation and examples to the implemented behavior
 - [x] `R002` | Phase 12 — Release and verification | DONE | Bump versions, synchronize runtime version, and refresh package snapshots
-- [ ] `REL001` | Phase 12 — Release automation | NOT STARTED | Add tokenless npm trusted publishing with provenance and release preflights
+- [x] `REL001` | Phase 12 — Release automation | DONE | Add tokenless npm trusted publishing with provenance and release preflights
 - [ ] `SEC002` | Phase 12 — Supply-chain hardening | NOT STARTED | Pin every GitHub Action by full SHA and enforce least-privilege workflow policy
 - [ ] `R003` | Phase 12 — Release and verification | NOT STARTED | Run the full offline release gate from a clean real Git checkout
 - [ ] `R004` | Phase 12 — Release and verification | NOT STARTED | Run sacrificial live proof, adversarial review, and release readiness audit
@@ -440,3 +440,12 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - CLI builds retain `dev` locally and report the injected version/build time when built with the GoReleaser linker flags.
 - SDK tests passed 175 cases and MCP tests passed 67 cases. SDK/MCP dry-run packs reported `0.2.0` and included their licenses; package artifact audit, pack smoke, consumer smoke, snapshot drift, and GoReleaser configuration validation exited 0.
 - Package snapshots were regenerated through `npm run packsnapshot:write` and now record 139 SDK files and 209 MCP files, including the intentional workflow internals added in this release. No environment file, live artifact, candidate artifact, secret, or raw HTML fixture is present.
+
+### REL001
+
+- Added a tag-only GitHub-hosted npm release job protected by environment `npm-release`, with only `contents: read` and `id-token: write`, checkout credential persistence disabled, Node 24, exact npm 11.5.1, Go 1.26.x, Bun 1.2.17, Ruby 3.3, and GoReleaser.
+- The workflow installs exact dependencies, runs the full repository release gate, inspects both dry-run packs, audits package artifacts and consumer installation, and proves both exact registry versions absent before adjacent SDK-then-MCP publish steps. It contains no long-lived npm credential or provenance opt-out.
+- The version checker rejects malformed/mismatched tags, divergent package versions, non-canonical repository URLs, existing exact registry versions, and authentication/network ambiguity. Eleven checker/workflow tests, the offline `v0.2.0` check, YAML parsing, forbidden-token scan, and `git diff --check` exited 0.
+- A live read-only registry preflight confirmed `plaky115@0.2.0` and `plaky115-mcp@0.2.0` are both absent on 2026-07-26.
+- **EXTERNAL HOLD:** Before any tag is created, a maintainer must manually verify both npm packages have a GitHub Actions trusted publisher for repository `apet97/plaky115`, workflow `release-npm.yml`, environment `npm-release`, and allowed action `npm publish`, and must verify the protected GitHub environment reviewer policy. This is not assumed from repository code. No tag, publish, or release was attempted.
+- npm's current trusted-publishing documentation confirms GitHub-hosted runners, `id-token: write`, npm 11.5.1 or later, Node 22.14 or later, exact workflow/environment matching, and automatic provenance: `https://docs.npmjs.com/trusted-publishers/`.

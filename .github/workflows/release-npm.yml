@@ -1,0 +1,85 @@
+name: Release npm packages
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    environment: npm-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+          cache: false
+
+      - name: Install trusted-publishing npm CLI
+        run: npm install --global npm@11.5.1
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache-dependency-path: cli/go.sum
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2.17"
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          install-only: true
+
+      - name: Validate tag and package metadata
+        run: node scripts/check-release-version.mjs --tag "${GITHUB_REF_NAME}" --offline
+
+      - name: Install dependencies
+        run: |
+          npm --prefix sdk ci
+          npm --prefix mcp-server ci
+          cd cli && go mod download
+
+      - name: Run complete release gate
+        run: npm run verify
+
+      - name: Inspect SDK pack
+        run: npm --prefix sdk pack --dry-run --json
+
+      - name: Inspect MCP pack
+        run: npm --prefix mcp-server pack --dry-run --json
+
+      - name: Audit package artifacts
+        run: |
+          npm run artifacts:audit
+          npm run pack:smoke
+          npm run package:consumer-smoke
+
+      - name: Require unpublished exact versions
+        run: node scripts/check-release-version.mjs --tag "${GITHUB_REF_NAME}" --registry-preflight
+
+      - name: Publish SDK
+        run: (cd sdk && npm publish --access public)
+
+      - name: Publish MCP server
+        run: (cd mcp-server && npm publish --access public)

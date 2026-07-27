@@ -45,16 +45,29 @@ Passes when no generated surface reports stale, missing, or legacy output.
 
 ## Tag And Publish
 
-1. Bump versions:
-   - `sdk/package.json` and `mcp-server/package.json` must use the same version.
+1. Confirm `sdk/package.json` and `mcp-server/package.json` use the same version,
+   then run `node scripts/check-release-version.mjs --tag vX.Y.Z --offline`.
 2. Update release notes with curated diff highlights.
-3. Tag `git tag v0.X.Y && git push --tags`. The root
-   `.github/workflows/release-cli.yml` workflow runs GoReleaser from `cli/` and
-   attaches the CLI archives to that repository release.
-4. Publish `sdk/` and `mcp-server/` from their package directories.
-5. Confirm the CLI workflow produced matching Linux/macOS `.tar.gz` and Windows
+3. Before creating a tag, manually verify that both `plaky115` and
+   `plaky115-mcp` have an npm trusted publisher configured for GitHub repository
+   `apet97/plaky115`, workflow filename `release-npm.yml`, environment
+   `npm-release`, and the `npm publish` permission. This exact external
+   configuration is a blocking prerequisite; npm does not validate it when the
+   publisher is saved.
+4. Confirm the protected GitHub environment `npm-release` has the intended
+   reviewer policy, then tag `git tag vX.Y.Z && git push --tags`.
+5. The tag starts two root workflows. `release-npm.yml` runs the complete gates,
+   checks both exact versions are absent from npm, then publishes SDK before MCP
+   with OIDC trusted publishing and automatic provenance. `release-cli.yml`
+   runs GoReleaser from `cli/` and attaches CLI archives to the release.
+6. Confirm the CLI workflow produced matching Linux/macOS `.tar.gz` and Windows
    `.zip` archives plus `checksums.txt`. Do not rerun GoReleaser locally against
    the same tag.
+
+Do not store a long-lived npm publishing token. If the SDK succeeds but the MCP
+publish fails, never unpublish the SDK automatically. Diagnose the failure,
+publish the same already-preflighted MCP version, and record the incident and
+recovery evidence.
 
 ## Post-Release Smoke
 
