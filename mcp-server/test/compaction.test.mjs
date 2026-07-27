@@ -48,7 +48,7 @@ test("structuredForMcp wraps primitives and redacts secret-shaped values", () =>
   const token = "plk_" + "TEST_SECRET-ABC123";
 
   assert.deepEqual(structuredForMcp("plain"), { value: "plain" });
-  assert.deepEqual(structuredForMcp({ message: `echo ${token}` }), { message: "echo plk_***" });
+  assert.deepEqual(structuredForMcp({ message: `echo ${token}` }), { message: "echo [REDACTED_PLAKY_API_KEY]" });
 });
 
 test("compactByKind uses the exact Item Group fields for single and paged results", () => {
@@ -120,5 +120,5 @@ test("new compactors tolerate missing fields and centralized serialization redac
   assert.deepEqual(compactByKind({}, "itemGroup"), {});
   assert.deepEqual(compactByKind(null, "itemFile"), {});
   assert.deepEqual(compactByKind({}, "downloadLink"), {});
-  assert.deepEqual(structuredForMcp({ file: compactByKind({ name: token }, "itemFile") }), { file: { name: "plk_***" } });
+  assert.deepEqual(structuredForMcp({ file: compactByKind({ name: token }, "itemFile") }), { file: { name: "[REDACTED_PLAKY_API_KEY]" } });
 });

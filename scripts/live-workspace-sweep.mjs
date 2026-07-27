@@ -81,7 +81,7 @@ function smokeTitle(prefix) {
 }
 
 function redact(s) {
-  return String(s).replace(/plk_[A-Za-z0-9_-]+/g, "plk_***");
+  return String(s).replace(/plk_[A-Za-z0-9_-]+/g, "[REDACTED_PLAKY_API_KEY]");
 }
 
 function record(area, name, detail = {}) {

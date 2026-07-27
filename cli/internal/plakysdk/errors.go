@@ -5,13 +5,14 @@ import (
 	"regexp"
 )
 
-var secretPattern = regexp.MustCompile(`plk_[A-Za-z0-9_-]+`)
+const apiKeyRedactionMarker = "[REDACTED_PLAKY_API_KEY]"
 
-// RedactSecrets masks every plk_-style API key in s with plk_[REDACTED]. This
-// is the single redaction helper shared by the SDK error decoder and the CLI
-// error formatter; it uses the broad `+` pattern so short keys are masked too.
+var apiKeyPattern = regexp.MustCompile(`plk_[A-Za-z0-9_-]+`)
+
+// RedactSecrets masks every Plaky-style API key in s with the canonical marker.
+// This is the single redaction helper shared by the SDK error decoder and CLI.
 func RedactSecrets(s string) string {
-	return secretPattern.ReplaceAllString(s, "plk_[REDACTED]")
+	return apiKeyPattern.ReplaceAllString(s, apiKeyRedactionMarker)
 }
 
 type APIError struct {

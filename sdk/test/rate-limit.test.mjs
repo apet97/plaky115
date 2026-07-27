@@ -13,7 +13,7 @@ test("RateLimitSink captures X-RateLimit-* headers after request", async () => {
         "x-ratelimit-reset": "1716624000",
       },
     });
-  const client = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   await client.spaces.list();
   assert.equal(client.rateLimit.last.limit, 200);
   assert.equal(client.rateLimit.last.remaining, 199);
@@ -23,7 +23,7 @@ test("RateLimitSink captures X-RateLimit-* headers after request", async () => {
 test("RateLimitSink leaves unknown headers as undefined", async () => {
   globalThis.fetch = async () =>
     new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
-  const client = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   await client.spaces.list();
   assert.equal(client.rateLimit.last.limit, undefined);
   assert.equal(client.rateLimit.last.remaining, undefined);
@@ -32,7 +32,7 @@ test("RateLimitSink leaves unknown headers as undefined", async () => {
 test("estimatedRemaining falls back to client-side rolling window", async () => {
   globalThis.fetch = async () =>
     new Response(JSON.stringify({ data: [] }), { status: 200, headers: { "content-type": "application/json" } });
-  const client = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   assert.equal(client.rateLimit.estimatedRemaining(), 200);
   await client.spaces.list();
   await client.spaces.list();
@@ -67,7 +67,7 @@ test("when server reports remaining, that takes precedence over rolling window",
       status: 200,
       headers: { "content-type": "application/json", "x-ratelimit-remaining": "42" },
     });
-  const client = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   await client.spaces.list();
   assert.equal(client.rateLimit.estimatedRemaining(), 42);
 });

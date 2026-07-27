@@ -24,7 +24,7 @@ test("client.items.create omits Idempotency-Key when caller omits", async () => 
     captured = init;
     return new Response(JSON.stringify({ id: 1 }), { status: 200, headers: { "content-type": "application/json" } });
   };
-  const client = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   await client.items.create({ spaceId: 1, boardId: 2, body: { title: "x" } });
   assert.equal(new Headers(captured.headers).get("idempotency-key"), null);
 });
@@ -35,7 +35,7 @@ test("client.items.create honors caller-supplied Idempotency-Key", async () => {
     captured = init;
     return new Response(JSON.stringify({ id: 1 }), { status: 200, headers: { "content-type": "application/json" } });
   };
-  const client = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   await client.items.create({ spaceId: 1, boardId: 2, body: { title: "x" }, idempotencyKey: "my-key-001" });
   assert.equal(new Headers(captured.headers).get("idempotency-key"), "my-key-001");
 });
@@ -46,7 +46,7 @@ test("client.items.create honors second-argument Idempotency-Key", async () => {
     captured = init;
     return new Response(JSON.stringify({ id: 1 }), { status: 200, headers: { "content-type": "application/json" } });
   };
-  const client = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   await client.items.create({ spaceId: 1, boardId: 2, body: { title: "x" } }, { idempotencyKey: "second-key-001" });
   assert.equal(new Headers(captured.headers).get("idempotency-key"), "second-key-001");
 });
@@ -57,7 +57,7 @@ test("params Idempotency-Key wins over second-argument Idempotency-Key", async (
     captured = init;
     return new Response(JSON.stringify({ id: 1 }), { status: 200, headers: { "content-type": "application/json" } });
   };
-  const client = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   await client.items.create(
     { spaceId: 1, boardId: 2, body: { title: "x" }, idempotencyKey: "params-key-001" },
     { idempotencyKey: "second-key-001" },
@@ -90,7 +90,7 @@ test("every mutation is attempted once and sends only an explicit Idempotency-Ke
             headers: { "content-type": "application/json", "retry-after": "0" },
           });
         };
-        const client = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x", maxRetries: 3 });
+        const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x", maxRetries: 3 });
         const key = explicit ? "caller-key" : undefined;
         await assert.rejects(invoke(client, key, { maxRetries: 3 }), PlakyServerError);
         assert.equal(calls, 1);

@@ -6,7 +6,7 @@ import { buildServer } from "../esm/server/index.js";
 
 async function connectedPair(options = {}) {
   const { server } = buildServer({
-    apiKey: "plk_test",
+    apiKey: "test-api-key",
     mode: "all",
     scopes: ["read", "write", "destructive"],
     ...options,

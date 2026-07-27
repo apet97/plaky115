@@ -47,7 +47,7 @@
 - [x] `CLI001` | Phase 8 — CLI | DONE | Validate all generated raw request kinds and new operation behavior
 - [x] `CLI002` | Phase 8 — CLI | DONE | Add minimal curated Item Group and Item file commands
 - [x] `CLI003` | Phase 8 — CLI | DONE | Repair monorepo CLI release and installer targets
-- [ ] `SEC001` | Phase 9 — Security hygiene | NOT STARTED | Unify API-key redaction, test fixtures, and repository secret scanning
+- [x] `SEC001` | Phase 9 — Security hygiene | DONE | Unify API-key redaction, test fixtures, and repository secret scanning
 - [ ] `W001` | Phase 10 — Workflow correctness | NOT STARTED | Remove avoidable workspace-map N+1 requests and keep a fallback
 - [ ] `W002` | Phase 10 — Workflow correctness | NOT STARTED | Add detailed search completeness without breaking existing callers
 - [ ] `W003` | Phase 10 — Workflow correctness | NOT STARTED | Make TypeScript and Go CSV canonical, collision-free, and spreadsheet-safe
@@ -369,3 +369,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - GoReleaser now has explicit project name `plaky115`, uses a non-mutating `go mod download` hook, and publishes to `apet97/plaky115`. Shell and PowerShell installers resolve the monorepo release API/downloads and their raw script URLs include `cli/scripts/`.
 - A local snapshot build produced the exact installer filenames for Darwin/Linux/Windows on x86_64 and arm64, including `plaky115_Darwin_arm64.tar.gz` and `plaky115_Windows_arm64.zip`; no publish or GitHub release was attempted. The ignored snapshot output was moved out of the checkout after inspection, and GoReleaser's temporary `go mod tidy` changes were restored exactly before continuing.
 - Static layout tests passed 3/3; root workflow YAML parsed; GoReleaser config validation, shell syntax, stale release/install target search, and `git diff --check` exited 0.
+
+### SEC001
+
+- Documented one canonical API-key grammar and the sole `[REDACTED_PLAKY_API_KEY]` marker. The SDK, Go SDK/CLI, live sweep, and direct-filesystem scanner now match the same split-literal corpus, including shortest tails, separators, punctuation, multiple matches, nested records, API error bodies, and non-matches.
+- Replaced token-shaped test credentials across SDK, MCP, CLI, type, parity, and live-source tests with non-token placeholders. Redaction-only probes reconstruct values from split strings at runtime; the exact repository search over implementation files returned no complete token-shaped literals.
+- The scanner walks bytes without following symlinks, skips NUL binaries, uses only an explicit reviewed build/cache exclusion list, scans `.live-artifacts`, emits only sorted relative path/line/count findings, and fails closed on scan/configuration errors. Five scanner tests cover the shared corpus, short/underscore/hyphen/multiple values, binary, symlink, build directory, ignored live artifact, unreadable path, invalid root, ordering, and non-disclosure.
+- `npm --prefix sdk test` passed 166 tests; `npm --prefix mcp-server test` passed 67 tests; the full Go suite and the focused Redact/Secret suite passed; SDK typecheck/type tests/lint and all six live-sweep source tests passed. The required 8-test combined scanner/SDK-redactor command and `git diff --check` exited 0.
+- The scanner correctly detected three preserved ignored planning/taskbook inputs that quote token-shaped examples, proving it does not rely on `.gitignore`. For the required clean implementation-tree scan and exact `rg` gate, those three inputs were moved temporarily, both gates exited 0, and the files were restored byte-identically at their original paths; authoritative taskbook/manifest SHA-256 values remain unchanged.

@@ -114,7 +114,7 @@ func TestPrintErrorJSONEnvelope(t *testing.T) {
 	if env.Error.RequestID != "req-1" {
 		t.Fatalf("requestId = %q", env.Error.RequestID)
 	}
-	if !strings.Contains(env.Error.Message, "plk_[REDACTED]") {
+	if !strings.Contains(env.Error.Message, "[REDACTED_PLAKY_API_KEY]") {
 		t.Fatalf("message missing redaction marker: %q", env.Error.Message)
 	}
 }
@@ -128,7 +128,7 @@ func TestPrintErrorTextModeUnchanged(t *testing.T) {
 	if strings.Contains(out, "{") {
 		t.Fatalf("text mode should not emit JSON: %s", out)
 	}
-	if strings.Contains(out, "SECRET_ABCDEFGH") || !strings.Contains(out, "plk_[REDACTED]") {
+	if strings.Contains(out, "SECRET_ABCDEFGH") || !strings.Contains(out, "[REDACTED_PLAKY_API_KEY]") {
 		t.Fatalf("text mode redaction broken: %s", out)
 	}
 }

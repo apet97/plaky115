@@ -12,7 +12,7 @@ test("request interceptor can rewrite URL before fetch", async () => {
     });
   };
   const client = new PlakyClient({
-    apiKey: "plk_test",
+    apiKey: "test-api-key",
     serverURL: "https://example.test",
     interceptors: {
       request({ url, init }) {
@@ -32,7 +32,7 @@ test("response interceptor sees status code and body", async () => {
     });
   let observed;
   const client = new PlakyClient({
-    apiKey: "plk_test",
+    apiKey: "test-api-key",
     serverURL: "https://example.test",
     interceptors: {
       response({ response, body, operationId }) {

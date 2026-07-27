@@ -18,7 +18,7 @@ test("workspaceMap returns one entry per space with boards", async () => {
     }
     return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
   };
-  const c = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   const map = await workspaceMap(c);
   assert.equal(map.length, 1);
   assert.equal(map[0].boards[0].title, "Roadmap");
@@ -42,7 +42,7 @@ test("bulkUpdateItems with dryRun records dry-run per update without calling wri
     }
     return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
   };
-  const c = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   const out = await bulkUpdateItems(c, {
     space: 1,
     board: 11,
@@ -70,7 +70,7 @@ test("bulkUpdateItems reports updated/error per item and continues past a failur
     }
     return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
   };
-  const c = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x", maxRetries: 0 });
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x", maxRetries: 0 });
   const out = await bulkUpdateItems(c, {
     space: 1,
     board: 11,
@@ -98,7 +98,7 @@ test("exportItems csv expands fields into per-field columns with RFC4180 quoting
     }
     return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
   };
-  const c = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   const out = await exportItems(c, { space: 1, board: 11, format: "csv" });
   // Header: sorted top-level keys (id, title), then sorted field labels (Estimate,
   // Status). This exact string (trailing newline included) is what the Go CLI's
@@ -120,7 +120,7 @@ test("exportItems jsonl serializes each item to a line", async () => {
     }
     return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
   };
-  const c = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   const out = await exportItems(c, { space: 1, board: 11, format: "jsonl" });
   const lines = out.split("\n");
   assert.equal(lines.length, 2);
@@ -140,7 +140,7 @@ test("searchItems filters by title fragment", async () => {
     }
     return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
   };
-  const c = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   const items = await searchItems(c, { space: 1, board: 11, query: "wrapper" });
   assert.equal(items.length, 1);
   assert.equal(items[0].title, "Ship API wrapper");
@@ -162,7 +162,7 @@ test("searchItems matches a field value, not just the title", async () => {
     }
     return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
   };
-  const c = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   const items = await searchItems(c, { space: 1, board: 11, query: "blocked" });
   assert.equal(items.length, 1);
   assert.equal(items[0].id, 1);

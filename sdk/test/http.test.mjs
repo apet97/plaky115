@@ -27,10 +27,10 @@ test("request builds url, sends auth header, parses JSON", async () => {
   };
   const result = await request(
     { method: "GET", path: "/v1/public/spaces", query: { page: 1 }, operationId: "listSpaces" },
-    { apiKey: "plk_test", serverURL: "https://example.test" },
+    { apiKey: "test-api-key", serverURL: "https://example.test" },
   );
   assert.deepEqual(result, { ok: true });
-  assert.equal(new Headers(captured.init.headers).get("x-api-key"), "plk_test");
+  assert.equal(new Headers(captured.init.headers).get("x-api-key"), "test-api-key");
   assert.match(captured.url, /\/v1\/public\/spaces\?page=1$/);
 });
 
@@ -43,7 +43,7 @@ test("non-2xx body becomes typed error (404 → NotFound)", async () => {
   await assert.rejects(
     request(
       { method: "GET", path: "/v1/missing", operationId: "x" },
-      { apiKey: "plk_test", serverURL: "https://example.test" },
+      { apiKey: "test-api-key", serverURL: "https://example.test" },
     ),
     (err) => err instanceof PlakyNotFoundError && err.status === 404,
   );
@@ -58,7 +58,7 @@ test("429 carries retry-after as ms", async () => {
   await assert.rejects(
     request(
       { method: "GET", path: "/v1/limited", operationId: "x" },
-      { apiKey: "plk_test", serverURL: "https://example.test" },
+      { apiKey: "test-api-key", serverURL: "https://example.test" },
     ),
     (err) => err instanceof PlakyRateLimitError && err.retryAfterMs === 2000,
   );
@@ -73,7 +73,7 @@ test("422 → UnprocessableEntityError", async () => {
   await assert.rejects(
     request(
       { method: "POST", path: "/v1/x", body: {}, operationId: "x" },
-      { apiKey: "plk_test", serverURL: "https://example.test" },
+      { apiKey: "test-api-key", serverURL: "https://example.test" },
     ),
     (err) => err instanceof PlakyUnprocessableEntityError,
   );
@@ -85,7 +85,7 @@ test("401 → AuthError", async () => {
   await assert.rejects(
     request(
       { method: "GET", path: "/v1/x", operationId: "x" },
-      { apiKey: "plk_test", serverURL: "https://example.test" },
+      { apiKey: "test-api-key", serverURL: "https://example.test" },
     ),
     (err) => err instanceof PlakyAuthError,
   );
@@ -108,7 +108,7 @@ test("403, 409, and 500 map to specific typed errors", async () => {
     await assert.rejects(
       request(
         { method: "GET", path: "/v1/x", operationId: "x" },
-        { apiKey: "plk_test", serverURL: "https://example.test" },
+        { apiKey: "test-api-key", serverURL: "https://example.test" },
       ),
       (err) => err instanceof ErrorClass,
     );
@@ -125,7 +125,7 @@ test("error exposes method url headers body requestId and nested code", async ()
   await assert.rejects(
     request(
       { method: "POST", path: "/v1/x", body: { a: 1 }, operationId: "x" },
-      { apiKey: "plk_test", serverURL: "https://example.test" },
+      { apiKey: "test-api-key", serverURL: "https://example.test" },
     ),
     (err) =>
       err instanceof PlakyApiError &&
@@ -146,7 +146,7 @@ test("custom fetch is used instead of global fetch", async () => {
   const result = await request(
     { method: "GET", path: "/v1/custom", operationId: "x" },
     {
-      apiKey: "plk_test",
+      apiKey: "test-api-key",
       serverURL: "https://example.test",
       fetch: async () => new Response(JSON.stringify({ ok: true }), { status: 200 }),
     },
@@ -166,7 +166,7 @@ test("async api key and header providers resolve for each request", async () => 
   };
 
   const opts = {
-    apiKey: async () => `plk_${++apiKeyCalls}`,
+    apiKey: async () => `test-api-key-${++apiKeyCalls}`,
     serverURL: "https://example.test",
     headers: async () => ({ "X-Request-Number": String(++headerCalls) }),
   };
@@ -174,8 +174,8 @@ test("async api key and header providers resolve for each request", async () => 
   await request({ method: "GET", path: "/v1/a", operationId: "a" }, opts);
   await request({ method: "GET", path: "/v1/b", operationId: "b" }, opts);
 
-  assert.equal(seen[0].get("x-api-key"), "plk_1");
-  assert.equal(seen[1].get("x-api-key"), "plk_2");
+  assert.equal(seen[0].get("x-api-key"), "test-api-key-1");
+  assert.equal(seen[1].get("x-api-key"), "test-api-key-2");
   assert.equal(seen[0].get("x-request-number"), "1");
   assert.equal(seen[1].get("x-request-number"), "2");
 });
@@ -208,7 +208,7 @@ test("requestWithResponse returns metadata and data", async () => {
 
   const response = await requestWithResponse(
     { method: "GET", path: "/v1/meta", operationId: "x" },
-    { apiKey: "plk_test", serverURL: "https://example.test" },
+    { apiKey: "test-api-key", serverURL: "https://example.test" },
   );
 
   assert.deepEqual(response.data, { ok: true });
@@ -226,15 +226,15 @@ test("responseType text bytes and void parse correctly", async () => {
 
   const text = await request(
     { method: "GET", path: "/v1/text", operationId: "text", responseType: "text" },
-    { apiKey: "plk_test", serverURL: "https://example.test" },
+    { apiKey: "test-api-key", serverURL: "https://example.test" },
   );
   const bytes = await request(
     { method: "PATCH", path: "/v1/bytes", operationId: "bytes", responseType: "bytes", body: "x", },
-    { apiKey: "plk_test", serverURL: "https://example.test", idempotencyKey: "idem" },
+    { apiKey: "test-api-key", serverURL: "https://example.test", idempotencyKey: "idem" },
   );
   const empty = await request(
     { method: "DELETE", path: "/v1/void", operationId: "void", responseType: "void" },
-    { apiKey: "plk_test", serverURL: "https://example.test", idempotencyKey: "idem" },
+    { apiKey: "test-api-key", serverURL: "https://example.test", idempotencyKey: "idem" },
   );
 
   assert.equal(text, "hello");
@@ -253,7 +253,7 @@ test("FormData body does not set JSON content type", async () => {
   body.set("file", "value");
   await request(
     { method: "POST", path: "/v1/form", body, operationId: "form" },
-    { apiKey: "plk_test", serverURL: "https://example.test", idempotencyKey: "idem" },
+    { apiKey: "test-api-key", serverURL: "https://example.test", idempotencyKey: "idem" },
   );
 
   assert.equal(headers.get("content-type"), null);
@@ -273,7 +273,7 @@ test("query values encode arrays and dates", async () => {
       query: { q: "a b", tag: ["x/y", "z"], at: new Date("2026-05-25T00:00:00.000Z") },
       operationId: "query",
     },
-    { apiKey: "plk_test", serverURL: "https://example.test" },
+    { apiKey: "test-api-key", serverURL: "https://example.test" },
   );
 
   const url = new URL(captured);
@@ -291,7 +291,7 @@ test("timeout throws PlakyTimeoutError", async () => {
   await assert.rejects(
     request(
       { method: "GET", path: "/v1/slow", operationId: "slow" },
-      { apiKey: "plk_test", serverURL: "https://example.test", timeoutMs: 1, fetch: fetchNever },
+      { apiKey: "test-api-key", serverURL: "https://example.test", timeoutMs: 1, fetch: fetchNever },
     ),
     (err) => err instanceof PlakyTimeoutError,
   );
@@ -309,7 +309,7 @@ test("external abort throws PlakyAbortError", async () => {
   await assert.rejects(
     request(
       { method: "GET", path: "/v1/abort", operationId: "abort" },
-      { apiKey: "plk_test", serverURL: "https://example.test", signal: controller.signal, fetch: fetchAborted },
+      { apiKey: "test-api-key", serverURL: "https://example.test", signal: controller.signal, fetch: fetchAborted },
     ),
     (err) => err instanceof PlakyAbortError,
   );
@@ -320,7 +320,7 @@ test("rejected fetch throws PlakyConnectionError", async () => {
     request(
       { method: "GET", path: "/v1/network", operationId: "network" },
       {
-        apiKey: "plk_test",
+        apiKey: "test-api-key",
         serverURL: "https://example.test",
         fetch: async () => {
           throw new TypeError("network down");
@@ -339,7 +339,7 @@ test("idempotency key passed through as header on mutations", async () => {
   };
   await request(
     { method: "POST", path: "/v1/x", body: { a: 1 }, operationId: "x" },
-    { apiKey: "plk_test", serverURL: "https://example.test", idempotencyKey: "test-key-123" },
+    { apiKey: "test-api-key", serverURL: "https://example.test", idempotencyKey: "test-key-123" },
   );
   assert.equal(new Headers(captured.headers).get("idempotency-key"), "test-key-123");
 });
@@ -362,7 +362,7 @@ test("maxRetries retries a retryable GET once before succeeding", async () => {
 
   const result = await request(
     { method: "GET", path: "/v1/public/spaces", operationId: "listSpaces" },
-    { apiKey: "plk_test", serverURL: "https://example.test", maxRetries: 1 },
+    { apiKey: "test-api-key", serverURL: "https://example.test", maxRetries: 1 },
   );
 
   assert.deepEqual(result, { ok: true });
@@ -382,7 +382,7 @@ test("maxRetries stops after the configured retry budget", async () => {
   await assert.rejects(
     request(
       { method: "GET", path: "/v1/public/spaces", operationId: "listSpaces" },
-      { apiKey: "plk_test", serverURL: "https://example.test", maxRetries: 2 },
+      { apiKey: "test-api-key", serverURL: "https://example.test", maxRetries: 2 },
     ),
     (err) => err.status === 500,
   );
@@ -403,7 +403,7 @@ test("maxRetries does not retry validation, auth, or not-found responses", async
     await assert.rejects(
       request(
         { method: "GET", path: "/v1/public/spaces", operationId: "listSpaces" },
-        { apiKey: "plk_test", serverURL: "https://example.test", maxRetries: 2 },
+        { apiKey: "test-api-key", serverURL: "https://example.test", maxRetries: 2 },
       ),
     );
     assert.equal(calls, 1, `status ${status} should not be retried`);
@@ -423,7 +423,7 @@ test("maxRetries does not retry mutations without an idempotency key", async () 
   await assert.rejects(
     request(
       { method: "POST", path: "/v1/public/spaces/1/boards/2/items", body: { title: "x" }, operationId: "createItem" },
-      { apiKey: "plk_test", serverURL: "https://example.test", maxRetries: 2 },
+      { apiKey: "test-api-key", serverURL: "https://example.test", maxRetries: 2 },
     ),
   );
   assert.equal(calls, 1);
@@ -442,7 +442,7 @@ test("maxRetries does not retry mutations when an idempotency key is present", a
   await assert.rejects(
     request(
       { method: "POST", path: "/v1/public/spaces/1/boards/2/items", body: { title: "x" }, operationId: "createItem" },
-      { apiKey: "plk_test", serverURL: "https://example.test", maxRetries: 3, idempotencyKey: "idem-1" },
+      { apiKey: "test-api-key", serverURL: "https://example.test", maxRetries: 3, idempotencyKey: "idem-1" },
     ),
     PlakyServerError,
   );
@@ -459,7 +459,7 @@ test("malformed 2xx JSON throws PlakyDecodeError and is NOT retried", async () =
   await assert.rejects(
     request(
       { method: "GET", path: "/v1/public/spaces", operationId: "listSpaces" },
-      { apiKey: "plk_test", serverURL: "https://example.test", maxRetries: 3 },
+      { apiKey: "test-api-key", serverURL: "https://example.test", maxRetries: 3 },
     ),
     (err) => err instanceof PlakyDecodeError && err.status === 200 && err.cause instanceof SyntaxError,
   );
@@ -478,7 +478,7 @@ test("a throwing success response interceptor propagates and is NOT retried", as
     request(
       { method: "GET", path: "/v1/public/spaces", operationId: "listSpaces" },
       {
-        apiKey: "plk_test",
+        apiKey: "test-api-key",
         serverURL: "https://example.test",
         maxRetries: 3,
         interceptors: { response: async () => { throw boom; } },
@@ -503,7 +503,7 @@ test("a thrown timeout is retried then succeeds (retry-on-thrown path)", async (
 
   const result = await request(
     { method: "GET", path: "/v1/slow", operationId: "slow" },
-    { apiKey: "plk_test", serverURL: "https://example.test", timeoutMs: 5, maxRetries: 1, fetch: fetchImpl },
+    { apiKey: "test-api-key", serverURL: "https://example.test", timeoutMs: 5, maxRetries: 1, fetch: fetchImpl },
   );
   assert.deepEqual(result, { ok: true });
   assert.equal(calls, 2);
@@ -519,7 +519,7 @@ test("a thrown connection error is retried then succeeds (retry-on-thrown path)"
 
   const result = await request(
     { method: "GET", path: "/v1/flaky", operationId: "flaky" },
-    { apiKey: "plk_test", serverURL: "https://example.test", maxRetries: 1, fetch: fetchImpl },
+    { apiKey: "test-api-key", serverURL: "https://example.test", maxRetries: 1, fetch: fetchImpl },
   );
   assert.deepEqual(result, { ok: true });
   assert.equal(calls, 2);
@@ -535,7 +535,7 @@ test("a thrown connection error on a non-idempotent write is NOT retried", async
   await assert.rejects(
     request(
       { method: "POST", path: "/v1/public/spaces/1/boards/2/items", body: { title: "x" }, operationId: "createItem" },
-      { apiKey: "plk_test", serverURL: "https://example.test", maxRetries: 2, fetch: fetchImpl },
+      { apiKey: "test-api-key", serverURL: "https://example.test", maxRetries: 2, fetch: fetchImpl },
     ),
     (err) => err instanceof PlakyConnectionError,
   );
@@ -554,7 +554,7 @@ test("aborting during retry backoff throws PlakyAbortError before the next attem
   await assert.rejects(
     request(
       { method: "GET", path: "/v1/public/spaces", operationId: "listSpaces" },
-      { apiKey: "plk_test", serverURL: "https://example.test", maxRetries: 2, signal: controller.signal },
+      { apiKey: "test-api-key", serverURL: "https://example.test", maxRetries: 2, signal: controller.signal },
     ),
     (err) => err instanceof PlakyAbortError,
   );

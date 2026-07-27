@@ -315,7 +315,7 @@ before(async () => {
 
   const sdkMod = await import(pathToFileURL(join(root, "sdk/esm/index.js")).href);
   sdkClient = new sdkMod.PlakyClient({
-    apiKey: "plk_test",
+    apiKey: "test-api-key",
     serverURL: "http://sdk.parity.local",
     maxRetries: 0,
     fetch: recordingFetch(sdkStore),
@@ -326,7 +326,7 @@ before(async () => {
   globalThis.fetch = recordingFetch(mcpStore);
   const mcpMod = await import(pathToFileURL(join(root, "mcp-server/esm/server/index.js")).href);
   ({ server: mcpServer } = mcpMod.buildServer({
-    apiKey: "plk_test",
+    apiKey: "test-api-key",
     serverURL: "http://mcp.parity.local",
     mode: "all",
     scopes: ["read", "write", "destructive"],

@@ -57,35 +57,35 @@ beforeEach(() => {
 });
 
 test("resolveSpace by numeric ID hits direct match", async () => {
-  const c = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   const s = await resolveSpace(c, 2);
   assert.equal(s.title, "Engineering");
 });
 
 test("resolveSpace by name picks unique match", async () => {
-  const c = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   const s = await resolveSpace(c, "engineering");
   assert.equal(s.id, 2);
 });
 
 test("resolveSpace throws on ambiguous name", async () => {
-  const c = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   await assert.rejects(resolveSpace(c, "op"), (err) => err instanceof PlakyAmbiguousMatchError);
 });
 
 test("resolveSpace throws not-found", async () => {
-  const c = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   await assert.rejects(resolveSpace(c, "missing"), (err) => err instanceof PlakyNotFoundError);
 });
 
 test("resolveBoard walks space then board", async () => {
-  const c = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   const b = await resolveBoard(c, { space: 1, board: "Sprint" });
   assert.equal(b.id, 12);
 });
 
 test("resolveSpaceAndBoard resolves both and lists spaces only once", async () => {
-  const c = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   const { space, board } = await resolveSpaceAndBoard(c, { space: "engineering", board: "bugs" });
   assert.equal(space.id, 2);
   assert.equal(board.id, 21);
@@ -93,32 +93,32 @@ test("resolveSpaceAndBoard resolves both and lists spaces only once", async () =
 });
 
 test("resolveItem walks space -> board -> item without re-listing spaces", async () => {
-  const c = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   const item = await resolveItem(c, { space: 1, board: "Roadmap", item: "wrapper" });
   assert.equal(item.id, 100);
   assert.equal(spaceListCalls, 1);
 });
 
 test("resolveItem by numeric id resolves directly", async () => {
-  const c = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   const item = await resolveItem(c, { space: 1, board: 11, item: 101 });
   assert.equal(item.title, "Bug triage");
 });
 
 test("resolveUser matches by email when the user has no name", async () => {
-  const c = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   const u = await resolveUser(c, "ops@example");
   assert.equal(u.id, 9);
 });
 
 test("resolveTeam matches by title needle", async () => {
-  const c = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   const t = await resolveTeam(c, "design");
   assert.equal(t.id, 22);
 });
 
 test("resolveSpace by unknown numeric id throws not-found with the id in the message", async () => {
-  const c = new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   await assert.rejects(
     resolveSpace(c, 999),
     (err) => err instanceof PlakyNotFoundError && /id=999/.test(err.message),

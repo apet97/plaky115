@@ -4,6 +4,9 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const liveSweep = readFileSync(fileURLToPath(new URL("live-workspace-sweep.mjs", import.meta.url)), "utf8");
+const corpus = JSON.parse(
+  readFileSync(fileURLToPath(new URL("../test/fixtures/security/plaky-api-key-cases.json", import.meta.url)), "utf8"),
+);
 
 test("live sweep fails enabled SDK CLI and MCP sections instead of skipping missing builds", () => {
   assert.doesNotMatch(liveSweep, /record\("sdk", "skipped — sdk build missing/);
@@ -44,4 +47,13 @@ test("live sweep validates sensitive MCP output in memory and never records its 
   assert.match(liveSweep, /expiresInSeconds: value\.expiresInSeconds/);
   assert.doesNotMatch(liveSweep, /record\([^\n]*value\.url/);
   assert.doesNotMatch(liveSweep, /summary\.push\([^\n]*value\.url/);
+});
+
+test("live sweep redaction follows the shared split-literal corpus", () => {
+  const source = liveSweep.match(/function redact\(s\) \{\n([\s\S]*?)\n\}/)?.[1];
+  assert.ok(source, "redact helper source not found");
+  const redact = new Function("s", source);
+  for (const entry of corpus.cases) {
+    assert.equal(redact(entry.inputParts.join("")), entry.expectedParts.join(""), entry.name);
+  }
 });

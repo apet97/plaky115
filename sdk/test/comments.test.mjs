@@ -10,7 +10,7 @@ const COMMENTS = [
 function clientReturning(body) {
   globalThis.fetch = async () =>
     new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
-  return new PlakyClient({ apiKey: "plk_t", serverURL: "https://x" });
+  return new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
 }
 
 beforeEach(() => {

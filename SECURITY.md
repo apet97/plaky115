@@ -24,10 +24,11 @@ surface is local credential handling, transport, and the request/response path.
   `PLAKY115_API_KEY_AUTH` as a compatibility fallback) or from a caller-supplied
   provider. They are sent as the `X-API-Key` header.
 - Keys are never written to logs, errors, screenshots, docs, or command output.
-  The SDK and MCP server redact `plk_`-style values; the CLI redacts secrets in
-  stderr text.
-- `npm run secret:scan` is the required pre-push gate and fails on any committed
-  `plk_` value.
+  The SDK, MCP server, CLI, and live sweep use the grammar and sole marker in
+  `security/plaky-api-key-grammar.md`.
+- `npm run secret:scan` is the required pre-push gate. It scans the working tree
+  directly, including `.live-artifacts`, and fails on any token-shaped value or
+  scanner I/O error without printing the matched value.
 - Rotate a key immediately if it is shared in chat, pasted into a file, or used
   in a sacrificial smoke run.
 

@@ -28,7 +28,7 @@ beforeEach(() => {
 });
 
 test("client.spaces.list returns paged data", async () => {
-  const client = new PlakyClient({ apiKey: "plk_test", serverURL: "https://example.test" });
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://example.test" });
   const page = await client.spaces.list({ page: 1, pageSize: 10 });
   assert.deepEqual(page.data?.[0]?.title, "Ops");
 });
@@ -43,7 +43,7 @@ test("client.spaces.list serializes expand array query values", async () => {
     });
   };
 
-  const client = new PlakyClient({ apiKey: "plk_test", serverURL: "https://example.test" });
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://example.test" });
   await client.spaces.list({ expand: ["board"], pageSize: 100 });
 
   assert.deepEqual(captured.searchParams.getAll("expand"), ["board"]);
@@ -60,7 +60,7 @@ test("client.users.list serializes email filters as repeated query values", asyn
     });
   };
 
-  const client = new PlakyClient({ apiKey: "plk_test", serverURL: "https://example.test" });
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://example.test" });
   await client.users.list({ emails: ["a@example.com", "b@example.com"], status: "ACTIVE", type: "MEMBER" });
 
   assert.deepEqual(captured.searchParams.getAll("emails"), ["a@example.com", "b@example.com"]);
@@ -78,7 +78,7 @@ test("client.items.list forwards expanded query coverage", async () => {
     });
   };
 
-  const client = new PlakyClient({ apiKey: "plk_test", serverURL: "https://example.test" });
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://example.test" });
   await client.items.list({
     spaceId: 123,
     boardId: 456,
@@ -103,7 +103,7 @@ test("client.items.list flows path params into URL", async () => {
       headers: { "content-type": "application/json" },
     });
   };
-  const client = new PlakyClient({ apiKey: "plk_test", serverURL: "https://example.test" });
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://example.test" });
   await client.items.list({ spaceId: 123, boardId: 456 });
   assert.match(captured, /\/spaces\/123\/boards\/456\/items/);
 });
@@ -117,7 +117,7 @@ test("resource methods encode path ID segments", async () => {
       headers: { "content-type": "application/json" },
     });
   };
-  const client = new PlakyClient({ apiKey: "plk_test", serverURL: "https://example.test" });
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://example.test" });
   await client.spaces.get(SpaceId("space/with slash"));
   assert.match(captured, /\/spaces\/space%2Fwith%20slash$/);
 });
@@ -133,7 +133,7 @@ test("read methods apply per-request header overrides", async () => {
   };
 
   const client = new PlakyClient({
-    apiKey: "plk_test",
+    apiKey: "test-api-key",
     serverURL: "https://example.test",
     headers: { "X-Trace": "client" },
   });
@@ -145,7 +145,7 @@ test("read methods apply per-request header overrides", async () => {
 
 test("read methods apply per-request timeout overrides", async () => {
   const client = new PlakyClient({
-    apiKey: "plk_test",
+    apiKey: "test-api-key",
     serverURL: "https://example.test",
     timeoutMs: 30_000,
     fetch: async (_url, init) =>
@@ -158,17 +158,17 @@ test("read methods apply per-request timeout overrides", async () => {
 });
 
 test("client.users.me hits /users/me", async () => {
-  const client = new PlakyClient({ apiKey: "plk_test", serverURL: "https://example.test" });
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://example.test" });
   const me = await client.users.me();
   assert.equal(me.email, "me@example.com");
 });
 
 test("withOptions returns new instance preserving apiKey by default", () => {
-  const c1 = new PlakyClient({ apiKey: "plk_a", serverURL: "https://a" });
+  const c1 = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://a" });
   const c2 = c1.withOptions({ serverURL: "https://b" });
   assert.equal(c1.options.serverURL, "https://a");
   assert.equal(c2.options.serverURL, "https://b");
-  assert.equal(c2.options.apiKey, "plk_a");
+  assert.equal(c2.options.apiKey, "test-api-key");
 });
 
 test("constructor throws without apiKey", () => {
@@ -186,41 +186,41 @@ test("constructor rejects malformed or unsafe server URLs", () => {
     "https://example.test/api?token=value",
     "https://example.test/api#fragment",
   ]) {
-    assert.throws(() => new PlakyClient({ apiKey: "plk_test", serverURL }), /serverURL/);
+    assert.throws(() => new PlakyClient({ apiKey: "test-api-key", serverURL }), /serverURL/);
   }
 });
 
 test("constructor normalizes trailing slashes and preserves valid custom base paths", () => {
-  const client = new PlakyClient({ apiKey: "plk_test", serverURL: "https://example.test/proxy/plaky///" });
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://example.test/proxy/plaky///" });
   assert.equal(client.options.serverURL, "https://example.test/proxy/plaky");
 });
 
 test("constructor rejects negative or NaN timeoutMs/maxRetries", () => {
-  assert.throws(() => new PlakyClient({ apiKey: "plk_test", timeoutMs: -1 }), /timeoutMs must be a non-negative number/);
-  assert.throws(() => new PlakyClient({ apiKey: "plk_test", timeoutMs: Number.NaN }), /timeoutMs must be a non-negative number/);
-  assert.throws(() => new PlakyClient({ apiKey: "plk_test", maxRetries: -2 }), /maxRetries must be a non-negative number/);
-  assert.throws(() => new PlakyClient({ apiKey: "plk_test", maxRetries: Number.NaN }), /maxRetries must be a non-negative number/);
-  assert.throws(() => new PlakyClient({ apiKey: "plk_test", maxRetries: Number.POSITIVE_INFINITY }), /maxRetries must be a non-negative number/);
-  assert.throws(() => new PlakyClient({ apiKey: "plk_test", timeoutMs: Number.POSITIVE_INFINITY }), /timeoutMs must be a non-negative number/);
-  assert.throws(() => new PlakyClient({ apiKey: "plk_test", maxRetries: 1.5 }), /maxRetries must be a non-negative integer/);
+  assert.throws(() => new PlakyClient({ apiKey: "test-api-key", timeoutMs: -1 }), /timeoutMs must be a non-negative number/);
+  assert.throws(() => new PlakyClient({ apiKey: "test-api-key", timeoutMs: Number.NaN }), /timeoutMs must be a non-negative number/);
+  assert.throws(() => new PlakyClient({ apiKey: "test-api-key", maxRetries: -2 }), /maxRetries must be a non-negative number/);
+  assert.throws(() => new PlakyClient({ apiKey: "test-api-key", maxRetries: Number.NaN }), /maxRetries must be a non-negative number/);
+  assert.throws(() => new PlakyClient({ apiKey: "test-api-key", maxRetries: Number.POSITIVE_INFINITY }), /maxRetries must be a non-negative number/);
+  assert.throws(() => new PlakyClient({ apiKey: "test-api-key", timeoutMs: Number.POSITIVE_INFINITY }), /timeoutMs must be a non-negative number/);
+  assert.throws(() => new PlakyClient({ apiKey: "test-api-key", maxRetries: 1.5 }), /maxRetries must be a non-negative integer/);
 });
 
 test("constructor accepts maxRetries:0 and large finite timeouts without clamping", () => {
-  const client = new PlakyClient({ apiKey: "plk_test", maxRetries: 0, timeoutMs: 3_600_000.5 });
+  const client = new PlakyClient({ apiKey: "test-api-key", maxRetries: 0, timeoutMs: 3_600_000.5 });
   assert.equal(client.options.maxRetries, 0);
   assert.equal(client.options.timeoutMs, 3_600_000.5);
 });
 
 test("redact handles API-key-shaped tokens with separators", () => {
   const token = "plk_" + "TEST_SECRET-ABC123";
-  assert.equal(redact(`echo ${token}`), "echo plk_***");
+  assert.equal(redact(`echo ${token}`), "echo [REDACTED_PLAKY_API_KEY]");
 });
 
 test("redactRecord deep-redacts nested keys and tolerates non-serializable top-level input", () => {
   const token = "plk_" + "TEST_SECRET-ABC123";
   const cleaned = redactRecord({ auth: `Bearer ${token}`, nested: { note: token } });
-  assert.equal(cleaned.auth, "Bearer plk_***");
-  assert.equal(cleaned.nested.note, "plk_***");
+  assert.equal(cleaned.auth, "Bearer [REDACTED_PLAKY_API_KEY]");
+  assert.equal(cleaned.nested.note, "[REDACTED_PLAKY_API_KEY]");
   // Top-level non-serializable input is returned unchanged rather than throwing.
   assert.equal(redactRecord(undefined), undefined);
   const fn = () => token;
@@ -228,7 +228,7 @@ test("redactRecord deep-redacts nested keys and tolerates non-serializable top-l
 });
 
 test("client.items.create returns dry-run plan when dryRun:true", async () => {
-  const client = new PlakyClient({ apiKey: "plk_test", serverURL: "https://example.test" });
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://example.test" });
   const plan = await client.items.create({
     spaceId: 1,
     boardId: 2,
@@ -247,14 +247,14 @@ test("paginated iterator walks all pages", async () => {
     if (n === 1) return new Response(JSON.stringify({ data: [{ id: 1 }, { id: 2 }], hasMore: true }), { status: 200, headers: { "content-type": "application/json" } });
     return new Response(JSON.stringify({ data: [{ id: 3 }], hasMore: false }), { status: 200, headers: { "content-type": "application/json" } });
   };
-  const client = new PlakyClient({ apiKey: "plk_t", serverURL: "https://example.test" });
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://example.test" });
   const ids = [];
   for await (const s of client.spaces.iterate({ pageSize: 2 })) ids.push(s.id);
   assert.deepEqual(ids, [1, 2, 3]);
 });
 
 test("listAll resolves into an array", async () => {
-  const client = new PlakyClient({ apiKey: "plk_t", serverURL: "https://example.test" });
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://example.test" });
   const all = await client.spaces.listAll();
   assert.ok(Array.isArray(all));
 });

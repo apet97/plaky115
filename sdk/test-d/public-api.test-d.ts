@@ -50,7 +50,7 @@ import {
 const fetchLike: FetchLike = async (input, init) => fetch(input, init);
 
 const client = new PlakyClient({
-  apiKey: async () => "plk_test",
+  apiKey: async () => "test-api-key",
   fetch: fetchLike,
   headers: async () => ({ "X-Test": "1" }),
 } satisfies PlakyClientOptions);

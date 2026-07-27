@@ -48,7 +48,7 @@ test("buildHeaders resolves auth and custom header providers", async () => {
   const headers = await buildHeaders(
     { method: "POST", path: "/v1/items", body: { title: "x" } },
     {
-      apiKey: async () => "plk_test",
+      apiKey: async () => "test-api-key",
       serverURL: "https://example.test",
       headers: async () => ({ "X-App": "sdk" }),
       idempotencyKey: "idem_1",
@@ -56,7 +56,7 @@ test("buildHeaders resolves auth and custom header providers", async () => {
     },
   );
 
-  assert.equal(headers.get("x-api-key"), "plk_test");
+  assert.equal(headers.get("x-api-key"), "test-api-key");
   assert.equal(headers.get("x-app"), "sdk");
   assert.equal(headers.get("idempotency-key"), "idem_1");
   assert.equal(headers.get("user-agent"), "plaky-test");

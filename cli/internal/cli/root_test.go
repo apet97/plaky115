@@ -410,13 +410,13 @@ func TestFormatErrorRedactsAPIKeyShapedValues(t *testing.T) {
 	if strings.Contains(got, "SECRET") || strings.Contains(got, "ABC123") {
 		t.Fatalf("formatted error leaked key suffix: %s", got)
 	}
-	if !strings.Contains(got, "plk_[REDACTED]") {
+	if !strings.Contains(got, "[REDACTED_PLAKY_API_KEY]") {
 		t.Fatalf("formatted error missing redaction marker: %s", got)
 	}
 }
 
 func TestItemsBulkUpdateRedactsEmbeddedErrorDetails(t *testing.T) {
-	key := "plk_TEST_SECRET_ABC123"
+	key := "plk_" + "TEST_SECRET_ABC123"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"message":"echoed ` + key + `"}`))
@@ -440,7 +440,7 @@ func TestItemsBulkUpdateRedactsEmbeddedErrorDetails(t *testing.T) {
 	if strings.Contains(out, key) || strings.Contains(out, "SECRET_ABC123") {
 		t.Fatalf("bulk update output leaked key: %s", out)
 	}
-	if !strings.Contains(out, "plk_[REDACTED]") {
+	if !strings.Contains(out, "[REDACTED_PLAKY_API_KEY]") {
 		t.Fatalf("bulk update output missing redaction marker: %s", out)
 	}
 }
@@ -469,7 +469,7 @@ func TestGoSDKErrorBodyIsRedacted(t *testing.T) {
 	if strings.Contains(apiErr.Message, key) || strings.Contains(string(apiErr.Body), key) {
 		t.Fatalf("APIError leaked key: message=%q body=%q", apiErr.Message, string(apiErr.Body))
 	}
-	if !strings.Contains(apiErr.Message, "plk_[REDACTED]") || !strings.Contains(string(apiErr.Body), "plk_[REDACTED]") {
+	if !strings.Contains(apiErr.Message, "[REDACTED_PLAKY_API_KEY]") || !strings.Contains(string(apiErr.Body), "[REDACTED_PLAKY_API_KEY]") {
 		t.Fatalf("APIError missing redaction marker: message=%q body=%q", apiErr.Message, string(apiErr.Body))
 	}
 }

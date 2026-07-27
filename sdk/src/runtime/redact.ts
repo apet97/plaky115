@@ -1,18 +1,15 @@
-const SECRET = /plk_[A-Za-z0-9_-]+/g;
+const PLAKY_API_KEY_PATTERN = /plk_[A-Za-z0-9_-]+/g;
+const PLAKY_API_KEY_REDACTION_MARKER = "[REDACTED_PLAKY_API_KEY]";
 
 /**
- * Replace every `plk_`-style API key in a string with `plk_***`. Use before
+ * Replace every `plk_`-style API key in a string with the canonical marker. Use before
  * logging or surfacing any value that might contain a key.
  *
  * @param value - Arbitrary text that may embed an API key.
  * @returns The text with API keys masked.
- * @example
- * ```ts
- * console.log(redact(`auth failed for plk_live_abc123`)); // "auth failed for plk_***"
- * ```
  */
 export function redact(value: string): string {
-  return value.replace(SECRET, "plk_***");
+  return value.replace(PLAKY_API_KEY_PATTERN, PLAKY_API_KEY_REDACTION_MARKER);
 }
 
 /**

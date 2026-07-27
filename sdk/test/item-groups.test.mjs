@@ -11,7 +11,7 @@ function json(body, status = 200) {
 
 function clientWith(fetch, options = {}) {
   return new PlakyClient({
-    apiKey: "plk_test",
+    apiKey: "test-api-key",
     serverURL: "https://example.test/proxy/plaky",
     fetch,
     ...options,

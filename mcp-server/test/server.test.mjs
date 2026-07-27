@@ -26,7 +26,7 @@ async function connectedServer(options) {
 
 test("buildServer creates an MCP server with at least one tool", () => {
   const { server, tools } = buildServer({
-    apiKey: "plk_test",
+    apiKey: "test-api-key",
     mode: "all",
     scopes: ["read", "write", "destructive"],
   });
@@ -36,7 +36,7 @@ test("buildServer creates an MCP server with at least one tool", () => {
 
 test("buildServer registers tools with output schemas", () => {
   return connectedServer({
-    apiKey: "plk_test",
+    apiKey: "test-api-key",
     mode: "all",
     scopes: ["read", "write", "destructive"],
   }).then(async ({ client, server }) => {
@@ -52,7 +52,7 @@ test("buildServer registers tools with output schemas", () => {
 
 test("curated tool response includes text and structuredContent", async () => {
   const { client, server } = await connectedServer({
-    apiKey: "plk_test",
+    apiKey: "test-api-key",
     mode: "curated",
     scopes: ["read", "write"],
   });
@@ -79,7 +79,7 @@ test("Plaky API errors are returned as tool errors", async () => {
     });
   try {
     const { client, server } = await connectedServer({
-      apiKey: "plk_test",
+      apiKey: "test-api-key",
       serverURL: "https://example.test",
       mode: "generated",
       scopes: ["read"],
@@ -118,16 +118,17 @@ test("unexpected programmer errors propagate as redacted protocol errors", async
   const tool = selectTools("curated").find((candidate) => candidate.name === "plaky_search_docs");
   assert.ok(tool);
   const originalHandler = tool.handler;
+  const leakedToken = ["pl", "k_", "super_secret_value"].join("");
   tool.handler = async () => {
-    throw new Error("programmer bug exposed plk_super_secret_value");
+    throw new Error(`programmer bug exposed ${leakedToken}`);
   };
-  const { client, server } = await connectedServer({ apiKey: "plk_test", mode: "curated", scopes: ["read"] });
+  const { client, server } = await connectedServer({ apiKey: "test-api-key", mode: "curated", scopes: ["read"] });
   try {
     await assert.rejects(
       client.callTool({ name: tool.name, arguments: { query: "spaces" } }),
       (error) => {
-        assert.doesNotMatch(error.message, /plk_super_secret_value/);
-        assert.match(error.message, /plk_\*\*\*/);
+        assert.doesNotMatch(error.message, new RegExp(leakedToken));
+        assert.match(error.message, /\[REDACTED_PLAKY_API_KEY\]/);
         return true;
       },
     );
@@ -142,7 +143,7 @@ test("raw delete tools return structured ok receipts", async () => {
   globalThis.fetch = async () => new Response(null, { status: 204 });
   try {
     const { client, server } = await connectedServer({
-      apiKey: "plk_test",
+      apiKey: "test-api-key",
       serverURL: "https://example.test",
       mode: "generated",
       scopes: ["read", "write", "destructive"],
@@ -168,7 +169,7 @@ test("execute_workflow accepts both space/board/item and spaceId/boardId/itemId 
       headers: { "content-type": "application/json" },
     });
   try {
-    const { client, server } = await connectedServer({ apiKey: "plk_test", serverURL: "https://example.test", mode: "all", scopes: ["read", "write"] });
+    const { client, server } = await connectedServer({ apiKey: "test-api-key", serverURL: "https://example.test", mode: "all", scopes: ["read", "write"] });
     try {
       const canonical = await client.callTool({ name: "plaky_execute_workflow", arguments: { workflowId: "comments.thread", input: { spaceId: 1, boardId: 2, itemId: 3 } } });
       assert.equal(canonical.structuredContent.data.length, 1);
@@ -188,7 +189,7 @@ test("execute_workflow fails fast with a clear message when a required entity id
     throw new Error("fetch should not be called when an id is missing");
   };
   try {
-    const { client, server } = await connectedServer({ apiKey: "plk_test", serverURL: "https://example.test", mode: "all", scopes: ["read", "write"] });
+    const { client, server } = await connectedServer({ apiKey: "test-api-key", serverURL: "https://example.test", mode: "all", scopes: ["read", "write"] });
     try {
       const response = await client.callTool({ name: "plaky_execute_workflow", arguments: { workflowId: "comments.thread", input: { boardId: 2, itemId: 3 } } });
       assert.equal(response.isError, true);
@@ -213,7 +214,7 @@ test("raw write tool accepts a provided body and forwards it to the transport", 
   };
   try {
     const { client, server } = await connectedServer({
-      apiKey: "plk_test",
+      apiKey: "test-api-key",
       serverURL: "https://example.test",
       mode: "generated",
       scopes: ["read", "write"],
