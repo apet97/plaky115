@@ -184,6 +184,30 @@ test("absence verification polls reads without retrying the mutation", async () 
   assert.equal(checks, 2);
 });
 
+test("cleanup never retries a known mutation during discovery", async () => {
+  const marker = createRunMarker(RUN_A);
+  const ledger = createArtifactLedger(marker);
+  const group = { id: "ambiguous", title: `${marker}group` };
+  trackArtifact(ledger, "groups", group);
+  let removes = 0;
+  const adapters = emptyAdapters();
+  adapters.groups = {
+    list: async () => [group],
+    remove: async () => verifyDeleteOutcome(
+      async () => {
+        removes++;
+        const error = new Error("ambiguous delete response");
+        error.status = 400;
+        throw error;
+      },
+      async () => false,
+    ),
+  };
+
+  await assert.rejects(cleanupOwnedArtifacts({ ledger, adapters }), AggregateError);
+  assert.equal(removes, 1, "one exact artifact must receive at most one mutation attempt");
+});
+
 test("an API timeout still settles cleanup before the run rejects", async () => {
   const events = [];
   const timeout = new Error("private API timeout response body");

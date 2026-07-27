@@ -266,8 +266,12 @@ export async function cleanupOwnedArtifacts({ ledger: targetLedger, adapters }) 
   const failures = [];
   const discovered = { comments: 0, files: 0, items: 0, groups: 0 };
   const leftovers = { comments: 0, files: 0, items: 0, groups: 0 };
+  const attempted = Object.fromEntries(order.map((family) => [family, new Set()]));
 
   async function attempt(family, artifact, stage) {
+    const artifactId = String(artifact.id ?? "unknown");
+    if (attempted[family].has(artifactId)) return;
+    attempted[family].add(artifactId);
     try {
       await adapters[family].remove(artifact);
       const index = targetLedger[family].findIndex((entry) => String(entry.id) === String(artifact.id));
