@@ -6,6 +6,7 @@ Run from a clean worktree on the release branch.
 
 ```bash
 npm run verify
+npm run workflow:policy:test
 npm run pack:smoke
 npm run secret:scan
 (cd cli && go test ./... && go build -o /tmp/plaky115 ./cmd/plaky115)
@@ -17,6 +18,11 @@ lint, metadata tests, deterministic generation, drift checks, SDK/MCP lint and
 tests, live-sweep source guard, CLI tests/build/help/doctor, surface checks,
 package artifact audit, pack smoke, package-consumer smoke, secret scan, and
 GoReleaser validation.
+
+The workflow-policy gate parses every root workflow, rejects mutable or short
+external action references, enforces same-line version comments and least
+permissions, and validates the weekly GitHub Actions Dependabot configuration.
+Reviewed pin provenance is recorded in `docs/release/action-pins.md`.
 
 ## Optional Live Gate
 

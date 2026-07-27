@@ -19,17 +19,17 @@ test("npm publishing is tag-only, GitHub-hosted, and protected by exact permissi
   assert.deepEqual(workflow.permissions, { contents: "read", "id-token": "write" });
   assert.equal(workflow.jobs.publish.environment, "npm-release");
   assert.match(workflow.jobs.publish["runs-on"], /^ubuntu-/);
-  assert.equal(workflow.jobs.publish.steps.find((step) => step.uses === "actions/checkout@v4")?.with?.["persist-credentials"], false);
+  assert.equal(findAction(workflow.jobs.publish.steps, "actions/checkout")?.with?.["persist-credentials"], false);
 });
 
 test("release job installs the complete toolchain and exact trusted-publishing npm floor", () => {
   const steps = parseWorkflow().jobs.publish.steps;
-  assert.equal(steps.find((step) => step.uses === "actions/setup-node@v4")?.with?.["node-version"], "24");
-  assert.equal(steps.find((step) => step.uses === "actions/setup-node@v4")?.with?.["registry-url"], "https://registry.npmjs.org");
-  assert.ok(steps.some((step) => step.uses === "actions/setup-go@v5"));
-  assert.ok(steps.some((step) => step.uses === "oven-sh/setup-bun@v2"));
-  assert.ok(steps.some((step) => step.uses === "ruby/setup-ruby@v1"));
-  assert.ok(steps.some((step) => step.uses === "goreleaser/goreleaser-action@v7"));
+  assert.equal(findAction(steps, "actions/setup-node")?.with?.["node-version"], "24");
+  assert.equal(findAction(steps, "actions/setup-node")?.with?.["registry-url"], "https://registry.npmjs.org");
+  assert.ok(findAction(steps, "actions/setup-go"));
+  assert.ok(findAction(steps, "oven-sh/setup-bun"));
+  assert.ok(findAction(steps, "ruby/setup-ruby"));
+  assert.ok(findAction(steps, "goreleaser/goreleaser-action"));
   assert.ok(steps.some((step) => step.run === "npm install --global npm@11.5.1"));
 });
 
@@ -59,3 +59,7 @@ test("workflow contains no long-lived publish token or provenance opt-out", () =
   assert.doesNotMatch(source, /NPM_TOKEN|NODE_AUTH_TOKEN|provenance\s*[=:]\s*false|NPM_CONFIG_PROVENANCE/);
   assert.doesNotMatch(source, /pull_request|workflow_dispatch/);
 });
+
+function findAction(steps, repository) {
+  return steps.find((step) => String(step.uses ?? "").startsWith(`${repository}@`));
+}

@@ -33,12 +33,12 @@ test("CLI release workflow lives at the monorepo root with bounded permissions",
 test("CLI release workflow resolves the nested Go module and dist directory consistently", () => {
   const workflow = parseYaml(workflowPath);
   const steps = workflow.jobs.release.steps;
-  const setupGo = steps.find((step) => step.uses === "actions/setup-go@v5");
-  assert.ok(setupGo, "missing actions/setup-go@v5");
+  const setupGo = findAction(steps, "actions/setup-go");
+  assert.ok(setupGo, "missing actions/setup-go");
   assert.equal(setupGo.with["go-version-file"], "cli/go.mod");
   assert.equal(setupGo.with["cache-dependency-path"], "cli/go.sum");
 
-  const release = steps.find((step) => step.uses === "goreleaser/goreleaser-action@v7");
+  const release = findAction(steps, "goreleaser/goreleaser-action");
   assert.ok(release, "release must use the same GoReleaser action v7 major as CI");
   assert.equal(release.with.workdir, "cli");
   assert.equal(release.with.args, "release --clean");
@@ -48,6 +48,10 @@ test("CLI release workflow resolves the nested Go module and dist directory cons
   assert.ok(upload, "missing artifact upload step");
   assert.match(upload.with.path, /^cli\/dist\//m);
 });
+
+function findAction(steps, repository) {
+  return steps.find((step) => String(step.uses ?? "").startsWith(`${repository}@`));
+}
 
 test("GoReleaser and both installers target the monorepo with matching archive names", () => {
   const config = readFileSync(`${root}/cli/.goreleaser.yaml`, "utf8");

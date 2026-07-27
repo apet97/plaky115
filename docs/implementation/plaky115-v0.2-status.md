@@ -57,7 +57,7 @@
 - [x] `R001` | Phase 12 — Release and verification | DONE | Update all documentation and examples to the implemented behavior
 - [x] `R002` | Phase 12 — Release and verification | DONE | Bump versions, synchronize runtime version, and refresh package snapshots
 - [x] `REL001` | Phase 12 — Release automation | DONE | Add tokenless npm trusted publishing with provenance and release preflights
-- [ ] `SEC002` | Phase 12 — Supply-chain hardening | NOT STARTED | Pin every GitHub Action by full SHA and enforce least-privilege workflow policy
+- [x] `SEC002` | Phase 12 — Supply-chain hardening | DONE | Pin every GitHub Action by full SHA and enforce least-privilege workflow policy
 - [ ] `R003` | Phase 12 — Release and verification | NOT STARTED | Run the full offline release gate from a clean real Git checkout
 - [ ] `R004` | Phase 12 — Release and verification | NOT STARTED | Run sacrificial live proof, adversarial review, and release readiness audit
 
@@ -449,3 +449,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - A live read-only registry preflight confirmed `plaky115@0.2.0` and `plaky115-mcp@0.2.0` are both absent on 2026-07-26.
 - **EXTERNAL HOLD:** Before any tag is created, a maintainer must manually verify both npm packages have a GitHub Actions trusted publisher for repository `apet97/plaky115`, workflow `release-npm.yml`, environment `npm-release`, and allowed action `npm publish`, and must verify the protected GitHub environment reviewer policy. This is not assumed from repository code. No tag, publish, or release was attempted.
 - npm's current trusted-publishing documentation confirms GitHub-hosted runners, `id-token: write`, npm 11.5.1 or later, Node 22.14 or later, exact workflow/environment matching, and automatic provenance: `https://docs.npmjs.com/trusted-publishers/`.
+
+### SEC002
+
+- Inventoried every external action in all five root workflows and resolved seven exact release tags from their official repositories with `git ls-remote --tags`, including dereference queries. Each exact tag and matching official release page was reviewed on 2026-07-26 and recorded in `docs/release/action-pins.md`.
+- Every external `uses:` reference now carries a reviewed 40-character commit SHA and same-line exact version comment. Checkout credential persistence is disabled everywhere. CI, live, and freshness have `contents: read`; only the CLI release job has `contents: write`; npm release has `contents: read` plus `id-token: write`.
+- Added weekly GitHub Actions Dependabot updates and an offline policy test that rejects unapproved action repositories, mutable/short references, missing version comments, broad permissions, persisted checkout credentials, publish-token variables, and `pull_request_target`.
+- `package.json` and the two existing release-workflow tests were necessarily included beyond the packet's allowed-file list: the task explicitly requires the new policy script to run first in `verify:offline`, and SHA pinning necessarily changes the parsed `uses` values asserted by those tests. No production or generated surface was expanded.
+- The combined policy, npm-release, CLI-release, and live-workflow suites passed 23 tests; every workflow and Dependabot YAML parsed; forbidden-pattern scans and `git diff --check` exited 0.
