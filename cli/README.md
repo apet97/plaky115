@@ -16,6 +16,24 @@ invocation. Real Plaky workspaces are account-prefixed; pass
 `--server-url https://<account>.api.plaky.com` when the default
 `https://api.plaky.com` host does not route for your workspace.
 
+## Install
+
+Linux or macOS:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/apet97/plaky115/main/cli/scripts/install.sh | bash
+```
+
+Windows PowerShell:
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/apet97/plaky115/main/cli/scripts/install.ps1 | iex
+```
+
+Both installers resolve releases from `apet97/plaky115`. Set
+`PLAKY115_VERSION` to a specific `v*` tag or leave it unset for the latest
+release.
+
 ## Curated Commands
 
 ```bash

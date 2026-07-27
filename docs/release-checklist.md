@@ -43,9 +43,13 @@ Passes when no generated surface reports stale, missing, or legacy output.
 1. Bump versions:
    - `sdk/package.json` and `mcp-server/package.json` must use the same version.
 2. Update release notes with curated diff highlights.
-3. Tag `git tag v0.X.Y && git push --tags`.
+3. Tag `git tag v0.X.Y && git push --tags`. The root
+   `.github/workflows/release-cli.yml` workflow runs GoReleaser from `cli/` and
+   attaches the CLI archives to that repository release.
 4. Publish `sdk/` and `mcp-server/` from their package directories.
-5. Run `goreleaser release --clean` for the Go CLI.
+5. Confirm the CLI workflow produced matching Linux/macOS `.tar.gz` and Windows
+   `.zip` archives plus `checksums.txt`. Do not rerun GoReleaser locally against
+   the same tag.
 
 ## Post-Release Smoke
 

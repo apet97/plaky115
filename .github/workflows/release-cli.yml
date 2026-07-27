@@ -1,4 +1,4 @@
-name: Release
+name: Release CLI
 
 on:
   push:
@@ -6,37 +6,42 @@ on:
       - "v*"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  goreleaser:
+  release:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Check out repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Go
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: "go.mod"
+          go-version-file: cli/go.mod
           cache: true
+          cache-dependency-path: cli/go.sum
+
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
           version: "~> v2"
           args: release --clean
+          workdir: cli
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload release artifacts
         if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: release-artifacts
+          name: cli-release-artifacts
           path: |
-            dist/
-            !dist/*.txt
+            cli/dist/
+            !cli/dist/*.txt
           retention-days: 30

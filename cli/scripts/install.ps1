@@ -3,9 +3,9 @@
 # This script downloads and installs the latest version of the plaky115 CLI
 #
 # Usage:
-#   iwr -useb https://raw.githubusercontent.com/apet97/plaky115-cli/main/scripts/install.ps1 | iex
+#   iwr -useb https://raw.githubusercontent.com/apet97/plaky115/main/cli/scripts/install.ps1 | iex
 #   or
-#   Invoke-WebRequest -Uri https://raw.githubusercontent.com/apet97/plaky115-cli/main/scripts/install.ps1 -UseBasicParsing | Invoke-Expression
+#   Invoke-WebRequest -Uri https://raw.githubusercontent.com/apet97/plaky115/main/cli/scripts/install.ps1 -UseBasicParsing | Invoke-Expression
 #
 # Options:
 #   $env:PLAKY115_INSTALL_DIR - Installation directory (default: $env:LOCALAPPDATA\Programs\plaky115)
@@ -18,7 +18,7 @@ param()
 $ErrorActionPreference = 'Stop'
 
 # Configuration
-$Repo = "apet97/plaky115-cli"
+$Repo = "apet97/plaky115"
 $BinaryName = "plaky115.exe"
 $DefaultInstallDir = Join-Path $env:LOCALAPPDATA "Programs\plaky115"
 $InstallDir = if ($env:PLAKY115_INSTALL_DIR) { $env:PLAKY115_INSTALL_DIR } else { $DefaultInstallDir }

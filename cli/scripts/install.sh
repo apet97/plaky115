@@ -5,9 +5,9 @@
 # for Linux and macOS systems.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/apet97/plaky115-cli/main/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/apet97/plaky115/main/cli/scripts/install.sh | bash
 #   or
-#   wget -qO- https://raw.githubusercontent.com/apet97/plaky115-cli/main/scripts/install.sh | bash
+#   wget -qO- https://raw.githubusercontent.com/apet97/plaky115/main/cli/scripts/install.sh | bash
 #
 # Options:
 #   PLAKY115_INSTALL_DIR - Installation directory (default: /usr/local/bin)
@@ -17,7 +17,7 @@
 set -e
 
 # Configuration
-REPO="apet97/plaky115-cli"
+REPO="apet97/plaky115"
 DEFAULT_INSTALL_DIR="/usr/local/bin"
 USER_INSTALL_DIR="$HOME/.local/bin"
 VERSION="${PLAKY115_VERSION:-latest}"

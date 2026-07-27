@@ -1,9 +1,10 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 version: 2
+project_name: plaky115
 
 before:
   hooks:
-    - go mod tidy
+    - go mod download
 
 builds:
   - id: plaky115
@@ -43,7 +44,7 @@ archives:
 release:
   github:
     owner: apet97
-    name: plaky115-cli
+    name: plaky115
   draft: false
   prerelease: auto
   mode: append

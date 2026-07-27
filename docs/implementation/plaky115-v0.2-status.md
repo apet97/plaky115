@@ -46,7 +46,7 @@
 - [x] `MCP005` | Phase 7 — MCP | DONE | Standardize structured errors and sensitive-output test handling
 - [x] `CLI001` | Phase 8 — CLI | DONE | Validate all generated raw request kinds and new operation behavior
 - [x] `CLI002` | Phase 8 — CLI | DONE | Add minimal curated Item Group and Item file commands
-- [ ] `CLI003` | Phase 8 — CLI | NOT STARTED | Repair monorepo CLI release and installer targets
+- [x] `CLI003` | Phase 8 — CLI | DONE | Repair monorepo CLI release and installer targets
 - [ ] `SEC001` | Phase 9 — Security hygiene | NOT STARTED | Unify API-key redaction, test fixtures, and repository secret scanning
 - [ ] `W001` | Phase 10 — Workflow correctness | NOT STARTED | Remove avoidable workspace-map N+1 requests and keep a fallback
 - [ ] `W002` | Phase 10 — Workflow correctness | NOT STARTED | Add detailed search completeness without breaking existing callers
@@ -361,3 +361,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - CLI README and shell recipes document the new safe read/dry-run flows, confirmation boundary, streaming inputs, and signed-link handling.
 - The task packet omitted `cli/internal/cli/root.go`, but the six top-level commands cannot be reachable without root registration. Scope expanded only to those six `AddCommand` calls; no generated raw/client file changed.
 - All focused Item Group/Item file tests and the full Go suite passed; `bash -n examples/cli/recipes.sh` and `git diff --check` exited 0.
+
+### CLI003
+
+- Removed the undiscoverable nested CLI workflow and added root `.github/workflows/release-cli.yml` for `v*` tags. Repository defaults stay `contents: read`; only the release job receives `contents: write`.
+- The workflow resolves Go from `cli/go.mod`, caches `cli/go.sum`, and uses the same GoReleaser action v7 major as CI with `workdir: cli`; artifact upload reads `cli/dist/`.
+- GoReleaser now has explicit project name `plaky115`, uses a non-mutating `go mod download` hook, and publishes to `apet97/plaky115`. Shell and PowerShell installers resolve the monorepo release API/downloads and their raw script URLs include `cli/scripts/`.
+- A local snapshot build produced the exact installer filenames for Darwin/Linux/Windows on x86_64 and arm64, including `plaky115_Darwin_arm64.tar.gz` and `plaky115_Windows_arm64.zip`; no publish or GitHub release was attempted. The ignored snapshot output was moved out of the checkout after inspection, and GoReleaser's temporary `go mod tidy` changes were restored exactly before continuing.
+- Static layout tests passed 3/3; root workflow YAML parsed; GoReleaser config validation, shell syntax, stale release/install target search, and `git diff --check` exited 0.
