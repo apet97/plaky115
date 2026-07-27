@@ -58,7 +58,7 @@
 - [x] `R002` | Phase 12 — Release and verification | DONE | Bump versions, synchronize runtime version, and refresh package snapshots
 - [x] `REL001` | Phase 12 — Release automation | DONE | Add tokenless npm trusted publishing with provenance and release preflights
 - [x] `SEC002` | Phase 12 — Supply-chain hardening | DONE | Pin every GitHub Action by full SHA and enforce least-privilege workflow policy
-- [ ] `R003` | Phase 12 — Release and verification | NOT STARTED | Run the full offline release gate from a clean real Git checkout
+- [x] `R003` | Phase 12 — Release and verification | DONE | Run the full offline release gate from a clean real Git checkout
 - [ ] `R004` | Phase 12 — Release and verification | NOT STARTED | Run sacrificial live proof, adversarial review, and release readiness audit
 
 ## Evidence log
@@ -457,3 +457,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Added weekly GitHub Actions Dependabot updates and an offline policy test that rejects unapproved action repositories, mutable/short references, missing version comments, broad permissions, persisted checkout credentials, publish-token variables, and `pull_request_target`.
 - `package.json` and the two existing release-workflow tests were necessarily included beyond the packet's allowed-file list: the task explicitly requires the new policy script to run first in `verify:offline`, and SHA pinning necessarily changes the parsed `uses` values asserted by those tests. No production or generated surface was expanded.
 - The combined policy, npm-release, CLI-release, and live-workflow suites passed 23 tests; every workflow and Dependabot YAML parsed; forbidden-pattern scans and `git diff --check` exited 0.
+
+### R003
+
+- The proof used a real clean Git checkout on `feat/plaky115-32-operation-contract` with Node 26.0.0, npm 11.12.1, exact Bun 1.2.17, Ruby 3.3.11, Go 1.26.2, and GoReleaser 2.15.2. Exact SDK/MCP installs and Go module download succeeded; dependency installation reported existing audit findings but did not mutate lockfiles.
+- Three complete proof attempts stopped on real failures and produced narrow commits before restart: `37a3aff` refreshed the owning Ruby 3.3 metadata output, `520ae01` restored exact release-workflow paths required by docs validation, and `77fe64a` removed the MCP upload control-regex lint defect with expanded filename-control coverage.
+- From a new clean start after those fixes, `npm run verify` completed without API credentials and was repeated successfully with `NPM_CONFIG_OFFLINE=true`. It covered workflow policy, OpenAPI/metadata/codegen drift, docs/examples/live source guards, SDK type/lint/175 tests, MCP lint/67 tests, Go tests/build/help/doctor, 33 parity tests including the 32-operation inventory assertion, strict surfaces, scanner tests/scans, package audits/snapshots/consumer smoke, and GoReleaser validation.
+- A second `npm run generate:all` produced no tracked diff; `gofmt -l cli` was empty. SDK and MCP dry-run packs reported `0.2.0`, 139 and 209 files respectively. GoReleaser snapshot built all six Darwin/Linux/Windows x86_64/arm64 archives and checksums without publishing.
+- The final post-generation/post-pack/post-snapshot secret scan exited 0. Final tracked status was empty; only ignored `cli/dist/` build output remained. The three preserved ignored planning/taskbook inputs were restored with their original SHA-256 values. No tag, publish, release, or live API request was made.
