@@ -53,7 +53,7 @@
 - [x] `W003` | Phase 10 — Workflow correctness | DONE | Make TypeScript and Go CSV canonical, collision-free, and spreadsheet-safe
 - [x] `L001` | Phase 11 — Live proof | DONE | Refactor live sweep around a run-owned artifact ledger
 - [x] `L002` | Phase 11 — Live proof | DONE | Exercise Item Groups and Item files through API, SDK, CLI, and MCP
-- [ ] `L003` | Phase 11 — Live proof | NOT STARTED | Add fault injection, privacy assertions, and strict live workflow preflight
+- [x] `L003` | Phase 11 — Live proof | DONE | Add fault injection, privacy assertions, and strict live workflow preflight
 - [ ] `R001` | Phase 12 — Release and verification | NOT STARTED | Update all documentation and examples to the implemented behavior
 - [ ] `R002` | Phase 12 — Release and verification | NOT STARTED | Bump versions, synchronize runtime version, and refresh package snapshots
 - [ ] `REL001` | Phase 12 — Release automation | NOT STARTED | Add tokenless npm trusted publishing with provenance and release preflights
@@ -416,3 +416,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Raw API, SDK, and CLI file lists are asserted as bare arrays. MCP file lists are asserted as structured `data` envelopes. API/SDK void operations and CLI/MCP translated `ok` receipts are asserted.
 - Download links are validated in memory as non-empty HTTPS URLs with finite numeric expiry. Summaries contain only `urlPresent:true` and the expiry, never the URL, multipart bytes, or base64 content.
 - The 16-test combined cleanup/source command and the 11-test `npm run live:sweep:test` command passed. Script syntax, archive-acknowledgement preflight without requests, and `git diff --check` exited 0. No live API request or mutation was made.
+
+### L003
+
+- Live preflight now requires a non-empty key, numeric sacrificial space/board IDs, explicit archive acknowledgement, and every enabled SDK/CLI/MCP build before direct API execution begins. The manual workflow exposes the acknowledgement as a required boolean and passes only `1` or `0` to the process.
+- Normal failures, API timeouts, SIGINT, and SIGTERM converge on one memoized cleanup promise. Signal shutdown does not call `process.exit` until cleanup settles. Cleanup treats HTTP 404 as already absent, keeps timeout/other failures fatal, exhausts paginated discovery, and performs the final rescan.
+- Success stdout is one JSON object containing fixed surface/operation/status strings plus recursively allowlisted finite numbers and booleans. Failure stderr ignores error messages/response bodies and emits only failure status, known HTTP status, and a safe exact artifact ID when manual archived-group cleanup is required.
+- Fault tests cover create-before-track recovery on a later page, concurrent-run isolation, API timeout, 404, non-404 failure, SIGINT/SIGTERM coalescing, missing key/IDs/archive acknowledgement, each missing build, paginated final scans, and privacy sentinels for API keys, signed URLs, email, titles, comments, and file content.
+- All 23 combined cleanup/source tests, all 12 `npm run live:sweep:test` tests, workflow YAML parsing, three workflow-layout tests, no-key preflight execution, script syntax, isolated `npm run secret:scan`, and `git diff --check` exited 0. The three preserved ignored planning/taskbook inputs were restored byte-identically after the scan. No live API request or mutation was made.

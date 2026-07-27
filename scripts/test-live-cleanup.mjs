@@ -4,8 +4,14 @@ import {
   cleanupOwnedArtifacts,
   collectPages,
   createArtifactLedger,
+  createCleanupCoordinator,
   createRunMarker,
+  createShutdownCoordinator,
+  executeWithCleanup,
   isOwnedArtifact,
+  preflightLiveSweep,
+  serializeLiveFailure,
+  serializeLiveSummary,
   trackArtifact,
 } from "./live-workspace-sweep.mjs";
 
@@ -104,6 +110,155 @@ test("cleanup aggregates errors, continues, and fails after final rescan", async
     (error) => error instanceof AggregateError && error.errors.length >= 2,
   );
   assert.ok(removed.includes("item"), "parent cleanup must continue after a child failure");
+});
+
+test("cleanup treats 404 as absent but fails closed on timeouts and other errors", async () => {
+  const marker = createRunMarker(RUN_A);
+  const absentLedger = createArtifactLedger(marker);
+  trackArtifact(absentLedger, "items", { id: "404", title: `${marker}absent` });
+  const absentAdapters = emptyAdapters();
+  absentAdapters.items.remove = async () => {
+    const error = new Error("not found");
+    error.status = 404;
+    throw error;
+  };
+  await cleanupOwnedArtifacts({ ledger: absentLedger, adapters: absentAdapters });
+  assert.equal(absentLedger.items.length, 0);
+
+  const timeoutLedger = createArtifactLedger(marker);
+  trackArtifact(timeoutLedger, "items", { id: "timeout", title: `${marker}timeout` });
+  const timeoutAdapters = emptyAdapters();
+  timeoutAdapters.items.remove = async () => {
+    const error = new Error("request timed out");
+    error.name = "AbortError";
+    throw error;
+  };
+  await assert.rejects(cleanupOwnedArtifacts({ ledger: timeoutLedger, adapters: timeoutAdapters }), AggregateError);
+});
+
+test("an API timeout still settles cleanup before the run rejects", async () => {
+  const events = [];
+  const timeout = new Error("private API timeout response body");
+  timeout.name = "AbortError";
+  await assert.rejects(
+    executeWithCleanup(
+      async () => { events.push("operation"); throw timeout; },
+      async () => { await new Promise((resolve) => setImmediate(resolve)); events.push("cleanup"); },
+    ),
+    (error) => error === timeout,
+  );
+  assert.deepEqual(events, ["operation", "cleanup"]);
+});
+
+test("fault after create-before-track is recovered across paginated discovery", async () => {
+  const marker = createRunMarker(RUN_A);
+  const ledger = createArtifactLedger(marker);
+  const remote = [{ id: "lost", title: `${marker}created-before-track` }];
+  const pages = [[], remote];
+  let scan = 0;
+  const adapters = emptyAdapters();
+  adapters.items.list = async () => {
+    scan++;
+    return collectPages(async (page) => ({ data: pages[page - 1] ?? [], hasMore: page < pages.length }));
+  };
+  adapters.items.remove = async (artifact) => remote.splice(remote.findIndex((entry) => entry.id === artifact.id), 1);
+
+  const result = await cleanupOwnedArtifacts({ ledger, adapters });
+
+  assert.equal(scan, 2, "discovery and final rescan must both paginate");
+  assert.equal(result.discovered.items, 1);
+  assert.deepEqual(remote, []);
+});
+
+test("SIGINT and SIGTERM share one cleanup promise and never exit early", async () => {
+  let release;
+  let cleanupCalls = 0;
+  const cleanup = createCleanupCoordinator(async () => {
+    cleanupCalls++;
+    await new Promise((resolve) => { release = resolve; });
+  });
+  const exits = [];
+  const shutdown = createShutdownCoordinator({ cleanup, exit: (code) => exits.push(code) });
+
+  const sigint = shutdown(130);
+  const sigterm = shutdown(143);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(cleanupCalls, 1);
+  assert.deepEqual(exits, []);
+  release();
+  await Promise.all([sigint, sigterm]);
+  assert.deepEqual(exits, [130]);
+});
+
+test("strict preflight rejects missing IDs or builds before a mutation can run", async () => {
+  let mutations = 0;
+  let buildChecks = 0;
+  const checks = {
+    sdk: () => { buildChecks++; return true; },
+    cli: () => { buildChecks++; return "/tmp/plaky115"; },
+    mcp: () => { buildChecks++; return "/tmp/mcp-server.js"; },
+  };
+  for (const [overrides, pattern] of [
+    [{ apiKey: "" }, /API key/],
+    [{ spaceId: "" }, /space ID/],
+    [{ boardId: "" }, /board ID/],
+    [{ allowArchive: false }, /ALLOW_ARCHIVE/],
+  ]) {
+    await assert.rejects(
+      preflightLiveSweep({ apiKey: "test-api-key", spaceId: "1", boardId: "2", allowArchive: true, wantSDK: true, wantCLI: true, wantMCP: true, checks, ...overrides }),
+      pattern,
+    );
+  }
+  assert.equal(buildChecks, 0);
+  assert.equal(mutations, 0);
+
+  for (const [failedBuild, pattern] of [["sdk", /SDK build/], ["cli", /CLI build/], ["mcp", /MCP server build/]]) {
+    buildChecks = 0;
+    const failingChecks = {
+      sdk: () => { buildChecks++; return failedBuild !== "sdk"; },
+      cli: () => { buildChecks++; return failedBuild === "cli" ? false : "/tmp/plaky115"; },
+      mcp: () => { buildChecks++; return failedBuild === "mcp" ? false : "/tmp/mcp-server.js"; },
+    };
+    await assert.rejects(
+      preflightLiveSweep({ apiKey: "test-api-key", spaceId: "1", boardId: "2", allowArchive: true, wantSDK: true, wantCLI: true, wantMCP: true, checks: failingChecks })
+        .then(() => { mutations++; }),
+      pattern,
+    );
+  }
+  assert.equal(mutations, 0);
+});
+
+test("machine-readable success and failure output drops all privacy sentinels", () => {
+  const sentinels = [
+    ["plk_", "privacySentinel"].join(""),
+    "https://download.example.invalid/private?signature=sentinel",
+    "person@example.invalid",
+    `${createRunMarker(RUN_A)}private-title`,
+    "private comment sentinel",
+    "private file content sentinel",
+  ];
+  const detail = {
+    count: 2,
+    itemId: 44,
+    urlPresent: true,
+    email: sentinels[2],
+    title: sentinels[3],
+    comment: sentinels[4],
+    body: sentinels[5],
+    url: sentinels[1],
+    key: sentinels[0],
+  };
+  const success = serializeLiveSummary([{ area: "api", name: "privacy", detail }], 0);
+  const failure = serializeLiveFailure(new Error(sentinels.join(" ")));
+  for (const output of [success, failure]) {
+    assert.doesNotThrow(() => JSON.parse(output));
+    for (const sentinel of sentinels) assert.equal(output.includes(sentinel), false);
+  }
+  assert.deepEqual(JSON.parse(success), {
+    status: "ok",
+    operations: [{ surface: "api", operation: "privacy", status: "ok", count: 2, itemId: 44, urlPresent: true }],
+    trackedArtifactCount: 0,
+  });
 });
 
 function emptyAdapters() {

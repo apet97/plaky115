@@ -80,6 +80,20 @@ test("live workflow serializes runs per target without cancelling cleanup", () =
   assert.match(liveWorkflow, /space_id/);
   assert.match(liveWorkflow, /board_id/);
   assert.match(liveWorkflow, /cancel-in-progress:\s*false/);
+  assert.match(liveWorkflow, /allow_archive/);
+  assert.match(liveWorkflow, /PLAKY115_SMOKE_ALLOW_ARCHIVE/);
+  assert.doesNotMatch(liveWorkflow, /upload-artifact|raw response|response bod(?:y|ies)/i);
+});
+
+test("live sweep completes strict preflight before registering mutation sections", () => {
+  const preflight = liveSweep.indexOf("await preflightLiveSweep");
+  assert.ok(preflight >= 0);
+  for (const mutation of ["await directAPISweep()", "await sdkSweep()", "await cliSweep()", "await mcpSweep()"]) {
+    assert.ok(liveSweep.indexOf(mutation) > preflight, `${mutation} must follow preflight`);
+  }
+  assert.match(liveSweep, /createCleanupCoordinator/);
+  assert.match(liveSweep, /createShutdownCoordinator/);
+  assert.doesNotMatch(liveSweep, /console\.(?:log|error)\([^\n]*(?:err\.stack|JSON\.stringify\(parsed\)|r\.stderr)/);
 });
 
 test("live sweep covers item groups and item files on every surface", () => {

@@ -60,6 +60,19 @@ surface is local credential handling, transport, and the request/response path.
   treat it as sensitive until it expires and rotate or replace the underlying
   file when the exposure warrants it.
 
+### Live-sweep privacy
+
+- Live preflight must finish before any mutation: key presence, sacrificial
+  numeric space/board IDs, explicit archive acknowledgement, and all enabled
+  builds are mandatory.
+- Live stdout/stderr is machine-readable and allowlisted. It may contain fixed
+  surface/operation/status strings, numeric counts or IDs, and sanitized
+  booleans. It must not contain raw response bodies, workspace content, user
+  identity data, fixture content, API keys, or signed URLs.
+- Cleanup is shared across normal failure, SIGINT, and SIGTERM. A 404 means the
+  exact artifact is already absent; timeouts and all other cleanup errors remain
+  failures, and the final paginated rescan must report zero run-owned artifacts.
+
 ### Webhooks (none exposed)
 
 - Plaky's public API exposes no webhooks endpoint: `GET /v1/public/webhooks`

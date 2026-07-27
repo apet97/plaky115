@@ -9,6 +9,11 @@ on:
       board_id:
         description: "Sacrificial Plaky board ID"
         required: true
+      allow_archive:
+        description: "Acknowledge empty-group archive/delete probes on this sacrificial board"
+        required: true
+        type: boolean
+        default: false
       group_title:
         description: "Writable group title"
         required: false
@@ -47,5 +52,6 @@ jobs:
           PLAKY115_API_KEY: ${{ secrets.PLAKY115_API_KEY }}
           PLAKY115_SMOKE_SPACE_ID: ${{ inputs.space_id }}
           PLAKY115_SMOKE_BOARD_ID: ${{ inputs.board_id }}
+          PLAKY115_SMOKE_ALLOW_ARCHIVE: ${{ inputs.allow_archive && '1' || '0' }}
           PLAKY115_SMOKE_GROUP_TITLE: ${{ inputs.group_title }}
         run: npm run live:sweep

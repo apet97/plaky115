@@ -6,6 +6,7 @@
 //   PLAKY115_SMOKE_SPACE_ID=165999                    sacrificial space id
 //   PLAKY115_SMOKE_BOARD_ID=192510                    sacrificial board id
 //   PLAKY115_SMOKE_GROUP_TITLE=Backlog                writable group on the board
+//   PLAKY115_SMOKE_ALLOW_ARCHIVE=1                    acknowledge archive/delete probes
 //   PLAKY115_LIVE_SDK=1                               enable SDK sweep (on by default)
 //   PLAKY115_LIVE_CLI=1                               enable CLI sweep (on by default)
 //   PLAKY115_LIVE_MCP=1                               enable MCP sweep (on by default)
@@ -33,54 +34,54 @@ const allowArchive = process.env["PLAKY115_SMOKE_ALLOW_ARCHIVE"] === "1";
 const runMarker = createRunMarker(randomUUID());
 const ledger = createArtifactLedger(runMarker);
 const summary = [];
+let liveBuilds = {};
+const cleanupOnce = createCleanupCoordinator(cleanup);
+const shutdownOnce = createShutdownCoordinator({
+  cleanup: cleanupOnce,
+  exit: (code) => process.exit(code),
+  onError: (error) => console.error(serializeLiveFailure(error)),
+});
 
 async function main() {
-  if (!apiKey) {
-    console.error("Set PLAKY115_API_KEY (or PLAKY115_API_KEY_AUTH) before running.");
-    process.exitCode = 2;
-    return;
-  }
-  if (!allowArchive) {
-    console.error("Set PLAKY115_SMOKE_ALLOW_ARCHIVE=1 to acknowledge the empty-group archive probe.");
+  try {
+    liveBuilds = await preflightLiveSweep({
+      apiKey,
+      spaceId,
+      boardId,
+      allowArchive,
+      wantSDK,
+      wantCLI,
+      wantMCP,
+      checks: {
+        sdk: ensureSDKBuilt,
+        cli: ensureCLIBuilt,
+        mcp: ensureMCPBuilt,
+      },
+    });
+  } catch (error) {
+    console.error(serializeLiveFailure(error));
     process.exitCode = 2;
     return;
   }
   process.on("SIGINT", () => {
-    void shutdown(130);
+    void shutdownOnce(130);
   });
   process.on("SIGTERM", () => {
-    void shutdown(143);
+    void shutdownOnce(143);
   });
 
   try {
-    await directAPISweep();
-    if (wantSDK) await sdkSweep();
-    if (wantCLI) await cliSweep();
-    if (wantMCP) await mcpSweep();
-    await cleanup();
+    await executeWithCleanup(async () => {
+      await directAPISweep();
+      if (wantSDK) await sdkSweep();
+      if (wantCLI) await cliSweep();
+      if (wantMCP) await mcpSweep();
+    }, cleanupOnce);
     printSummary();
   } catch (err) {
-    let cleanupErr;
-    try {
-      await cleanup();
-    } catch (cleanupFailure) {
-      cleanupErr = cleanupFailure;
-    }
-    console.error("live sweep failed:", redact(String(err && err.stack ? err.stack : err)));
-    if (cleanupErr) {
-      console.error("live sweep cleanup failed:", redact(String(cleanupErr && cleanupErr.stack ? cleanupErr.stack : cleanupErr)));
-    }
+    console.error(serializeLiveFailure(err));
     process.exitCode = 1;
   }
-}
-
-async function shutdown(code) {
-  try {
-    await cleanup();
-  } catch (err) {
-    console.error("live sweep cleanup failed:", redact(String(err && err.stack ? err.stack : err)));
-  }
-  process.exit(code);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();
@@ -104,6 +105,81 @@ export function createRunMarker(uuid) {
 
 export function createArtifactLedger(marker) {
   return { marker, groups: [], items: [], comments: [], files: [] };
+}
+
+export function createCleanupCoordinator(cleanupFn) {
+  let cleanupPromise;
+  return () => {
+    cleanupPromise ??= Promise.resolve().then(cleanupFn);
+    return cleanupPromise;
+  };
+}
+
+export function createShutdownCoordinator({ cleanup, exit, onError = () => {} }) {
+  let shutdownPromise;
+  return (code) => {
+    shutdownPromise ??= (async () => {
+      let exitCode = code;
+      try {
+        await cleanup();
+      } catch (error) {
+        exitCode = 1;
+        onError(error);
+      }
+      exit(exitCode);
+    })();
+    return shutdownPromise;
+  };
+}
+
+export async function executeWithCleanup(operation, cleanup) {
+  let operationError;
+  try {
+    await operation();
+  } catch (error) {
+    operationError = error;
+  }
+  let cleanupError;
+  try {
+    await cleanup();
+  } catch (error) {
+    cleanupError = error;
+  }
+  if (operationError && cleanupError) throw new AggregateError([operationError, cleanupError], "live operation and cleanup failed");
+  if (operationError) throw operationError;
+  if (cleanupError) throw cleanupError;
+}
+
+export async function preflightLiveSweep({
+  apiKey: key,
+  spaceId: targetSpaceId,
+  boardId: targetBoardId,
+  allowArchive: archiveAcknowledged,
+  wantSDK: sdkEnabled,
+  wantCLI: cliEnabled,
+  wantMCP: mcpEnabled,
+  checks,
+}) {
+  if (typeof key !== "string" || key.length === 0) throw new Error("Plaky API key is required");
+  if (typeof targetSpaceId !== "string" || targetSpaceId.length === 0) throw new Error("sacrificial space ID is required");
+  if (typeof targetBoardId !== "string" || targetBoardId.length === 0) throw new Error("sacrificial board ID is required");
+  if (!/^\d+$/.test(targetSpaceId) || !/^\d+$/.test(targetBoardId)) throw new Error("space ID and board ID must be numeric");
+  if (!archiveAcknowledged) throw new Error("PLAKY115_SMOKE_ALLOW_ARCHIVE=1 acknowledgement is required");
+
+  const builds = {};
+  if (sdkEnabled || mcpEnabled) {
+    builds.sdkBuilt = await checks.sdk();
+    if (!builds.sdkBuilt) throw new Error("SDK build is missing");
+  }
+  if (cliEnabled) {
+    builds.cliBin = await checks.cli();
+    if (!builds.cliBin) throw new Error("CLI build failed");
+  }
+  if (mcpEnabled) {
+    builds.mcpBin = await checks.mcp();
+    if (!builds.mcpBin) throw new Error("MCP server build is missing");
+  }
+  return builds;
 }
 
 export function trackArtifact(targetLedger, family, artifact) {
@@ -178,6 +254,11 @@ export async function cleanupOwnedArtifacts({ ledger: targetLedger, adapters }) 
       const index = targetLedger[family].findIndex((entry) => String(entry.id) === String(artifact.id));
       if (index >= 0) targetLedger[family].splice(index, 1);
     } catch (error) {
+      if (isCleanupNotFound(error)) {
+        const index = targetLedger[family].findIndex((entry) => String(entry.id) === String(artifact.id));
+        if (index >= 0) targetLedger[family].splice(index, 1);
+        return;
+      }
       failures.push(new Error(`${stage} ${family} ${String(artifact.id ?? "unknown")} failed`, { cause: error }));
     }
   }
@@ -215,12 +296,68 @@ export async function cleanupOwnedArtifacts({ ledger: targetLedger, adapters }) 
   return { discovered, leftovers };
 }
 
+export function isCleanupNotFound(error) {
+  for (let current = error; current && typeof current === "object"; current = current.cause) {
+    if (current.status === 404 || current.statusCode === 404) return true;
+  }
+  return false;
+}
+
 function redact(s) {
   return String(s).replace(/plk_[A-Za-z0-9_-]+/g, "[REDACTED_PLAKY_API_KEY]");
 }
 
 function record(area, name, detail = {}) {
   summary.push({ area, name, detail });
+}
+
+function sanitizeSummaryDetail(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const out = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (key === "status") continue;
+    if (typeof entry === "number" && Number.isFinite(entry)) out[key] = entry;
+    else if (typeof entry === "boolean") out[key] = entry;
+    else if (entry && typeof entry === "object" && !Array.isArray(entry)) {
+      const nested = sanitizeSummaryDetail(entry);
+      if (Object.keys(nested).length > 0) out[key] = nested;
+    }
+  }
+  return out;
+}
+
+export function serializeLiveSummary(entries, trackedArtifactCount) {
+  return JSON.stringify({
+    status: "ok",
+    operations: entries.map((entry) => ({
+      surface: String(entry.area),
+      operation: String(entry.name),
+      status: "ok",
+      ...sanitizeSummaryDetail(entry.detail),
+    })),
+    trackedArtifactCount: Number.isFinite(trackedArtifactCount) ? trackedArtifactCount : 0,
+  });
+}
+
+export function serializeLiveFailure(error) {
+  const output = { status: "failed" };
+  const pending = [error];
+  const seen = new Set();
+  while (pending.length > 0) {
+    const current = pending.shift();
+    if (!current || typeof current !== "object" || seen.has(current)) continue;
+    seen.add(current);
+    if (output.httpStatus === undefined && Number.isFinite(current.status)) output.httpStatus = current.status;
+    const artifactId = typeof current.artifactId === "number"
+      ? current.artifactId
+      : typeof current.artifactId === "string" && /^\d+$/.test(current.artifactId)
+        ? Number(current.artifactId)
+        : undefined;
+    if (output.artifactId === undefined && Number.isSafeInteger(artifactId)) output.artifactId = artifactId;
+    if (current.cause) pending.push(current.cause);
+    if (Array.isArray(current.errors)) pending.push(...current.errors);
+  }
+  return JSON.stringify(output);
 }
 
 function trackCreatedComment(itemId, commentId, surface, operation, content) {
@@ -252,7 +389,9 @@ async function api(method, path, body, options = {}) {
   let parsed;
   try { parsed = text ? JSON.parse(text) : undefined; } catch { parsed = text; }
   if (!resp.ok) {
-    throw new Error(`${method} ${path} -> ${resp.status}: ${redact(typeof parsed === "string" ? parsed : JSON.stringify(parsed))}`);
+    const error = new Error(`${method} ${path} failed with HTTP ${resp.status}`);
+    error.status = resp.status;
+    throw error;
   }
   if (options.responseType === "void") {
     if (text.trim() !== "") throw new Error(`${method} ${path} returned a body for a void operation`);
@@ -337,7 +476,7 @@ async function directAPIItemGroupSweep() {
     assertVoidResult(await api("DELETE", `${path}/${archiveId}`, undefined, { responseType: "void" }), "api archived item group delete");
     forgetArtifact("groups", archiveId);
   } catch (error) {
-    throw new Error(`archived api item group ${archiveId} could not be deleted; stop before another live run`, { cause: error });
+    throw archivedGroupDeletionError(archiveId, error);
   }
 }
 
@@ -373,7 +512,7 @@ async function sdkSweep() {
     record("sdk", "skipped — needs PLAKY115_SMOKE_SPACE_ID and _BOARD_ID");
     return;
   }
-  const built = ensureSDKBuilt();
+  const built = liveBuilds.sdkBuilt;
   if (!built) {
     throw new Error("SDK build missing. Run `npm --prefix sdk run build` before live sweep.");
   }
@@ -458,7 +597,7 @@ async function sdkItemGroupSweep(client, ids) {
     assertVoidResult(await client.itemGroups.delete({ ...scope, itemGroupId: archiveId }), "sdk archived item group delete");
     forgetArtifact("groups", archiveId);
   } catch (error) {
-    throw new Error(`archived sdk item group ${archiveId} could not be deleted; stop before another live run`, { cause: error });
+    throw archivedGroupDeletionError(archiveId, error);
   }
 }
 
@@ -494,7 +633,7 @@ async function sdkItemFileSweep(client, ids, itemId) {
 // ---------- 3. CLI sweep ----------
 
 async function cliSweep() {
-  const bin = ensureCLIBuilt();
+  const bin = liveBuilds.cliBin;
   if (!bin) {
     throw new Error("CLI build failed. Run `cd cli && go build ./cmd/plaky115` before live sweep.");
   }
@@ -557,7 +696,7 @@ async function cliItemGroupSweep(bin, env) {
     assertOkReceipt(runCLIParsed(bin, ["raw", "delete-item-group", ...base, "--item-group-id", String(archiveId), "--confirm"], env), "cli archived item group delete");
     forgetArtifact("groups", archiveId);
   } catch (error) {
-    throw new Error(`archived cli item group ${archiveId} could not be deleted; stop before another live run`, { cause: error });
+    throw archivedGroupDeletionError(archiveId, error);
   }
 }
 
@@ -592,11 +731,17 @@ function assertOkReceipt(value, label) {
   return value;
 }
 
+function archivedGroupDeletionError(artifactId, cause) {
+  const error = new Error("archived item group could not be deleted; stop before another live run", { cause });
+  error.artifactId = artifactId;
+  return error;
+}
+
 // ---------- 4. MCP sweep ----------
 
 async function mcpSweep() {
-  const bin = `${root}mcp-server/bin/mcp-server.js`;
-  if (!existsSync(bin)) {
+  const bin = liveBuilds.mcpBin;
+  if (!bin) {
     throw new Error("MCP server bin missing. Run `npm --prefix mcp-server run build` before live sweep.");
   }
   for (const mode of ["curated", "generated", "all"]) {
@@ -612,7 +757,7 @@ async function mcpSweep() {
     record("mcp", "tool execution skipped — needs PLAKY115_SMOKE_SPACE_ID and _BOARD_ID");
     return;
   }
-  if (!ensureSDKBuilt()) {
+  if (!liveBuilds.sdkBuilt) {
     throw new Error("SDK build missing for MCP tool execution. Run `npm --prefix sdk run build` before live sweep.");
   }
 
@@ -727,7 +872,7 @@ async function mcpItemGroupSweep(tools, ctx, mcpSpaceId, mcpBoardId) {
     assertOkReceipt(await invokeMcpTool(tools, ctx, "plaky_delete_item_group", { ...scope, itemGroupId: archiveId }), "mcp archived item group delete");
     forgetArtifact("groups", archiveId);
   } catch (error) {
-    throw new Error(`archived mcp item group ${archiveId} could not be deleted; stop before another live run`, { cause: error });
+    throw archivedGroupDeletionError(archiveId, error);
   }
 }
 
@@ -899,10 +1044,14 @@ function ensureCLIBuilt() {
   rmSync(bin, { force: true });
   const r = spawnSync("go", ["build", "-o", bin, "./cmd/plaky115"], { cwd: `${root}cli`, encoding: "utf8" });
   if (r.status !== 0) {
-    console.error("go build failed:", redact(r.stderr));
     return null;
   }
   return bin;
+}
+
+function ensureMCPBuilt() {
+  const bin = `${root}mcp-server/bin/mcp-server.js`;
+  return existsSync(bin) ? bin : null;
 }
 
 function runCLI(bin, args, env, opts = {}) {
@@ -954,18 +1103,8 @@ function runCLIWithFile(bin, args, env, fileContents) {
 // ---------- printers ----------
 
 function printSummary() {
-  const grouped = {};
-  for (const entry of summary) {
-    grouped[entry.area] ??= [];
-    grouped[entry.area].push(entry);
-  }
-  for (const area of Object.keys(grouped)) {
-    console.log(`\n[${area}] ${grouped[area].length} entries`);
-    for (const e of grouped[area]) {
-      console.log("  -", e.name, JSON.stringify(e.detail));
-    }
-  }
-  console.log(`\nlive sweep complete. run-owned artifacts cleaned up; tracked=${Object.values(ledger).filter(Array.isArray).reduce((count, entries) => count + entries.length, 0)}.`);
+  const tracked = Object.values(ledger).filter(Array.isArray).reduce((count, entries) => count + entries.length, 0);
+  console.log(serializeLiveSummary(summary, tracked));
 }
 
 function idOf(value) {

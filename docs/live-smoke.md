@@ -29,6 +29,16 @@ remain arrays; MCP returns its documented structured `data` envelope. Download
 links are validated in memory as non-empty HTTPS URLs with numeric expiry, but
 only `urlPresent: true` and the expiry are included in the summary.
 
+Preflight validates the key presence, numeric space/board IDs, archive
+acknowledgement, and every enabled SDK/CLI/MCP build before the first API
+mutation. A failed preflight exits without creating remote data. The final
+stdout line is one JSON object: each operation contains a fixed surface,
+operation, and status plus numeric counts/IDs and booleans only. Workspace
+titles, names, comments, file content, email addresses, response bodies, API
+keys, and signed URLs are not serialized. Failure output is also JSON and
+contains only `status`, an HTTP status when known, and the exact numeric
+artifact ID when manual cleanup is required.
+
 The script creates one UUID per run and prefixes every artifact with the exact
 marker `smoke:plaky115:<uuid>:`. Its in-memory ledger records each created group,
 item, comment, and file by surface, operation, and ID. Cleanup deletes known
@@ -39,8 +49,10 @@ generic `smoke:` prefix or an artifact owned by another run.
 When SDK, CLI, or MCP sweeps are enabled, missing builds are hard failures rather
 than skipped sections. GitHub Actions serializes runs targeting the same
 space/board without cancelling a run during cleanup; different targets remain
-independent. A successful sweep ends with zero artifacts for its exact run
-marker.
+independent. SIGINT and SIGTERM share the same in-flight cleanup promise and do
+not exit until it settles. Cleanup treats HTTP 404 as already absent, continues
+after other failures, exhausts pagination, and fails if the final rescan finds a
+leftover. A successful sweep ends with zero artifacts for its exact run marker.
 
 ## Manual Read Checks
 
