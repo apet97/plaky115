@@ -6,6 +6,8 @@ import {
   PlakyClient,
   PlakyApiError,
   PlakyRateLimitError,
+  searchItems,
+  searchItemsDetailed,
   type BoardShape,
   type FetchLike,
   type CommentShape,
@@ -32,6 +34,7 @@ import {
   type ItemGroupUpdateParams,
   type ItemGroupDeleteParams,
   type ItemShape,
+  type SearchItemsDetailedResult,
   type PlakyOpenApiComponents,
   type PlakyOpenApiOperations,
   type PlakyApiResponse,
@@ -96,6 +99,9 @@ const comment = await client.comments.create({
 expectType<CommentShape>(comment);
 expectType<string | undefined>(comment.content);
 expectType<string | undefined>(comment.text);
+
+expectType<Promise<ItemShape[]>>(searchItems(client, { space: 1, board: 2, query: "" }));
+expectType<Promise<SearchItemsDetailedResult>>(searchItemsDetailed(client, { space: 1, board: 2, query: "", limit: 10 }));
 
 await client.users.list({ emails: ["a@example.com"], status: "ACTIVE", type: "MEMBER" });
 const status: UserStatus = "ACTIVE";

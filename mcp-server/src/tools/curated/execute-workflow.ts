@@ -1,7 +1,7 @@
 import { z } from "zod/v3";
 import {
   workspaceMap,
-  searchItems,
+  searchItemsDetailed,
   bulkUpdateItems,
   exportItems,
   asSpaceId,
@@ -42,8 +42,8 @@ function entityInput<T extends z.ZodRawShape>(required: readonly ("space" | "boa
 
 const workspaceMapInputSchema = z.object({}).strict();
 const itemSearchInputSchema = entityInput(["space", "board"], {
-  query: z.string().min(1).describe("Non-empty item search query."),
-  limit: z.number().int().nonnegative().describe("Maximum items to scan.").optional(),
+  query: z.string().describe("Item search query; empty matches every scanned item."),
+  limit: z.number().int().positive().describe("Maximum items to scan.").optional(),
 });
 const itemCreateBodySchema = z.object({
   title: z.string().describe("Item title.").optional(),
@@ -166,14 +166,13 @@ export async function executeWorkflow(
     case "workspace.map":
       return ctx.respond(await workspaceMap(ctx.client), { compactKind: "raw" });
     case "items.search": {
-      // W002: replace this compile-safe searchItems adapter with searchItemsDetailed.
-      const result = await searchItems(ctx.client, {
+      const result = await searchItemsDetailed(ctx.client, {
         space: readRef(args, "space") as EntityRef,
         board: readRef(args, "board") as EntityRef,
         query: args["query"] as string,
         ...(args["limit"] !== undefined ? { limit: args["limit"] as number } : {}),
       });
-      return ctx.respond({ data: result, hasMore: false }, { compactKind: "item" });
+      return ctx.respond(result);
     }
     case "items.create":
       return ctx.respond(await ctx.client.items.create({

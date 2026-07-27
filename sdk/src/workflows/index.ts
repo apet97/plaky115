@@ -31,20 +31,73 @@ export type SearchItemsParams = {
   limit?: number;
 };
 
-export async function searchItems(client: PlakyClient, params: SearchItemsParams): Promise<ItemShape[]> {
+export type SearchItemsDetailedResult = {
+  data: ItemShape[];
+  scanned: number;
+  matched: number;
+  truncated: boolean;
+  nextPage?: number | undefined;
+};
+
+export async function searchItemsDetailed(client: PlakyClient, params: SearchItemsParams): Promise<SearchItemsDetailedResult> {
+  const limit = params.limit ?? 200;
+  if (!Number.isFinite(limit) || !Number.isInteger(limit) || limit <= 0) {
+    throw new RangeError("limit must be a finite positive integer");
+  }
+
   const { space, board } = await resolveSpaceAndBoard(client, { space: params.space, board: params.board });
-  const items = (await client.items.listAll({
-    spaceId: asSpaceId(space.id!),
-    boardId: asBoardId(board.id!),
-    limit: params.limit ?? 200,
-  })) as ItemShape[];
   const needle = params.query.toLowerCase();
-  // Match the item title or any field value — in Plaky most searchable content
-  // lives in fields, not the title. `limit` caps items scanned, not matches.
-  return items.filter((it) => {
-    if ((it.title ?? "").toLowerCase().includes(needle)) return true;
-    return (it.fields ?? []).some((f) => String(f?.value ?? "").toLowerCase().includes(needle));
-  });
+  const data: ItemShape[] = [];
+  let scanned = 0;
+
+  for (let page = 1; scanned < limit; page++) {
+    const response = await client.items.list({
+      spaceId: asSpaceId(space.id!),
+      boardId: asBoardId(board.id!),
+      page,
+      pageSize: Math.min(100, limit - scanned),
+    });
+    const items = (response.data ?? []) as ItemShape[];
+    for (const item of items.slice(0, limit - scanned)) {
+      scanned++;
+      if (itemMatchesSearch(item, needle)) data.push(item);
+    }
+
+    if (response.hasMore !== true) {
+      return { data, scanned, matched: data.length, truncated: false };
+    }
+    if (scanned >= limit) {
+      return { data, scanned, matched: data.length, truncated: true, nextPage: page + 1 };
+    }
+    if (items.length === 0) {
+      throw new Error(`item search page ${page} was empty while hasMore was true`);
+    }
+  }
+
+  return { data, scanned, matched: data.length, truncated: false };
+}
+
+/** @deprecated Use {@link searchItemsDetailed} to observe scan completeness. */
+export async function searchItems(client: PlakyClient, params: SearchItemsParams): Promise<ItemShape[]> {
+  return (await searchItemsDetailed(client, params)).data;
+}
+
+function itemMatchesSearch(item: ItemShape, needle: string): boolean {
+  if ((item.title ?? "").toLowerCase().includes(needle)) return true;
+  return (item.fields ?? []).some((field) => searchableScalars(field?.value).some((value) => value.toLowerCase().includes(needle)));
+}
+
+function searchableScalars(value: unknown): string[] {
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return [String(value)];
+  }
+  if (Array.isArray(value)) return value.flatMap(searchableScalars);
+  if (value !== null && typeof value === "object") {
+    return Object.keys(value as Record<string, unknown>)
+      .sort()
+      .flatMap((key) => searchableScalars((value as Record<string, unknown>)[key]));
+  }
+  return [];
 }
 
 export type BulkUpdateParams = {

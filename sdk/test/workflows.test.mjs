@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, beforeEach } from "node:test";
-import { PlakyClient, workspaceMap, searchItems, bulkUpdateItems, exportItems } from "../esm/index.js";
+import { PlakyClient, workspaceMap, searchItems, searchItemsDetailed, bulkUpdateItems, exportItems } from "../esm/index.js";
 
 let fetchMock;
 beforeEach(() => {
@@ -247,4 +247,86 @@ test("searchItems matches a field value, not just the title", async () => {
   const items = await searchItems(c, { space: 1, board: 11, query: "blocked" });
   assert.equal(items.length, 1);
   assert.equal(items[0].id, 1);
+});
+
+function detailedSearchClient(pages) {
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
+  client.spaces.listAll = async () => [{ id: 1, title: "Ops" }];
+  client.boards.listAll = async () => [{ id: 11, title: "Roadmap" }];
+  const requests = [];
+  client.items.list = async (params) => {
+    requests.push(params);
+    return pages[params.page - 1] ?? { data: [], hasMore: false };
+  };
+  return { client, requests };
+}
+
+test("searchItemsDetailed walks pages and searches stable nested field values", async () => {
+  const { client, requests } = detailedSearchClient([
+    {
+      data: [
+        { id: 1, title: "First", fields: [{ value: { z: false, a: ["quiet", { count: 7 }] } }] },
+        { id: 2, title: "Second", fields: [{ value: "no match" }] },
+      ],
+      hasMore: true,
+    },
+    { data: [{ id: 3, title: "Third", fields: [{ value: [null, "Needle"] }] }], hasMore: false },
+  ]);
+
+  const result = await searchItemsDetailed(client, { space: 1, board: 11, query: "needle" });
+
+  assert.deepEqual(result.data.map((item) => item.id), [3]);
+  assert.deepEqual(result, { data: result.data, scanned: 3, matched: 1, truncated: false });
+  assert.deepEqual(requests.map(({ page, pageSize }) => ({ page, pageSize })), [
+    { page: 1, pageSize: 100 },
+    { page: 2, pageSize: 100 },
+  ]);
+});
+
+test("searchItemsDetailed reports scan-limit truncation and nextPage without over-fetching", async () => {
+  const { client, requests } = detailedSearchClient([
+    { data: [{ id: 1, title: "one" }, { id: 2, title: "two" }], hasMore: true },
+    { data: [{ id: 3, title: "three" }], hasMore: false },
+  ]);
+
+  const result = await searchItemsDetailed(client, { space: 1, board: 11, query: "", limit: 2 });
+
+  assert.deepEqual(result.data.map((item) => item.id), [1, 2]);
+  assert.deepEqual(result, { data: result.data, scanned: 2, matched: 2, truncated: true, nextPage: 2 });
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].pageSize, 2);
+});
+
+test("searchItemsDetailed treats an exact complete boundary as not truncated", async () => {
+  const { client } = detailedSearchClient([
+    { data: [{ id: 1, title: "one" }, { id: 2, title: "two" }], hasMore: false },
+  ]);
+
+  const result = await searchItemsDetailed(client, { space: 1, board: 11, query: "", limit: 2 });
+
+  assert.deepEqual(result, { data: result.data, scanned: 2, matched: 2, truncated: false });
+  assert.equal("nextPage" in result, false);
+});
+
+test("searchItemsDetailed preserves empty and whitespace query compatibility", async () => {
+  const empty = detailedSearchClient([{ data: [{ id: 1, title: "one" }, { id: 2, title: "two" }], hasMore: false }]);
+  const whitespace = detailedSearchClient([{ data: [{ id: 1, title: "one" }, { id: 2, title: "has space" }], hasMore: false }]);
+
+  assert.equal((await searchItemsDetailed(empty.client, { space: 1, board: 11, query: "" })).matched, 2);
+  assert.deepEqual((await searchItemsDetailed(whitespace.client, { space: 1, board: 11, query: " " })).data.map((item) => item.id), [2]);
+});
+
+test("searchItemsDetailed validates the scan limit before resolving entities", async () => {
+  for (const limit of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+    const { client, requests } = detailedSearchClient([]);
+    await assert.rejects(searchItemsDetailed(client, { space: 1, board: 11, query: "x", limit }), /limit/);
+    assert.equal(requests.length, 0);
+  }
+});
+
+test("deprecated searchItems remains an array-returning compatibility wrapper", async () => {
+  const { client } = detailedSearchClient([{ data: [{ id: 1, title: "match" }], hasMore: false }]);
+  const result = await searchItems(client, { space: 1, board: 11, query: "match" });
+  assert.ok(Array.isArray(result));
+  assert.deepEqual(result.map((item) => item.id), [1]);
 });

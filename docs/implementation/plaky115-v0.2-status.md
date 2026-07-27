@@ -49,7 +49,7 @@
 - [x] `CLI003` | Phase 8 — CLI | DONE | Repair monorepo CLI release and installer targets
 - [x] `SEC001` | Phase 9 — Security hygiene | DONE | Unify API-key redaction, test fixtures, and repository secret scanning
 - [x] `W001` | Phase 10 — Workflow correctness | DONE | Remove avoidable workspace-map N+1 requests and keep a fallback
-- [ ] `W002` | Phase 10 — Workflow correctness | NOT STARTED | Add detailed search completeness without breaking existing callers
+- [x] `W002` | Phase 10 — Workflow correctness | DONE | Add detailed search completeness without breaking existing callers
 - [ ] `W003` | Phase 10 — Workflow correctness | NOT STARTED | Make TypeScript and Go CSV canonical, collision-free, and spreadsheet-safe
 - [ ] `L001` | Phase 11 — Live proof | NOT STARTED | Refactor live sweep around a run-owned artifact ledger
 - [ ] `L002` | Phase 11 — Live proof | NOT STARTED | Exercise Item Groups and Item files through API, SDK, CLI, and MCP
@@ -383,3 +383,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - `workspaceMap` now drains one `spaces.listAll({expand:["board"]})` sequence and reuses each space's embedded board array, preserving space/board order and the existing output shape. It calls the per-space board endpoint only when the expanded property is absent; an explicit empty array and a space without an ID cause no fallback request.
 - The curated CLI workspace map now requests the same expansion and uses embedded boards before its existing paginated fallback. MCP callers already delegate to the SDK workflow and required no production change.
 - Request-count tests cover a two-page expanded sequence with zero board requests, a missing-boards fallback, explicit empty boards, a missing-ID space, an empty partial page, stable order, and exactly one high-level space-list call. The focused 21 SDK workflow/resolver tests, all 67 MCP tests, the CLI package tests, and `git diff --check` exited 0.
+
+### W002
+
+- Added and root-exported `searchItemsDetailed`, which validates a finite positive scan limit before entity resolution, fetches item pages manually with no over-fetch beyond the limit, and returns `data`, `scanned`, `matched`, `truncated`, and `nextPage` only when the server reports another page at the cap. The deprecated `searchItems` wrapper still returns `ItemShape[]`.
+- Search matching preserves empty-query match-all behavior and non-empty whitespace literally. Field values are traversed recursively across strings, numbers, booleans, arrays, and objects with sorted keys; null and unsupported values do not become `[object Object]` text.
+- The MCP read-workflow path now returns the detailed envelope without converting truncation to `hasMore:false`; its schema accepts empty queries and only positive integer limits. A public in-memory MCP call proved a one-request capped result with `truncated:true` and `nextPage:2`.
+- CLI item find now accepts `--limit` (default 200), performs the same bounded page scan and recursive matching, and emits completeness metadata. Space and board find behavior remains unchanged.
+- Six detailed SDK tests cover complete multi-page search, nested values, truncation/no-over-fetch, exact limit completion, `nextPage`, empty/whitespace compatibility, invalid limits, and the legacy wrapper. The 16-test workflow file, SDK public type tests, all 67 MCP tests, focused/full CLI package tests, and `git diff --check` exited 0. The task packet did not allow an MCP test file, so MCP output was verified with the public client as a non-writing command rather than expanding file scope.

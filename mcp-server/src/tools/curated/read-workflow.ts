@@ -5,7 +5,7 @@ import { executeWorkflow, readWorkflowInputSchema } from "./execute-workflow.js"
 export const executeReadWorkflowTool: McpToolDefinition = {
   name: "plaky_execute_read_workflow",
   title: "Execute a read-only Plaky workflow",
-  description: "Run workspace.map, items.search, comments.thread, or export.items with exact workflow-specific validation.",
+  description: "Run workspace.map, completeness-aware items.search, comments.thread, or export.items with exact workflow-specific validation.",
   scopes: ["read"],
   annotations: {
     readOnlyHint: true,

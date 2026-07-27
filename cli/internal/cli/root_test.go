@@ -604,12 +604,50 @@ func TestFindItemsDrainsAllPages(t *testing.T) {
 		t.Fatalf("find returned error: %v", err)
 	}
 
-	var got []map[string]any
+	var got struct {
+		Data      []map[string]any `json:"data"`
+		Scanned   int              `json:"scanned"`
+		Matched   int              `json:"matched"`
+		Truncated bool             `json:"truncated"`
+		NextPage  *int             `json:"nextPage"`
+	}
 	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
 		t.Fatalf("decode find output: %v\n%s", err, out.String())
 	}
-	if len(got) != 1 || got[0]["id"] != float64(99) {
+	if len(got.Data) != 1 || got.Data[0]["id"] != float64(99) {
 		t.Fatalf("find should include target item from page 2, got: %s", out.String())
+	}
+	if got.Scanned != 2 || got.Matched != 1 || got.Truncated || got.NextPage != nil {
+		t.Fatalf("find completeness metadata = %#v", got)
+	}
+}
+
+func TestFindItemsReportsTruncationAtScanLimit(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":1,"title":"first"}],"hasMore":true}`))
+	}))
+	defer server.Close()
+
+	out, err := executeRoot(t,
+		"--api-key", "from-flag",
+		"--server-url", server.URL,
+		"find", "--type", "item", "--query", "", "--space-id", "1", "--board-id", "2", "--limit", "1",
+	)
+	if err != nil {
+		t.Fatalf("find returned error: %v", err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("decode find output: %v\n%s", err, out)
+	}
+	if got["scanned"] != float64(1) || got["matched"] != float64(1) || got["truncated"] != true || got["nextPage"] != float64(2) {
+		t.Fatalf("find truncation metadata = %s", out)
+	}
+	if requests != 1 {
+		t.Fatalf("find made %d requests, want 1", requests)
 	}
 }
 

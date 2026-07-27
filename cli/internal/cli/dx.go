@@ -629,16 +629,14 @@ func newFindCommand(getClient clientFactory) *cobra.Command {
 			case "item":
 				spaceID, _ := cmd.Flags().GetString("space-id")
 				boardID, _ := cmd.Flags().GetString("board-id")
+				limit, _ := cmd.Flags().GetInt("limit")
 				if spaceID == "" || boardID == "" {
 					return fmt.Errorf("--space-id and --board-id required when --type=item")
 				}
-				out, err := drainPaged(200, func(page, pageSize int) (any, error) {
-					return c.ListItems(ctx, plakysdk.ListItemsOptions{SpaceId: spaceID, BoardId: boardID, Page: page, PageSize: pageSize})
-				})
-				if err != nil {
-					return err
+				if limit <= 0 {
+					return fmt.Errorf("--limit must be a positive integer")
 				}
-				return plakydx.EmitJSON(cmd, filterByTitle(out, needle, "title"))
+				return emitDetailedItemSearch(cmd, c, spaceID, boardID, needle, limit)
 			default:
 				return fmt.Errorf("--type must be one of: space, board, item")
 			}
@@ -648,8 +646,94 @@ func newFindCommand(getClient clientFactory) *cobra.Command {
 	cmd.Flags().String("query", "", "Case-insensitive needle (required)")
 	cmd.Flags().String("space-id", "", "Required when type=board or type=item")
 	cmd.Flags().String("board-id", "", "Required when type=item")
+	cmd.Flags().Int("limit", 200, "Maximum items to scan when type=item")
 	markRequired(cmd, "type", "query")
 	return cmd
+}
+
+func emitDetailedItemSearch(cmd *cobra.Command, c *plakysdk.Client, spaceID, boardID, needle string, limit int) error {
+	ctx := cmd.Context()
+	hits := []map[string]any{}
+	scanned := 0
+	for page := 1; scanned < limit; page++ {
+		pageSize := min(200, limit-scanned)
+		raw, err := c.ListItems(ctx, plakysdk.ListItemsOptions{SpaceId: spaceID, BoardId: boardID, Page: page, PageSize: pageSize})
+		if err != nil {
+			return err
+		}
+		response := plakydx.AsRecord(raw)
+		batch, _ := response["data"].([]any)
+		remaining := limit - scanned
+		if len(batch) > remaining {
+			batch = batch[:remaining]
+		}
+		for _, value := range batch {
+			item := plakydx.AsRecord(value)
+			scanned++
+			if itemMatchesSearch(item, needle) {
+				hits = append(hits, map[string]any{"id": item["id"], "title": item["title"]})
+			}
+		}
+		hasMore, _ := response["hasMore"].(bool)
+		if !hasMore {
+			return plakydx.EmitJSON(cmd, map[string]any{
+				"data": hits, "scanned": scanned, "matched": len(hits), "truncated": false,
+			})
+		}
+		if scanned >= limit {
+			return plakydx.EmitJSON(cmd, map[string]any{
+				"data": hits, "scanned": scanned, "matched": len(hits), "truncated": true, "nextPage": page + 1,
+			})
+		}
+		if len(batch) == 0 {
+			return fmt.Errorf("item search page %d was empty while hasMore was true", page)
+		}
+	}
+	return nil
+}
+
+func itemMatchesSearch(item map[string]any, needle string) bool {
+	if title, _ := item["title"].(string); strings.Contains(strings.ToLower(title), needle) {
+		return true
+	}
+	fields, _ := item["fields"].([]any)
+	for _, value := range fields {
+		field := plakydx.AsRecord(value)
+		for _, text := range searchableScalars(field["value"]) {
+			if strings.Contains(strings.ToLower(text), needle) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func searchableScalars(value any) []string {
+	switch typed := value.(type) {
+	case string:
+		return []string{typed}
+	case float64, bool, json.Number:
+		return []string{fmt.Sprint(typed)}
+	case []any:
+		out := []string{}
+		for _, entry := range typed {
+			out = append(out, searchableScalars(entry)...)
+		}
+		return out
+	case map[string]any:
+		keys := make([]string, 0, len(typed))
+		for key := range typed {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		out := []string{}
+		for _, key := range keys {
+			out = append(out, searchableScalars(typed[key])...)
+		}
+		return out
+	default:
+		return nil
+	}
 }
 
 func newFieldsListCommand(getClient clientFactory) *cobra.Command {

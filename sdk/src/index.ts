@@ -175,5 +175,5 @@ export type {
 export { resolveSpace, resolveBoard, resolveSpaceAndBoard, resolveUser, resolveTeam, resolveItem } from "./resolvers/index.js";
 export type { EntityRef } from "./resolvers/index.js";
 
-export { workspaceMap, searchItems, bulkUpdateItems, exportItems } from "./workflows/index.js";
-export type { SearchItemsParams, BulkUpdateParams, ExportItemsParams } from "./workflows/index.js";
+export { workspaceMap, searchItems, searchItemsDetailed, bulkUpdateItems, exportItems } from "./workflows/index.js";
+export type { SearchItemsParams, SearchItemsDetailedResult, BulkUpdateParams, ExportItemsParams } from "./workflows/index.js";
