@@ -51,7 +51,7 @@
 - [x] `W001` | Phase 10 — Workflow correctness | DONE | Remove avoidable workspace-map N+1 requests and keep a fallback
 - [x] `W002` | Phase 10 — Workflow correctness | DONE | Add detailed search completeness without breaking existing callers
 - [x] `W003` | Phase 10 — Workflow correctness | DONE | Make TypeScript and Go CSV canonical, collision-free, and spreadsheet-safe
-- [ ] `L001` | Phase 11 — Live proof | NOT STARTED | Refactor live sweep around a run-owned artifact ledger
+- [x] `L001` | Phase 11 — Live proof | DONE | Refactor live sweep around a run-owned artifact ledger
 - [ ] `L002` | Phase 11 — Live proof | NOT STARTED | Exercise Item Groups and Item files through API, SDK, CLI, and MCP
 - [ ] `L003` | Phase 11 — Live proof | NOT STARTED | Add fault injection, privacy assertions, and strict live workflow preflight
 - [ ] `R001` | Phase 12 — Release and verification | NOT STARTED | Update all documentation and examples to the implemented behavior
@@ -399,3 +399,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - One shared JSON fixture covers every formula prefix, a whitespace formula, a leading tab, commas, quotes, embedded newlines, duplicate labels, top-level collisions, missing and empty keys, nested arrays/objects, booleans, null, Unicode, and reordered keyed fields. TypeScript and Go byte-match both reviewed safe/raw CSV files, including their trailing newline.
 - API behavior documentation now specifies deterministic columns, canonical JSON, spreadsheet-safe defaults, and the explicit raw-mode risk boundary. The previous comments allowing non-scalar cross-language drift and field-over-top-level replacement were removed.
 - The 16-test SDK workflow file, three CLI CSV modes plus invalid-mode coverage, full CLI package suite, 33-operation cross-surface parity suite, SDK typecheck/lint, and `git diff --check` exited 0.
+
+### L001
+
+- Each process now creates one UUID marker in the exact form `smoke:plaky115:<uuid>:`. The ledger has group/item/comment/file families and records surface, operation, IDs, parent IDs, and marker-bearing ownership fields for every current mutation.
+- Cleanup removes known comments/files before items/groups, continues through failures, scans all paginated groups/items plus every item's listable comments/files to recover lost create responses, deletes only values beginning with the exact run marker, and then rescans all four families. Any cleanup error or leftover produces one aggregate failure.
+- The script is import-safe for dependency-injected unit tests. Tests prove exact marker ownership, generic-prefix rejection, concurrent run preservation, child-before-parent order, pagination exhaustion, lost-response recovery, aggregate-error continuation, and a mandatory final rescan.
+- The manual workflow now uses a target space/board concurrency group with `cancel-in-progress:false`, preventing a second run from interrupting cleanup on the same target. Live-smoke documentation describes run isolation and recovery.
+- All 13 cleanup/source tests, script syntax/no-key execution, workflow YAML parsing, and `git diff --check` exited 0. No live API request or mutation was made.

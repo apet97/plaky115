@@ -14,6 +14,10 @@ on:
         required: false
         default: "Backlog"
 
+concurrency:
+  group: live-${{ inputs.space_id }}-${{ inputs.board_id }}
+  cancel-in-progress: false
+
 jobs:
   live:
     runs-on: ubuntu-latest

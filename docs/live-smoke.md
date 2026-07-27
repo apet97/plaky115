@@ -15,10 +15,18 @@ export PLAKY115_SMOKE_BOARD_ID=...
 npm run live:sweep
 ```
 
-The script creates clearly named `smoke:` sacrificial items and comments, then
-cleans them up and reports the leftover count. When SDK, CLI, or MCP sweeps are
-enabled, missing builds are hard failures rather than skipped sections. A
-successful sweep must complete the cleanup scan and end with leftover count `0`.
+The script creates one UUID per run and prefixes every artifact with the exact
+marker `smoke:plaky115:<uuid>:`. Its in-memory ledger records each created group,
+item, comment, and file by surface, operation, and ID. Cleanup deletes known
+children before parents, scans every listable resource family to recover a
+create response that was lost, and performs a final rescan. It never deletes a
+generic `smoke:` prefix or an artifact owned by another run.
+
+When SDK, CLI, or MCP sweeps are enabled, missing builds are hard failures rather
+than skipped sections. GitHub Actions serializes runs targeting the same
+space/board without cancelling a run during cleanup; different targets remain
+independent. A successful sweep ends with zero artifacts for its exact run
+marker.
 
 ## Manual Read Checks
 

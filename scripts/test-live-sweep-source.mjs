@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const liveSweep = readFileSync(fileURLToPath(new URL("live-workspace-sweep.mjs", import.meta.url)), "utf8");
+const liveWorkflow = readFileSync(fileURLToPath(new URL("../.github/workflows/live.yml", import.meta.url)), "utf8");
 const corpus = JSON.parse(
   readFileSync(fileURLToPath(new URL("../test/fixtures/security/plaky-api-key-cases.json", import.meta.url)), "utf8"),
 );
@@ -17,14 +18,16 @@ test("live sweep fails enabled SDK CLI and MCP sections instead of skipping miss
   assert.match(liveSweep, /throw new Error\("MCP server bin missing/);
 });
 
-test("live sweep cleanup fails when smoke leftovers remain", () => {
-  assert.match(liveSweep, /if \(leftoverCount > 0\)/);
-  assert.match(liveSweep, /throw new Error\(`live sweep cleanup left \$\{leftoverCount\} smoke item/);
-  assert.match(liveSweep, /throw new Error\(`live sweep cleanup leftover scan failed:/);
-  assert.match(liveSweep, /for \(let page = 1; ; page\+\+\)/);
+test("live sweep cleanup scans every family and fails after a final rescan", () => {
+  assert.match(liveSweep, /const order = \["comments", "files", "items", "groups"\]/);
+  assert.match(liveSweep, /discovery scan/);
+  assert.match(liveSweep, /final rescan/);
+  assert.match(liveSweep, /throw new AggregateError/);
+  assert.match(liveSweep, /function listAllComments/);
+  assert.match(liveSweep, /function listAllFiles/);
+  assert.match(liveSweep, /function listAllItems/);
+  assert.match(liveSweep, /function listAllGroups/);
   assert.match(liveSweep, /page=\$\{page\}&pageSize=200/);
-  assert.match(liveSweep, /if \(!items\?\.hasMore\) break;/);
-  assert.doesNotMatch(liveSweep, /leftover scan failed"[\s\S]*return 0;/);
 });
 
 test("live sweep fails when CLI probes fail and always rebuilds the CLI", () => {
@@ -56,4 +59,18 @@ test("live sweep redaction follows the shared split-literal corpus", () => {
   for (const entry of corpus.cases) {
     assert.equal(redact(entry.inputParts.join("")), entry.expectedParts.join(""), entry.name);
   }
+});
+
+test("live sweep uses one UUID-scoped marker and never broad smoke ownership", () => {
+  assert.match(liveSweep, /randomUUID\(\)/);
+  assert.match(liveSweep, /smoke:plaky115:\$\{uuid\}:/);
+  assert.match(liveSweep, /createArtifactLedger\(runMarker\)/);
+  assert.doesNotMatch(liveSweep, /startsWith\("smoke:"\)/);
+});
+
+test("live workflow serializes runs per target without cancelling cleanup", () => {
+  assert.match(liveWorkflow, /concurrency:/);
+  assert.match(liveWorkflow, /space_id/);
+  assert.match(liveWorkflow, /board_id/);
+  assert.match(liveWorkflow, /cancel-in-progress:\s*false/);
 });

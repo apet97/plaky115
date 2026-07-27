@@ -11,21 +11,17 @@
 //   PLAKY115_LIVE_MCP=1                               enable MCP sweep (on by default)
 //
 // The key is never echoed, logged, or written to disk. Every test-created
-// item / comment carries a "smoke:" prefix and is cleaned up on exit.
+// artifact carries one exact UUID-scoped marker and is cleaned up on exit.
 
 import { spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const apiKey = process.env["PLAKY115_API_KEY"] ?? process.env["PLAKY115_API_KEY_AUTH"];
-if (!apiKey) {
-  console.error("Set PLAKY115_API_KEY (or PLAKY115_API_KEY_AUTH) before running.");
-  process.exit(2);
-}
-
 const baseURL = process.env["PLAKY115_BASE_URL"] ?? "https://api.plaky.com";
 const spaceId = String(process.env["PLAKY115_SMOKE_SPACE_ID"] ?? "");
 const boardId = String(process.env["PLAKY115_SMOKE_BOARD_ID"] ?? "");
@@ -33,16 +29,44 @@ const wantSDK = process.env["PLAKY115_LIVE_SDK"] !== "0";
 const wantCLI = process.env["PLAKY115_LIVE_CLI"] !== "0";
 const wantMCP = process.env["PLAKY115_LIVE_MCP"] !== "0";
 
-const createdItemIds = new Set();
-const createdCommentRefs = []; // { itemId, commentId }
+const runMarker = createRunMarker(randomUUID());
+const ledger = createArtifactLedger(runMarker);
 const summary = [];
 
-process.on("SIGINT", () => {
-  void shutdown(130);
-});
-process.on("SIGTERM", () => {
-  void shutdown(143);
-});
+async function main() {
+  if (!apiKey) {
+    console.error("Set PLAKY115_API_KEY (or PLAKY115_API_KEY_AUTH) before running.");
+    process.exitCode = 2;
+    return;
+  }
+  process.on("SIGINT", () => {
+    void shutdown(130);
+  });
+  process.on("SIGTERM", () => {
+    void shutdown(143);
+  });
+
+  try {
+    await directAPISweep();
+    if (wantSDK) await sdkSweep();
+    if (wantCLI) await cliSweep();
+    if (wantMCP) await mcpSweep();
+    await cleanup();
+    printSummary();
+  } catch (err) {
+    let cleanupErr;
+    try {
+      await cleanup();
+    } catch (cleanupFailure) {
+      cleanupErr = cleanupFailure;
+    }
+    console.error("live sweep failed:", redact(String(err && err.stack ? err.stack : err)));
+    if (cleanupErr) {
+      console.error("live sweep cleanup failed:", redact(String(cleanupErr && cleanupErr.stack ? cleanupErr.stack : cleanupErr)));
+    }
+    process.exitCode = 1;
+  }
+}
 
 async function shutdown(code) {
   try {
@@ -53,31 +77,98 @@ async function shutdown(code) {
   process.exit(code);
 }
 
-try {
-  await directAPISweep();
-  if (wantSDK) await sdkSweep();
-  if (wantCLI) await cliSweep();
-  if (wantMCP) await mcpSweep();
-  await cleanup();
-  printSummary();
-} catch (err) {
-  let cleanupErr;
-  try {
-    await cleanup();
-  } catch (err) {
-    cleanupErr = err;
-  }
-  console.error("live sweep failed:", redact(String(err && err.stack ? err.stack : err)));
-  if (cleanupErr) {
-    console.error("live sweep cleanup failed:", redact(String(cleanupErr && cleanupErr.stack ? cleanupErr.stack : cleanupErr)));
-  }
-  process.exit(1);
-}
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();
 
 // ---------- helpers ----------
 
 function smokeTitle(prefix) {
-  return `smoke:${prefix}:${new Date().toISOString().replace(/[:.]/g, "-")}`;
+  return `${runMarker}${prefix}:${new Date().toISOString().replace(/[:.]/g, "-")}`;
+}
+
+function smokeText(prefix) {
+  return `${runMarker}${prefix}`;
+}
+
+export function createRunMarker(uuid) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uuid)) {
+    throw new TypeError("run identity must be a UUID");
+  }
+  return `smoke:plaky115:${uuid}:`;
+}
+
+export function createArtifactLedger(marker) {
+  return { marker, groups: [], items: [], comments: [], files: [] };
+}
+
+export function trackArtifact(targetLedger, family, artifact) {
+  if (!Object.hasOwn(targetLedger, family) || !Array.isArray(targetLedger[family])) {
+    throw new TypeError(`unknown artifact family: ${family}`);
+  }
+  targetLedger[family].push({ ...artifact });
+}
+
+export function isOwnedArtifact(artifact, marker) {
+  if (!artifact || typeof artifact !== "object") return false;
+  return [artifact.title, artifact.name, artifact.description, artifact.content, artifact.text]
+    .some((value) => typeof value === "string" && value.startsWith(marker));
+}
+
+export async function collectPages(fetchPage) {
+  const records = [];
+  for (let page = 1; ; page++) {
+    const response = await fetchPage(page);
+    records.push(...(Array.isArray(response?.data) ? response.data : []));
+    if (response?.hasMore !== true) return records;
+  }
+}
+
+export async function cleanupOwnedArtifacts({ ledger: targetLedger, adapters }) {
+  const order = ["comments", "files", "items", "groups"];
+  const failures = [];
+  const discovered = { comments: 0, files: 0, items: 0, groups: 0 };
+  const leftovers = { comments: 0, files: 0, items: 0, groups: 0 };
+
+  async function attempt(family, artifact, stage) {
+    try {
+      await adapters[family].remove(artifact);
+      const index = targetLedger[family].findIndex((entry) => String(entry.id) === String(artifact.id));
+      if (index >= 0) targetLedger[family].splice(index, 1);
+    } catch (error) {
+      failures.push(new Error(`${stage} ${family} ${String(artifact.id ?? "unknown")} failed`, { cause: error }));
+    }
+  }
+
+  for (const family of order) {
+    for (const artifact of [...targetLedger[family]].reverse()) await attempt(family, artifact, "known cleanup");
+  }
+
+  for (const family of order) {
+    let records = [];
+    try {
+      records = await adapters[family].list();
+    } catch (error) {
+      failures.push(new Error(`discovery scan ${family} failed`, { cause: error }));
+      continue;
+    }
+    for (const artifact of records.filter((entry) => isOwnedArtifact(entry, targetLedger.marker))) {
+      discovered[family]++;
+      await attempt(family, artifact, "discovered cleanup");
+    }
+  }
+
+  for (const family of order) {
+    try {
+      const records = await adapters[family].list();
+      const owned = records.filter((entry) => isOwnedArtifact(entry, targetLedger.marker));
+      leftovers[family] = owned.length;
+      if (owned.length > 0) failures.push(new Error(`final rescan found ${owned.length} ${family}`));
+    } catch (error) {
+      failures.push(new Error(`final rescan ${family} failed`, { cause: error }));
+    }
+  }
+
+  if (failures.length > 0) throw new AggregateError(failures, "live sweep cleanup failed");
+  return { discovered, leftovers };
 }
 
 function redact(s) {
@@ -88,14 +179,21 @@ function record(area, name, detail = {}) {
   summary.push({ area, name, detail });
 }
 
-function trackCreatedComment(itemId, commentId) {
-  if (itemId && commentId) createdCommentRefs.push({ itemId: String(itemId), commentId: String(commentId) });
+function trackCreatedComment(itemId, commentId, surface, operation, content) {
+  if (itemId && commentId) {
+    trackArtifact(ledger, "comments", { itemId: String(itemId), id: String(commentId), surface, operation, content });
+  }
 }
 
 function forgetCreatedCommentsForItem(itemId) {
-  for (let i = createdCommentRefs.length - 1; i >= 0; i--) {
-    if (String(createdCommentRefs[i].itemId) === String(itemId)) createdCommentRefs.splice(i, 1);
+  for (let i = ledger.comments.length - 1; i >= 0; i--) {
+    if (String(ledger.comments[i].itemId) === String(itemId)) ledger.comments.splice(i, 1);
   }
+}
+
+function forgetArtifact(family, id) {
+  const index = ledger[family].findIndex((artifact) => String(artifact.id) === String(id));
+  if (index >= 0) ledger[family].splice(index, 1);
 }
 
 async function api(method, path, body) {
@@ -134,15 +232,16 @@ async function directAPISweep() {
   const tag = smokeTitle("api");
   const created = await api("POST", `/v1/public/spaces/${spaceId}/boards/${boardId}/items`, { title: tag });
   const newId = idOf(created);
-  if (newId) createdItemIds.add(String(newId));
+  if (newId) trackArtifact(ledger, "items", { id: String(newId), title: tag, surface: "api", operation: "createItem" });
   record("api", "createItem", { itemId: newId });
 
   if (newId) {
     await api("GET", `/v1/public/spaces/${spaceId}/boards/${boardId}/items/${newId}`);
     record("api", "getItem");
-    const comment = await api("POST", `/v1/public/spaces/${spaceId}/boards/${boardId}/items/${newId}/comments`, { text: "smoke comment" });
+    const content = smokeText("api-comment");
+    const comment = await api("POST", `/v1/public/spaces/${spaceId}/boards/${boardId}/items/${newId}/comments`, { text: content });
     const cId = idOf(comment);
-    trackCreatedComment(newId, cId);
+    trackCreatedComment(newId, cId, "api", "createItemComment", content);
     record("api", "createItemComment", { commentId: cId });
   }
 
@@ -183,18 +282,19 @@ async function sdkSweep() {
   const tag = smokeTitle("sdk");
   const created = await client.items.create({ spaceId: SpaceId(spaceId), boardId: BoardId(boardId), body: { title: tag } });
   const newId = idOf(created);
-  if (newId) createdItemIds.add(String(newId));
+  if (newId) trackArtifact(ledger, "items", { id: String(newId), title: tag, surface: "sdk", operation: "items.create" });
   record("sdk", "client.items.create", { itemId: newId });
 
   if (newId) {
+    const content = smokeText("sdk-comment");
     const comment = await client.comments.create({
       spaceId: SpaceId(spaceId),
       boardId: BoardId(boardId),
       itemId: ItemId(newId),
-      body: { text: "sdk-smoke" },
+      body: { text: content },
     });
     const cId = idOf(comment);
-    trackCreatedComment(newId, cId);
+    trackCreatedComment(newId, cId, "sdk", "comments.create", content);
     record("sdk", "client.comments.create", { commentId: cId });
   }
 
@@ -219,7 +319,7 @@ async function cliSweep() {
   record("cli", "fields-list", runCLI(bin, ["fields-list", "--space-id", spaceId, "--board-id", boardId], env, { jsonHead: true }));
   record("cli", "items-create-simple --dry-run", runCLI(bin, ["items-create-simple", "--space-id", spaceId, "--board-id", boardId, "--title", smokeTitle("cli-dry"), "--dry-run"], env));
   record("cli", "items-bulk-update --dry-run", runCLIWithFile(bin, ["items-bulk-update", "--file", "{file}", "--dry-run"], env, JSON.stringify([{ spaceId, boardId, itemId: "0", body: { Status: "Done" } }])));
-  const itemId = [...createdItemIds][0];
+  const itemId = ledger.items[0]?.id;
   if (!itemId) {
     throw new Error("CLI workflow probes require a smoke item created by the API or SDK sweep");
   }
@@ -285,28 +385,30 @@ async function mcpSweep() {
     body: { title: smokeTitle("mcp-raw") },
   });
   const itemId = idOf(created);
-  if (itemId) createdItemIds.add(String(itemId));
+  const itemTitle = created?.title ?? smokeTitle("mcp-raw");
+  if (itemId) trackArtifact(ledger, "items", { id: String(itemId), title: itemTitle, surface: "mcp", operation: "plaky_create_item" });
   record("mcp", "tool plaky_create_item", { itemId });
 
   if (itemId) {
     await invokeMcpTool(tools, ctx, "plaky_get_item", { spaceId, boardId, itemId });
     record("mcp", "tool plaky_get_item");
 
+    const content = smokeText("mcp-comment");
     const comment = await invokeMcpTool(tools, ctx, "plaky_create_item_comment", {
       spaceId,
       boardId,
       itemId,
-      body: { text: "mcp-smoke" },
+      body: { text: content },
     });
     const commentId = idOf(comment);
-    trackCreatedComment(itemId, commentId);
+    trackCreatedComment(itemId, commentId, "mcp", "plaky_create_item_comment", content);
     record("mcp", "tool plaky_create_item_comment", { commentId });
 
     const comments = await invokeMcpTool(tools, ctx, "plaky_list_item_comments", { spaceId, boardId, itemId });
     record("mcp", "tool plaky_list_item_comments", { count: comments?.data?.length ?? 0 });
 
     await invokeMcpTool(tools, ctx, "plaky_delete_item", { spaceId, boardId, itemId });
-    createdItemIds.delete(String(itemId));
+    forgetArtifact("items", itemId);
     forgetCreatedCommentsForItem(itemId);
     record("mcp", "tool plaky_delete_item", { itemId });
   }
@@ -384,44 +486,67 @@ function parseMcpResponse(response) {
 
 async function cleanup() {
   if (!spaceId || !boardId) return;
-  for (let i = createdCommentRefs.length - 1; i >= 0; i--) {
-    const ref = createdCommentRefs[i];
-    try {
-      await api("DELETE", `/v1/public/spaces/${spaceId}/boards/${boardId}/items/${ref.itemId}/comments/${ref.commentId}`);
-      createdCommentRefs.splice(i, 1);
-    } catch (err) {
-      record("cleanup", `comment ${ref.commentId} failed`, { error: redact(String(err.message ?? err)) });
-    }
-  }
-  for (const itemId of [...createdItemIds]) {
-    try {
-      await api("DELETE", `/v1/public/spaces/${spaceId}/boards/${boardId}/items/${itemId}`);
-      createdItemIds.delete(String(itemId));
-      forgetCreatedCommentsForItem(itemId);
-    } catch (err) {
-      record("cleanup", `item ${itemId} failed`, { error: redact(String(err.message ?? err)) });
-    }
-  }
-  const leftoverCount = await scanLeftovers();
-  if (leftoverCount > 0) {
-    throw new Error(`live sweep cleanup left ${leftoverCount} smoke item(s) in the sacrificial board`);
-  }
+  const result = await cleanupOwnedArtifacts({ ledger, adapters: createCleanupAdapters() });
+  record("cleanup", "run-owned artifact cleanup", {
+    discovered: result.discovered,
+    leftovers: result.leftovers,
+  });
 }
 
-async function scanLeftovers() {
-  try {
-    const leftovers = [];
-    for (let page = 1; ; page++) {
-      const items = await api("GET", `/v1/public/spaces/${spaceId}/boards/${boardId}/items?page=${page}&pageSize=200`);
-      leftovers.push(...(items?.data ?? []).filter((it) => typeof it?.title === "string" && it.title.startsWith("smoke:")));
-      if (!items?.hasMore) break;
-    }
-    record("cleanup", "leftover scan", { count: leftovers.length, ids: leftovers.map((it) => it.id) });
-    return leftovers.length;
-  } catch (err) {
-    record("cleanup", "leftover scan failed", { error: redact(String(err.message ?? err)) });
-    throw new Error(`live sweep cleanup leftover scan failed: ${redact(String(err.message ?? err))}`);
+function createCleanupAdapters() {
+  return {
+    comments: {
+      list: listAllComments,
+      remove: (artifact) => api("DELETE", `/v1/public/spaces/${spaceId}/boards/${boardId}/items/${artifact.itemId}/comments/${artifact.id}`),
+    },
+    files: {
+      list: listAllFiles,
+      remove: (artifact) => api("DELETE", `/v1/public/spaces/${spaceId}/boards/${boardId}/items/${artifact.itemId}/files/${artifact.id}`),
+    },
+    items: {
+      list: listAllItems,
+      remove: (artifact) => api("DELETE", `/v1/public/spaces/${spaceId}/boards/${boardId}/items/${artifact.id}`),
+    },
+    groups: {
+      list: listAllGroups,
+      remove: (artifact) => api("DELETE", `/v1/public/spaces/${spaceId}/boards/${boardId}/item-groups/${artifact.id}`),
+    },
+  };
+}
+
+async function listAllItems() {
+  return collectPages((page) => api("GET", `/v1/public/spaces/${spaceId}/boards/${boardId}/items?page=${page}&pageSize=200`));
+}
+
+async function listAllGroups() {
+  return collectPages((page) => api("GET", `/v1/public/spaces/${spaceId}/boards/${boardId}/item-groups?page=${page}&pageSize=200`));
+}
+
+async function listAllComments() {
+  const out = [];
+  for (const item of await listAllItems()) {
+    const itemId = idOf(item);
+    if (itemId === undefined) continue;
+    const response = await api("GET", `/v1/public/spaces/${spaceId}/boards/${boardId}/items/${itemId}/comments`);
+    for (const comment of normalizeList(response)) out.push({ ...comment, itemId });
   }
+  return out;
+}
+
+async function listAllFiles() {
+  const out = [];
+  for (const item of await listAllItems()) {
+    const itemId = idOf(item);
+    if (itemId === undefined) continue;
+    const response = await api("GET", `/v1/public/spaces/${spaceId}/boards/${boardId}/items/${itemId}/files`);
+    for (const file of normalizeList(response)) out.push({ ...file, itemId });
+  }
+  return out;
+}
+
+function normalizeList(value) {
+  if (Array.isArray(value)) return value;
+  return Array.isArray(value?.data) ? value.data : [];
 }
 
 // ---------- ensure binaries ----------
@@ -486,7 +611,7 @@ function printSummary() {
       console.log("  -", e.name, JSON.stringify(e.detail));
     }
   }
-  console.log(`\nlive sweep complete. items=${createdItemIds.size} comments=${createdCommentRefs.length} cleaned up.`);
+  console.log(`\nlive sweep complete. run-owned artifacts cleaned up; tracked=${Object.values(ledger).filter(Array.isArray).reduce((count, entries) => count + entries.length, 0)}.`);
 }
 
 function idOf(value) {
