@@ -276,6 +276,39 @@ async function normalizeMultipart(formData) {
   };
 }
 
+function normalizeMultipartBytes(rawBytes, contentType) {
+  const boundaryMatch = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(contentType);
+  assert.ok(boundaryMatch, "multipart content type must include a boundary");
+  const boundary = (boundaryMatch[1] ?? boundaryMatch[2]).trim();
+  const opening = Buffer.from(`--${boundary}\r\n`);
+  assert.equal(rawBytes.subarray(0, opening.length).equals(opening), true, "multipart body must start with its boundary");
+
+  const headerEnd = rawBytes.indexOf(Buffer.from("\r\n\r\n"), opening.length);
+  assert.notEqual(headerEnd, -1, "multipart part must terminate its headers");
+  const headerText = rawBytes.subarray(opening.length, headerEnd).toString("utf8");
+  const disposition = /^content-disposition:\s*form-data;([^\r\n]+)$/im.exec(headerText);
+  assert.ok(disposition, "multipart part must include a form-data content disposition");
+  const partNameMatch = /(?:^|;)\s*name=(?:"([^"]+)"|([^;\s]+))/i.exec(disposition[1]);
+  const fileNameMatch = /(?:^|;)\s*filename=(?:"([^"]+)"|([^;\s]+))/i.exec(disposition[1]);
+  const partName = partNameMatch?.[1] ?? partNameMatch?.[2];
+  const fileName = fileNameMatch?.[1] ?? fileNameMatch?.[2];
+  assert.ok(partName, "multipart part must include a name");
+  assert.ok(fileName, "multipart file part must include a filename");
+  const partContentType = /^content-type:\s*([^\r\n]+)$/im.exec(headerText)?.[1].trim() ?? "";
+
+  const contentStart = headerEnd + 4;
+  const contentEnd = rawBytes.indexOf(Buffer.from(`\r\n--${boundary}`), contentStart);
+  assert.notEqual(contentEnd, -1, "multipart part must end at its boundary");
+  const bytes = rawBytes.subarray(contentStart, contentEnd);
+  return {
+    partName,
+    fileName,
+    contentType: partContentType,
+    size: bytes.length,
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+  };
+}
+
 function responseStub(method, url) {
   const pathname = new URL(url, "http://parity.local").pathname;
   const operation = operations.find((candidate) => candidate.method === method && candidate.concretePath === pathname);
@@ -346,38 +379,38 @@ before(async () => {
   recorder = createServer((req, res) => {
     const chunks = [];
     req.on("data", (c) => chunks.push(c));
-    req.on("end", async () => {
-      const rawBytes = Buffer.concat(chunks);
-      const raw = rawBytes.toString("utf8");
-      const contentType = req.headers["content-type"] ?? "";
-      let body;
-      let bodyKind = "none";
-      if (contentType.startsWith("multipart/form-data")) {
-        bodyKind = "multipart";
-        const formData = await new Request("http://parity.local", {
-          method: req.method,
-          headers: { "content-type": contentType },
-          body: rawBytes,
-        }).formData();
-        body = await normalizeMultipart(formData);
-      } else if (raw) {
-        try {
-          body = JSON.parse(raw);
-          bodyKind = "json";
-        } catch {
-          body = raw;
-          bodyKind = "other";
+    req.on("end", () => {
+      try {
+        const rawBytes = Buffer.concat(chunks);
+        const raw = rawBytes.toString("utf8");
+        const contentType = req.headers["content-type"] ?? "";
+        let body;
+        let bodyKind = "none";
+        if (contentType.startsWith("multipart/form-data")) {
+          bodyKind = "multipart";
+          body = normalizeMultipartBytes(rawBytes, contentType);
+        } else if (raw) {
+          try {
+            body = JSON.parse(raw);
+            bodyKind = "json";
+          } catch {
+            body = raw;
+            bodyKind = "other";
+          }
         }
-      }
-      cliStore.push({ method: req.method, url: req.url, body, bodyKind });
-      const operation = operations.find((candidate) => candidate.method === req.method && candidate.concretePath === new URL(req.url, "http://parity.local").pathname);
-      if (!operation) throw new Error(`no parity metadata for ${req.method} ${req.url}`);
-      res.statusCode = operation.successStatus;
-      if (operation.successKind === "void") {
-        res.end();
-      } else {
-        res.setHeader("content-type", "application/json");
-        res.end(operation.successKind === "json-array" ? "[]" : "{}");
+        cliStore.push({ method: req.method, url: req.url, body, bodyKind });
+        const operation = operations.find((candidate) => candidate.method === req.method && candidate.concretePath === new URL(req.url, "http://parity.local").pathname);
+        if (!operation) throw new Error(`no parity metadata for ${req.method} ${req.url}`);
+        res.statusCode = operation.successStatus;
+        if (operation.successKind === "void") {
+          res.end();
+        } else {
+          res.setHeader("content-type", "application/json");
+          res.end(operation.successKind === "json-array" ? "[]" : "{}");
+        }
+      } catch (error) {
+        res.statusCode = 500;
+        res.end(error instanceof Error ? error.message : String(error));
       }
     });
   });
