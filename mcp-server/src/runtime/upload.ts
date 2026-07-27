@@ -3,7 +3,6 @@ const DEFAULT_MAX_UPLOAD_BYTES = 10 * MEBIBYTE;
 export const MAX_UPLOAD_BYTES_HARD_CEILING = 25 * MEBIBYTE;
 
 const CANONICAL_BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
-const SAFE_FILE_NAME = /^[^\0\r\n]+$/;
 const SAFE_CONTENT_TYPE = /^[A-Za-z0-9!#$&^_.+-]+\/[A-Za-z0-9!#$&^_.+-]+$/;
 
 export type FileUploadInput = {
@@ -58,7 +57,7 @@ export function buildFileUploadFormData(
   input: FileUploadInput,
   options: UploadLimitOptions = {},
 ): FormData {
-  if (typeof input.fileName !== "string" || input.fileName.length === 0 || !SAFE_FILE_NAME.test(input.fileName)) {
+  if (!isSafeFileName(input.fileName)) {
     throw new Error("fileName must be a non-empty value without control characters.");
   }
   const contentType = input.contentType ?? "application/octet-stream";
@@ -71,6 +70,15 @@ export function buildFileUploadFormData(
   const form = new FormData();
   form.append("file", new Blob([blobBytes.buffer], { type: contentType }), input.fileName);
   return form;
+}
+
+function isSafeFileName(value: unknown): value is string {
+  if (typeof value !== "string" || value.length === 0) return false;
+  for (const character of value) {
+    const codePoint = character.codePointAt(0);
+    if (codePoint === undefined || codePoint < 0x20 || codePoint === 0x7f) return false;
+  }
+  return true;
 }
 
 function assertCanonicalBase64(value: string): void {

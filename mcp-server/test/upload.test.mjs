@@ -66,6 +66,10 @@ test("filename and content type are validated", () => {
     /fileName/,
   );
   assert.throws(
+    () => buildFileUploadFormData({ fileBase64: "", fileName: "bad\tname", contentType: "text/plain" }),
+    /fileName/,
+  );
+  assert.throws(
     () => buildFileUploadFormData({ fileBase64: "", fileName: "file", contentType: "bad\r\ntype" }),
     /contentType/,
   );
