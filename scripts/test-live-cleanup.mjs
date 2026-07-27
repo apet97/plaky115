@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  attemptMutationOnce,
   cleanupOwnedArtifacts,
   collectPages,
   createArtifactLedger,
   createCleanupCoordinator,
+  createMutationAttemptLedger,
   createRunMarker,
   createShutdownCoordinator,
   executeWithCleanup,
@@ -206,6 +208,35 @@ test("cleanup never retries a known mutation during discovery", async () => {
 
   await assert.rejects(cleanupOwnedArtifacts({ ledger, adapters }), AggregateError);
   assert.equal(removes, 1, "one exact artifact must receive at most one mutation attempt");
+});
+
+test("cleanup never retries a mutation already attempted by the surface sweep", async () => {
+  const marker = createRunMarker(RUN_A);
+  const ledger = createArtifactLedger(marker);
+  const group = { id: "surface-ambiguous", title: `${marker}group` };
+  trackArtifact(ledger, "groups", group);
+  const attempted = createMutationAttemptLedger();
+  let removes = 0;
+  const ambiguousRemove = async () => {
+    removes++;
+    const error = new Error("ambiguous delete response");
+    error.status = 400;
+    throw error;
+  };
+  const adapters = emptyAdapters();
+  adapters.groups = {
+    list: async () => [group],
+    remove: ambiguousRemove,
+  };
+
+  await assert.rejects(
+    executeWithCleanup(
+      () => attemptMutationOnce(attempted, "groups", group.id, ambiguousRemove),
+      () => cleanupOwnedArtifacts({ ledger, adapters, attempted }),
+    ),
+    AggregateError,
+  );
+  assert.equal(removes, 1, "surface and cleanup must share one exact-artifact mutation budget");
 });
 
 test("an API timeout still settles cleanup before the run rejects", async () => {

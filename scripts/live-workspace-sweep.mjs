@@ -33,6 +33,7 @@ const allowArchive = process.env["PLAKY115_SMOKE_ALLOW_ARCHIVE"] === "1";
 
 const runMarker = createRunMarker(randomUUID());
 const ledger = createArtifactLedger(runMarker);
+const attemptedMutations = createMutationAttemptLedger();
 const summary = [];
 let liveBuilds = {};
 const cleanupOnce = createCleanupCoordinator(cleanup);
@@ -105,6 +106,19 @@ export function createRunMarker(uuid) {
 
 export function createArtifactLedger(marker) {
   return { marker, groups: [], items: [], comments: [], files: [] };
+}
+
+export function createMutationAttemptLedger() {
+  return Object.fromEntries(["comments", "files", "items", "groups"].map((family) => [family, new Set()]));
+}
+
+export async function attemptMutationOnce(attempted, family, id, mutate) {
+  const familyAttempts = attempted[family];
+  if (!(familyAttempts instanceof Set)) throw new TypeError(`unknown artifact family: ${family}`);
+  const artifactId = String(id ?? "unknown");
+  if (familyAttempts.has(artifactId)) throw new Error(`${family} ${artifactId} mutation was already attempted`);
+  familyAttempts.add(artifactId);
+  return mutate();
 }
 
 export function createCleanupCoordinator(cleanupFn) {
@@ -261,13 +275,11 @@ export async function waitForAbsent(isAbsent, { attempts = 20, delayMs = 100 } =
   return false;
 }
 
-export async function cleanupOwnedArtifacts({ ledger: targetLedger, adapters }) {
+export async function cleanupOwnedArtifacts({ ledger: targetLedger, adapters, attempted = createMutationAttemptLedger() }) {
   const order = ["comments", "files", "items", "groups"];
   const failures = [];
   const discovered = { comments: 0, files: 0, items: 0, groups: 0 };
   const leftovers = { comments: 0, files: 0, items: 0, groups: 0 };
-  const attempted = Object.fromEntries(order.map((family) => [family, new Set()]));
-
   async function attempt(family, artifact, stage) {
     const artifactId = String(artifact.id ?? "unknown");
     if (attempted[family].has(artifactId)) return;
@@ -427,6 +439,15 @@ async function deleteItemGroupWithVerification(itemGroupId, remove) {
   return verifyDeleteOutcome(remove, () => waitForAbsent(() => itemGroupIsAbsent(itemGroupId)));
 }
 
+async function deleteTrackedItemGroupWithVerification(itemGroupId, remove) {
+  return attemptMutationOnce(
+    attemptedMutations,
+    "groups",
+    itemGroupId,
+    () => deleteItemGroupWithVerification(itemGroupId, remove),
+  );
+}
+
 async function itemGroupIsAbsent(itemGroupId) {
   const path = `/v1/public/spaces/${spaceId}/boards/${boardId}/item-groups/${itemGroupId}`;
   const response = await fetch(`${baseURL.replace(/\/$/, "")}${path}`, {
@@ -503,7 +524,7 @@ async function directAPIItemGroupSweep() {
     ranking: current?.ranking ?? "0|hzzzzz:",
   });
   record("api", "itemGroups.update", { itemGroupId: groupId });
-  await deleteItemGroupWithVerification(groupId, async () => {
+  await deleteTrackedItemGroupWithVerification(groupId, async () => {
     assertVoidResult(await api("DELETE", `${path}/${groupId}`, undefined, { responseType: "void" }), "api item group delete");
   });
   forgetArtifact("groups", groupId);
@@ -517,7 +538,7 @@ async function directAPIItemGroupSweep() {
   assertVoidResult(await api("PUT", `${path}/${archiveId}/archive`, undefined, { responseType: "void" }), "api item group archive");
   record("api", "itemGroups.archive", { itemGroupId: archiveId });
   try {
-    await deleteItemGroupWithVerification(archiveId, async () => {
+    await deleteTrackedItemGroupWithVerification(archiveId, async () => {
       assertVoidResult(await api("DELETE", `${path}/${archiveId}`, undefined, { responseType: "void" }), "api archived item group delete");
     });
     forgetArtifact("groups", archiveId);
@@ -546,7 +567,9 @@ async function directAPIItemFileSweep(itemId) {
     description: smokeText("api-file-description"),
   });
   record("api", "itemFiles.update", { itemFileId });
-  assertVoidResult(await api("DELETE", `${path}/${itemFileId}`, undefined, { responseType: "void" }), "api item file delete");
+  await attemptMutationOnce(attemptedMutations, "files", itemFileId, async () => {
+    assertVoidResult(await api("DELETE", `${path}/${itemFileId}`, undefined, { responseType: "void" }), "api item file delete");
+  });
   forgetArtifact("files", itemFileId);
   record("api", "itemFiles.delete", { itemFileId });
 }
@@ -628,7 +651,7 @@ async function sdkItemGroupSweep(client, ids) {
     },
   });
   record("sdk", "itemGroups.update", { itemGroupId: groupId });
-  await deleteItemGroupWithVerification(groupId, async () => {
+  await deleteTrackedItemGroupWithVerification(groupId, async () => {
     assertVoidResult(await client.itemGroups.delete({ ...scope, itemGroupId: groupId }), "sdk item group delete");
   });
   forgetArtifact("groups", groupId);
@@ -642,7 +665,7 @@ async function sdkItemGroupSweep(client, ids) {
   assertVoidResult(await client.itemGroups.archive({ ...scope, itemGroupId: archiveId }), "sdk item group archive");
   record("sdk", "itemGroups.archive", { itemGroupId: archiveId });
   try {
-    await deleteItemGroupWithVerification(archiveId, async () => {
+    await deleteTrackedItemGroupWithVerification(archiveId, async () => {
       assertVoidResult(await client.itemGroups.delete({ ...scope, itemGroupId: archiveId }), "sdk archived item group delete");
     });
     forgetArtifact("groups", archiveId);
@@ -675,7 +698,9 @@ async function sdkItemFileSweep(client, ids, itemId) {
     body: { name: `${runMarker}updated-sdk.txt`, description: smokeText("sdk-file-description") },
   });
   record("sdk", "itemFiles.update", { itemFileId });
-  assertVoidResult(await client.itemFiles.delete({ ...scope, itemFileId }), "sdk item file delete");
+  await attemptMutationOnce(attemptedMutations, "files", itemFileId, async () => {
+    assertVoidResult(await client.itemFiles.delete({ ...scope, itemFileId }), "sdk item file delete");
+  });
   forgetArtifact("files", itemFileId);
   record("sdk", "itemFiles.delete", { itemFileId });
 }
@@ -731,7 +756,7 @@ async function cliItemGroupSweep(bin, env) {
     }),
   ], env);
   record("cli", "itemGroups.update", { itemGroupId: groupId });
-  await deleteItemGroupWithVerification(groupId, async () => {
+  await deleteTrackedItemGroupWithVerification(groupId, async () => {
     assertOkReceipt(runCLIParsed(bin, ["raw", "delete-item-group", ...base, "--item-group-id", String(groupId), "--confirm", "--json"], env), "cli item group delete");
   });
   forgetArtifact("groups", groupId);
@@ -745,7 +770,7 @@ async function cliItemGroupSweep(bin, env) {
   assertOkReceipt(runCLIParsed(bin, ["item-groups-archive", ...base, "--item-group-id", String(archiveId), "--confirm"], env), "cli item group archive");
   record("cli", "itemGroups.archive", { itemGroupId: archiveId });
   try {
-    await deleteItemGroupWithVerification(archiveId, async () => {
+    await deleteTrackedItemGroupWithVerification(archiveId, async () => {
       assertOkReceipt(runCLIParsed(bin, ["raw", "delete-item-group", ...base, "--item-group-id", String(archiveId), "--confirm", "--json"], env), "cli archived item group delete");
     });
     forgetArtifact("groups", archiveId);
@@ -775,7 +800,9 @@ async function cliItemFileSweep(bin, env, itemId) {
     JSON.stringify({ name: `${runMarker}updated-cli.txt`, description: smokeText("cli-file-description") }),
   ], env);
   record("cli", "itemFiles.update", { itemFileId });
-  assertOkReceipt(runCLIParsed(bin, ["raw", "delete-item-file", ...base, "--item-file-id", String(itemFileId), "--confirm", "--json"], env), "cli item file delete");
+  await attemptMutationOnce(attemptedMutations, "files", itemFileId, async () => {
+    assertOkReceipt(runCLIParsed(bin, ["raw", "delete-item-file", ...base, "--item-file-id", String(itemFileId), "--confirm", "--json"], env), "cli item file delete");
+  });
   forgetArtifact("files", itemFileId);
   record("cli", "itemFiles.delete", { itemFileId });
 }
@@ -882,7 +909,9 @@ async function mcpSweep() {
 
     await mcpItemFileSweep(tools, ctx, mcpSpaceId, mcpBoardId, itemId);
 
-    await invokeMcpTool(tools, ctx, "plaky_delete_item", { spaceId: mcpSpaceId, boardId: mcpBoardId, itemId });
+    await attemptMutationOnce(attemptedMutations, "items", itemId, () => (
+      invokeMcpTool(tools, ctx, "plaky_delete_item", { spaceId: mcpSpaceId, boardId: mcpBoardId, itemId })
+    ));
     forgetArtifact("items", itemId);
     forgetCreatedCommentsForItem(itemId);
     record("mcp", "tool plaky_delete_item", { itemId });
@@ -916,7 +945,7 @@ async function mcpItemGroupSweep(tools, ctx, mcpSpaceId, mcpBoardId) {
     },
   });
   record("mcp", "itemGroups.update", { itemGroupId: groupId });
-  await deleteItemGroupWithVerification(groupId, async () => {
+  await deleteTrackedItemGroupWithVerification(groupId, async () => {
     assertOkReceipt(await invokeMcpTool(tools, ctx, "plaky_delete_item_group", { ...scope, itemGroupId: groupId }), "mcp item group delete");
   });
   forgetArtifact("groups", groupId);
@@ -930,7 +959,7 @@ async function mcpItemGroupSweep(tools, ctx, mcpSpaceId, mcpBoardId) {
   assertOkReceipt(await invokeMcpTool(tools, ctx, "plaky_archive_item_group", { ...scope, itemGroupId: archiveId }), "mcp item group archive");
   record("mcp", "itemGroups.archive", { itemGroupId: archiveId });
   try {
-    await deleteItemGroupWithVerification(archiveId, async () => {
+    await deleteTrackedItemGroupWithVerification(archiveId, async () => {
       assertOkReceipt(await invokeMcpTool(tools, ctx, "plaky_delete_item_group", { ...scope, itemGroupId: archiveId }), "mcp archived item group delete");
     });
     forgetArtifact("groups", archiveId);
@@ -965,7 +994,9 @@ async function mcpItemFileSweep(tools, ctx, mcpSpaceId, mcpBoardId, itemId) {
     body: { name: `${runMarker}updated-mcp.txt`, description: smokeText("mcp-file-description") },
   });
   record("mcp", "itemFiles.update", { itemFileId });
-  assertOkReceipt(await invokeMcpTool(tools, ctx, "plaky_delete_item_file", { ...scope, itemFileId }), "mcp item file delete");
+  await attemptMutationOnce(attemptedMutations, "files", itemFileId, async () => {
+    assertOkReceipt(await invokeMcpTool(tools, ctx, "plaky_delete_item_file", { ...scope, itemFileId }), "mcp item file delete");
+  });
   forgetArtifact("files", itemFileId);
   record("mcp", "itemFiles.delete", { itemFileId });
 }
@@ -1032,7 +1063,7 @@ function parseMcpResponse(response) {
 
 async function cleanup() {
   if (!spaceId || !boardId) return;
-  const result = await cleanupOwnedArtifacts({ ledger, adapters: createCleanupAdapters() });
+  const result = await cleanupOwnedArtifacts({ ledger, adapters: createCleanupAdapters(), attempted: attemptedMutations });
   record("cleanup", "run-owned artifact cleanup", {
     discovered: result.discovered,
     leftovers: result.leftovers,
