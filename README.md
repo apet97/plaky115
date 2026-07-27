@@ -22,6 +22,8 @@ tools, retry logic, pagination, and release gates are hand-written.
 ## What It Ships
 
 - TypeScript SDK with stable `PlakyClient` resource methods.
+- Exact raw coverage for all 32 public operations, including the six Item Group
+  and six item-file operations.
 - Generated OpenAPI schema types exported as type-only escape hatches.
 - Pagination helpers: page APIs, `listAll`, and async iterators.
 - Runtime controls: retries, idempotency keys, timeouts, abort signals,
@@ -114,8 +116,22 @@ await plaky.items.create({
 });
 ```
 
-Mutations attach idempotency keys by default. `GET` requests can retry, and write
-requests retry only when an idempotency key is present.
+Only `GET` requests can retry. Writes remain single-attempt even when an
+idempotency key is present, and the SDK never generates a key. A caller may
+supply an explicit key to populate `Idempotency-Key`; the public contract does
+not promise write deduplication.
+
+Item Groups are available through `plaky.itemGroups.list`, `iterate`, `listAll`,
+`get`, `create`, `update`, `archive`, and `delete`. Item files are available
+through `plaky.itemFiles.list`, `upload`, `get`, `getDownload`, `update`, and
+`delete`. SDK uploads take a `Blob`, never a filesystem path; download metadata
+is returned once and the SDK never follows or logs the signed URL.
+
+The exported `searchItemsDetailed()` workflow returns `data`, `scanned`,
+`matched`, `truncated`, and (when more pages remain at the scan cap) `nextPage`.
+CSV export is deterministic and spreadsheet-safe by default; set
+`csvSafety: "raw"` only when the consumer explicitly wants unescaped formula
+prefixes.
 
 Use `requestWithResponse()` when you need status, headers, request IDs, or a raw
 API path:
@@ -164,6 +180,12 @@ plaky115 comments-add --space-id 123 --board-id 456 --item-id 789 --text "Note" 
 plaky115 comments-thread --space-id 123 --board-id 456 --item-id 789
 plaky115 reactions-replace --space-id 123 --board-id 456 --item-id 789 --comment-id 321 --body '{"reactions":[{"value":"1f44d"}]}' --dry-run
 plaky115 items-bulk-update --file updates.json --dry-run
+plaky115 item-groups-list --space-id 123 --board-id 456
+plaky115 item-groups-create --space-id 123 --board-id 456 --title "Backlog" --dry-run
+plaky115 item-groups-archive --space-id 123 --board-id 456 --item-group-id 321 --confirm
+plaky115 item-files-list --space-id 123 --board-id 456 --item-id 789
+plaky115 item-files-upload --space-id 123 --board-id 456 --item-id 789 --file ./report.pdf
+plaky115 item-files-download-link --space-id 123 --board-id 456 --item-id 789 --item-file-id 654
 
 # Generated raw operations
 plaky115 raw list-spaces
@@ -176,6 +198,10 @@ plaky115 raw delete-item --space-id 123 --board-id 456 --item-id 789 --confirm
 
 Raw write commands require `--body`; they do not send implicit empty JSON. Raw
 DELETE commands require `--confirm`.
+
+`find --type item` accepts `--limit` (default 200) and reports `scanned`,
+`matched`, `truncated`, and `nextPage` when applicable. CSV export defaults to
+`--csv-safety spreadsheet`; `--csv-safety raw` is an explicit opt-out.
 
 ## MCP Server
 
@@ -197,6 +223,11 @@ Modes:
 - `--mode generated` for one raw tool per Plaky operation.
 - `--mode all` for both surfaces.
 
+With no flags, startup defaults to `--mode curated --scope read`. Request the
+previous broad surface explicitly with `--mode all --scope read --scope write
+--scope destructive`; invalid modes, scopes, or arguments exit with usage status
+instead of broadening access.
+
 Scopes:
 
 - `--scope read`
@@ -210,6 +241,17 @@ Curated tools:
 - `plaky_find`
 - `plaky_plan_mutation`
 - `plaky_execute_workflow`
+
+Generated mode exposes the 32 operation-shaped raw tools. The new families are
+`plaky_list_item_groups`, `plaky_get_item_group`,
+`plaky_create_item_group`, `plaky_update_item_group`,
+`plaky_archive_item_group`, `plaky_delete_item_group`,
+`plaky_list_item_files`, `plaky_upload_item_file`, `plaky_get_item_file`,
+`plaky_get_item_file_download`, `plaky_update_item_file`, and
+`plaky_delete_item_file`. MCP upload accepts canonical `fileBase64`, a filename,
+and an optional media type; it accepts no local path and enforces a 10 MiB
+default decoded limit with a 25 MiB hard ceiling. Signed download links are
+returned only by the requested tool and are never followed or logged.
 
 Tool results include redacted JSON text for readability and the same object in
 `structuredContent` for clients. Known Plaky API failures return `isError: true`
@@ -264,12 +306,15 @@ Only run the live sweep against a sacrificial workspace:
 export PLAKY115_API_KEY=...
 export PLAKY115_SMOKE_SPACE_ID=...
 export PLAKY115_SMOKE_BOARD_ID=...
+export PLAKY115_SMOKE_ALLOW_ARCHIVE=1
 npm run live:sweep
 ```
 
-The sweep exercises API, SDK, CLI, and MCP paths, creates clearly named
-`smoke:` items/comments, cleans them up, and requires a successful leftover scan
-across all item pages with count `0`.
+The sweep exercises API, SDK, CLI, and MCP paths with one UUID-scoped run marker.
+It covers groups, items, comments, and files, recovers a lost create response,
+cleans only run-owned artifacts, and requires a final paginated leftover count
+of `0`. The archive acknowledgement is mandatory because Plaky exposes no
+unarchive endpoint. See `docs/live-smoke.md` before running it.
 
 ## Regenerate
 

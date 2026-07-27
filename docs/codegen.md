@@ -71,7 +71,12 @@ const response = await client.requestWithResponse({
 
 ## Adding a New Operation
 
-1. Update `api-1.yaml` or the upstream source.
+1. Run `npm run contract:fetch-candidate` and
+   `npm run contract:diff-candidate`. Review source identity, hashes, operation
+   inventory, semantic drift, and rendered official documentation. Accept only
+   with `npm run contract:accept-candidate -- --yes`, then run
+   `npm run contract:manifest:check`; normal verification never fetches or
+   accepts a contract.
 2. Add explicit toolkit semantics to `overlays/plaky115-dx.overlay.yaml`:
    `operationId`, complete `x-plaky115-mcp` annotations,
    `x-plaky115-confirmation`, `x-plaky115-compact-kind`, and

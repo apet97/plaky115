@@ -74,6 +74,62 @@ test("stale generated docs, examples, and local plans are not tracked", () => {
   assert.equal(result.stdout.trim(), "");
 });
 
+test("v0.2 docs describe the exact new public surfaces and safe defaults", () => {
+  const rootReadme = read("README.md");
+  const sdkReadme = read("sdk/README.md");
+  const cliReadme = read("cli/README.md");
+  const mcpReadme = read("mcp-server/README.md");
+  const apiBehavior = read("docs/api-behavior.md");
+  const releaseChecklist = read("docs/release-checklist.md");
+  const examples = read("examples/README.md") + read("examples/mcp/recipes.md") + read("examples/cli/recipes.sh");
+
+  assert.match(rootReadme, /32 public operations/);
+  for (const method of ["list", "iterate", "listAll", "get", "create", "update", "archive", "delete"]) {
+    assert.match(sdkReadme, new RegExp(`itemGroups\\.${method}\\b`));
+  }
+  for (const method of ["list", "upload", "get", "getDownload", "update", "delete"]) {
+    assert.match(sdkReadme, new RegExp(`itemFiles\\.${method}\\b`));
+  }
+  for (const command of [
+    "item-groups-list", "item-groups-create", "item-groups-archive",
+    "item-files-list", "item-files-upload", "item-files-download-link",
+  ]) assert.match(cliReadme, new RegExp(`\\b${command}\\b`));
+  for (const tool of [
+    "plaky_list_item_groups", "plaky_get_item_group", "plaky_create_item_group",
+    "plaky_update_item_group", "plaky_archive_item_group", "plaky_delete_item_group",
+    "plaky_list_item_files", "plaky_upload_item_file", "plaky_get_item_file",
+    "plaky_get_item_file_download", "plaky_update_item_file", "plaky_delete_item_file",
+  ]) assert.match(mcpReadme + examples, new RegExp(`\\b${tool}\\b`));
+
+  assert.match(mcpReadme, /defaults to `curated` and scope defaults to `read`/);
+  assert.match(mcpReadme, /fileBase64/);
+  assert.match(mcpReadme, /10 MiB/);
+  assert.match(mcpReadme, /25 MiB/);
+  assert.match(sdkReadme, /SDK does not accept filesystem paths/);
+  assert.match(cliReadme, /streams a path or stdin/);
+  assert.match(rootReadme + sdkReadme + apiBehavior, /Only `GET` requests can retry/);
+  assert.match(rootReadme + sdkReadme + apiBehavior, /writes remain\s+single-attempt even when an idempotency key is present/i);
+  assert.match(apiBehavior, /does not document write\s+deduplication/);
+  assert.match(apiBehavior, /searchItemsDetailed/);
+  assert.match(apiBehavior, /truncated/);
+  assert.match(apiBehavior, /csvSafety:"raw"/);
+  assert.match(apiBehavior, /--csv-safety raw/);
+  assert.match(releaseChecklist, /\.github\/workflows\/release-cli\.yml/);
+  assert.match(releaseChecklist, /run-owned/);
+  assert.match(examples, /06-groups-and-files\.mjs/);
+});
+
+test("public docs and examples contain no stale repository or realistic secret values", () => {
+  const all = markdownFiles().map((rel) => read(rel)).join("\n") + read("examples/cli/recipes.sh") + read("examples/mcp/claude_desktop_config.json");
+  assert.doesNotMatch(all, /github\.com\/[^/\s]+\/plaky115-cli\b/);
+  assert.doesNotMatch(all, /plk_[A-Za-z0-9_-]+/);
+  assert.doesNotMatch(all, /https:\/\/(?!<account>)[a-z0-9-]+\.api\.plaky\.com/i);
+});
+
+function read(rel) {
+  return readFileSync(join(root, rel), "utf8");
+}
+
 function markdownFiles() {
   const files = [];
   for (const rel of scannedRoots) {

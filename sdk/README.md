@@ -69,6 +69,13 @@ const users = await client.users.list({ emails: ["teammate@example.com"], status
 
 Item Groups are paged and expose typed helpers for all six public operations:
 
+- `client.itemGroups.list`, `client.itemGroups.iterate`, and
+  `client.itemGroups.listAll`
+- `client.itemGroups.get`, `client.itemGroups.create`, and
+  `client.itemGroups.update`
+- `client.itemGroups.archive` and `client.itemGroups.delete` (bodyless void
+  operations)
+
 ```ts
 const createdGroup = await client.itemGroups.create({
   spaceId: 123,
@@ -82,6 +89,13 @@ if (createdGroup.id !== undefined) {
 ```
 
 Item files use `Blob`/`FormData`; the SDK does not accept filesystem paths:
+
+- `client.itemFiles.list` returns the API's bare array.
+- `client.itemFiles.upload`, `client.itemFiles.get`, `client.itemFiles.update`,
+  and `client.itemFiles.delete` cover attachment metadata and lifecycle
+  operations.
+- `client.itemFiles.getDownload` returns short-lived metadata once; it never
+  follows the signed URL.
 
 ```ts
 const uploadedFile = await client.itemFiles.upload({
@@ -112,7 +126,9 @@ type SpaceResponse = PlakyOpenApiComponents["schemas"]["SpaceResponse"];
 ```
 
 Writes never generate idempotency keys or retry automatically. Pass a stable key
-explicitly when your application needs a request identifier.
+explicitly when your application needs a request identifier. The public Plaky
+contract does not document write deduplication, so a key is not permission to
+replay a mutation automatically.
 
 ```ts
 await client.items.create(
@@ -137,6 +153,18 @@ for await (const item of client.items.iterate({ spaceId: 123, boardId: 456, page
 const first = await client.spaces.iterate().firstPage();
 const all = await client.spaces.iterate({ limit: 500 }).toArray();
 ```
+
+## Search and export workflows
+
+`searchItemsDetailed(client, ...)` scans at most 200 items by default and
+returns `{ data, scanned, matched, truncated, nextPage? }`. `truncated: true`
+means the client hit the scan limit while the server still reported another
+page; the deprecated `searchItems()` compatibility wrapper returns only the
+matched array.
+
+`exportItems(client, { format: "csv" })` emits deterministic spreadsheet-safe
+CSV by default. Set `csvSafety: "raw"` only for a trusted downstream consumer
+that explicitly needs leading formula characters unchanged.
 
 ## Retries
 

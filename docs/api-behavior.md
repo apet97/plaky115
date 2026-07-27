@@ -62,6 +62,16 @@ configurable:
 - CLI: `maxPaginationPages` in `cli/internal/cli/dx.go` aborts with an error
   when exceeded.
 
+### Bounded item search
+
+`searchItemsDetailed(client, { space, board, query, limit })` defaults to a
+200-item scan cap and returns `data`, `scanned`, `matched`, `truncated`, and an
+optional `nextPage`. When `truncated` is true, the cap was reached while the
+server still reported another page; the result must not be presented as a
+complete match set. The deprecated `searchItems()` wrapper preserves its array
+return for compatibility. CLI `find --type item` uses the same default and
+completeness fields.
+
 ## Expand serialization
 
 `expand` is declared `explode: false` in the spec. Confirmed live, the API

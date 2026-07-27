@@ -54,7 +54,7 @@
 - [x] `L001` | Phase 11 — Live proof | DONE | Refactor live sweep around a run-owned artifact ledger
 - [x] `L002` | Phase 11 — Live proof | DONE | Exercise Item Groups and Item files through API, SDK, CLI, and MCP
 - [x] `L003` | Phase 11 — Live proof | DONE | Add fault injection, privacy assertions, and strict live workflow preflight
-- [ ] `R001` | Phase 12 — Release and verification | NOT STARTED | Update all documentation and examples to the implemented behavior
+- [x] `R001` | Phase 12 — Release and verification | DONE | Update all documentation and examples to the implemented behavior
 - [ ] `R002` | Phase 12 — Release and verification | NOT STARTED | Bump versions, synchronize runtime version, and refresh package snapshots
 - [ ] `REL001` | Phase 12 — Release automation | NOT STARTED | Add tokenless npm trusted publishing with provenance and release preflights
 - [ ] `SEC002` | Phase 12 — Supply-chain hardening | NOT STARTED | Pin every GitHub Action by full SHA and enforce least-privilege workflow policy
@@ -424,3 +424,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Success stdout is one JSON object containing fixed surface/operation/status strings plus recursively allowlisted finite numbers and booleans. Failure stderr ignores error messages/response bodies and emits only failure status, known HTTP status, and a safe exact artifact ID when manual archived-group cleanup is required.
 - Fault tests cover create-before-track recovery on a later page, concurrent-run isolation, API timeout, 404, non-404 failure, SIGINT/SIGTERM coalescing, missing key/IDs/archive acknowledgement, each missing build, paginated final scans, and privacy sentinels for API keys, signed URLs, email, titles, comments, and file content.
 - All 23 combined cleanup/source tests, all 12 `npm run live:sweep:test` tests, workflow YAML parsing, three workflow-layout tests, no-key preflight execution, script syntax, isolated `npm run secret:scan`, and `git diff --check` exited 0. The three preserved ignored planning/taskbook inputs were restored byte-identically after the scan. No live API request or mutation was made.
+
+### R001
+
+- Root, SDK, CLI, MCP, API behavior, codegen, release, live-smoke, and example documentation now describes the 32-operation contract; the complete typed Item Group/file methods and raw MCP tool names; curated/read MCP defaults and explicit broad startup; GET-only retries; caller-only idempotency headers without a deduplication claim; and signed-link no-follow handling.
+- Search documentation distinguishes `searchItemsDetailed` completeness (`scanned`, `matched`, `truncated`, `nextPage`) from the legacy array wrapper. SDK/CLI CSV docs describe deterministic spreadsheet-safe defaults and the explicit raw opt-out.
+- Added a syntax-checked SDK group/file lifecycle example with opt-in mutations, in-memory upload bytes, cleanup, and signed-URL-safe output. CLI recipes use exact IDs, bounded item search, safe CSV, and optional item-file reads; MCP recipes include exact read/write/destructive payloads with base64-only upload.
+- Codegen instructions start from candidate fetch/diff/review/accept/manifest checks and retain explicit rich metadata rather than method/path heuristics. Release/live docs point to the root monorepo workflow and UUID-scoped run-owned cleanup.
+- The generated 42-entry MCP docs index was refreshed through `npm run generate:docs-index` and produced no tracked drift. All four docs-surface tests and all eight example syntax checks passed; the stale-claim search found only intentional default/status-ledger wording, and `git diff --check` exited 0.

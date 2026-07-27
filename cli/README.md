@@ -71,6 +71,17 @@ File uploads are single-attempt and accept an optional explicit
 and expiry metadata but never follows or downloads the remote bytes; handle the
 URL as a bearer capability and do not persist it in logs.
 
+Item search accepts `--limit` (default 200) and reports `data`, `scanned`,
+`matched`, `truncated`, and `nextPage` when another server page remains. CSV
+export is deterministic and defaults to `--csv-safety spreadsheet`, which
+neutralizes leading formula characters in string cells. Use `--csv-safety raw`
+only for a trusted consumer that explicitly requires the unmodified strings.
+
+Generated raw commands cover the remaining exact group/file operations:
+`get-item-group`, `update-item-group`, `delete-item-group`, `get-item-file`,
+`update-item-file`, `get-item-file-download`, and `delete-item-file`. Raw JSON
+writes require `--body`; raw deletes require `--confirm`.
+
 ## Raw Commands
 
 ```bash

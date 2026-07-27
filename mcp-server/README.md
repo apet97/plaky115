@@ -19,9 +19,9 @@ host does not route for your workspace, set `PLAKY115_BASE_URL` (or pass
 
 Use `--mode curated`, `--mode generated`, or `--mode all` to choose the tool
 surface. Use repeated `--scope read`, `--scope write`, or `--scope destructive`
-flags to mount the required behavior surface. When omitted, mode defaults to
-`curated` and scope defaults to `read`; typos and unknown arguments exit with a
-usage error instead of broadening access.
+flags to mount the required behavior surface. When omitted, mode defaults to `curated` and scope defaults to `read`;
+typos and unknown arguments exit with a usage error instead of broadening
+access.
 
 Request the prior broad surface explicitly:
 
@@ -62,6 +62,21 @@ operation metadata and keep the API-shaped request payloads. Prefer curated
 tools for discovery, planning, and agent workflows; use raw tools for exact API
 coverage. Raw tools also register conservative `outputSchema` definitions; void
 delete operations return `{ "ok": true }` receipts.
+
+The Item Group raw tools are `plaky_list_item_groups`,
+`plaky_get_item_group`, `plaky_create_item_group`,
+`plaky_update_item_group`, `plaky_archive_item_group`, and
+`plaky_delete_item_group`. The item-file tools are `plaky_list_item_files`,
+`plaky_upload_item_file`, `plaky_get_item_file`,
+`plaky_get_item_file_download`, `plaky_update_item_file`, and
+`plaky_delete_item_file`.
+
+`plaky_upload_item_file` accepts canonical `fileBase64`, `fileName`, and an
+optional `contentType`; it never accepts an arbitrary local filesystem path.
+Decoded content defaults to a 10 MiB limit, configurable only up to the 25 MiB
+hard ceiling. File listing returns the documented structured `data` envelope.
+The download tool returns a short-lived signed URL only in the requested result;
+the server does not follow, persist, or log it.
 
 ## License
 

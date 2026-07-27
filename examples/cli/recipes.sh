@@ -5,6 +5,7 @@
 #   export PLAKY115_API_KEY=...
 #   export PLAKY115_SPACE_ID=...   # for board/item recipes
 #   export PLAKY115_BOARD_ID=...   # for item recipes
+#   export PLAKY115_ITEM_ID=...    # for item-file recipes
 #   # Real workspaces are account-prefixed; set when the generic host does not route:
 #   export PLAKY115_BASE_URL=https://<account>.api.plaky.com
 #
@@ -28,7 +29,8 @@ plaky115 "${SERVER_ARGS[@]}" workspace-map
 if [ -n "${PLAKY115_SPACE_ID:-}" ] && [ -n "${PLAKY115_BOARD_ID:-}" ]; then
   echo "## find items by text"
   plaky115 "${SERVER_ARGS[@]}" find --type item \
-    --space-id "$PLAKY115_SPACE_ID" --board-id "$PLAKY115_BOARD_ID" --query "smoke"
+    --space-id "$PLAKY115_SPACE_ID" --board-id "$PLAKY115_BOARD_ID" \
+    --query "smoke" --limit 200
 
   echo "## fields-list"
   plaky115 "${SERVER_ARGS[@]}" fields-list \
@@ -48,13 +50,19 @@ if [ -n "${PLAKY115_SPACE_ID:-}" ] && [ -n "${PLAKY115_BOARD_ID:-}" ]; then
     --space-id "$PLAKY115_SPACE_ID" --board-id "$PLAKY115_BOARD_ID" \
     --item-group-id 1 --dry-run
 
-  echo "## item-files-list"
-  plaky115 "${SERVER_ARGS[@]}" item-files-list \
-    --space-id "$PLAKY115_SPACE_ID" --board-id "$PLAKY115_BOARD_ID" --item-id 1
+  if [ -n "${PLAKY115_ITEM_ID:-}" ]; then
+    echo "## item-files-list"
+    plaky115 "${SERVER_ARGS[@]}" item-files-list \
+      --space-id "$PLAKY115_SPACE_ID" --board-id "$PLAKY115_BOARD_ID" \
+      --item-id "$PLAKY115_ITEM_ID"
+  else
+    echo "(set PLAKY115_ITEM_ID for item-file list/upload/download-link recipes)"
+  fi
 
   echo "## items-export as JSONL"
   plaky115 "${SERVER_ARGS[@]}" items-export \
-    --space-id "$PLAKY115_SPACE_ID" --board-id "$PLAKY115_BOARD_ID" --format jsonl
+    --space-id "$PLAKY115_SPACE_ID" --board-id "$PLAKY115_BOARD_ID" \
+    --format csv --csv-safety spreadsheet
 
   echo "## comments-add (dry-run; writes nothing)"
   plaky115 "${SERVER_ARGS[@]}" comments-add \

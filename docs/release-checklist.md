@@ -21,14 +21,19 @@ GoReleaser validation.
 ## Optional Live Gate
 
 ```bash
-PLAKY115_API_KEY=... npm run live:sweep
+PLAKY115_API_KEY=... \
+PLAKY115_SMOKE_SPACE_ID=... \
+PLAKY115_SMOKE_BOARD_ID=... \
+PLAKY115_SMOKE_ALLOW_ARCHIVE=1 \
+npm run live:sweep
 npm run secret:scan
 ```
 
 Never store the key in `.env`, `~/.zshrc`, or any committed file. Build the SDK
 and MCP packages before running the live gate; enabled SDK, CLI, and MCP
 sections fail if their build artifacts are missing. The cleanup leftover count
-must come from a successful cleanup scan and be `0`.
+must come from a successful cleanup scan and be `0`. Cleanup is UUID-scoped and
+run-owned; never substitute a broad title-prefix delete.
 
 ## Strict Surface Gate
 

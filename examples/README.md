@@ -9,6 +9,7 @@ example reads credentials from the environment. None contain literal keys.
 export PLAKY115_API_KEY=...                 # required
 export PLAKY115_SPACE_ID=...                # for item/board examples
 export PLAKY115_BOARD_ID=...                # for item examples
+export PLAKY115_ITEM_ID=...                 # for item-file examples
 # Real workspaces are account-prefixed; set this when the generic host does not route:
 export PLAKY115_BASE_URL=https://<account>.api.plaky.com
 ```
@@ -32,6 +33,7 @@ node sdk/02-paginate.mjs
 node sdk/03-fields-and-create.mjs        # previews the payload (dry-run); set CREATE=1 to write a sacrificial item (use a smoke board)
 node sdk/04-error-handling.mjs
 node sdk/05-request-with-response.mjs
+node sdk/06-groups-and-files.mjs          # reads by default; MUTATE_GROUPS=1 and/or MUTATE_FILES=1 only on sacrificial targets
 ```
 
 ## CLI examples

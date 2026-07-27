@@ -11,6 +11,13 @@ Set `PLAKY115_API_KEY` in the host environment. Real workspaces are
 account-prefixed; set `PLAKY115_BASE_URL=https://<account>.api.plaky.com` when
 the generic host does not route.
 
+With no flags, the server already defaults to `--mode curated --scope read`.
+Mount the full raw/write surface only when the host needs it:
+
+```bash
+npx --yes plaky115-mcp --mode all --scope read --scope write --scope destructive
+```
+
 ## Scopes and modes
 
 - `--mode curated` exposes the curated tools below.
@@ -40,3 +47,36 @@ the generic host does not route.
 
 Tool results include redacted JSON text plus a `structuredContent` object. Known
 Plaky API failures return `isError: true` with structured error details.
+
+## Item Group and file raw recipes
+
+Start with `--mode generated --scope read` for the list/get/download tools. The
+host can call these exact tools with API-shaped arguments:
+
+```json
+{ "tool": "plaky_list_item_groups", "arguments": { "spaceId": 123, "boardId": 456, "page": 1, "pageSize": 100 } }
+{ "tool": "plaky_get_item_group", "arguments": { "spaceId": 123, "boardId": 456, "itemGroupId": 321 } }
+{ "tool": "plaky_list_item_files", "arguments": { "spaceId": 123, "boardId": 456, "itemId": 789 } }
+{ "tool": "plaky_get_item_file", "arguments": { "spaceId": 123, "boardId": 456, "itemId": 789, "itemFileId": 654 } }
+{ "tool": "plaky_get_item_file_download", "arguments": { "spaceId": 123, "boardId": 456, "itemId": 789, "itemFileId": 654 } }
+```
+
+The download result is a short-lived bearer capability. Ask the host to use it
+for the immediate user request only; never paste it into logs or ask the server
+to follow it.
+
+Mutation examples require `--scope write`; archive/delete additionally require
+`--scope destructive` and host confirmation:
+
+```json
+{ "tool": "plaky_create_item_group", "arguments": { "spaceId": 123, "boardId": 456, "body": { "title": "Review" } } }
+{ "tool": "plaky_update_item_group", "arguments": { "spaceId": 123, "boardId": 456, "itemGroupId": 321, "body": { "title": "Reviewed", "ranking": "0|hzzzzz:" } } }
+{ "tool": "plaky_archive_item_group", "arguments": { "spaceId": 123, "boardId": 456, "itemGroupId": 321 } }
+{ "tool": "plaky_delete_item_group", "arguments": { "spaceId": 123, "boardId": 456, "itemGroupId": 321 } }
+{ "tool": "plaky_upload_item_file", "arguments": { "spaceId": 123, "boardId": 456, "itemId": 789, "fileBase64": "aGVsbG8K", "fileName": "note.txt", "contentType": "text/plain" } }
+{ "tool": "plaky_update_item_file", "arguments": { "spaceId": 123, "boardId": 456, "itemId": 789, "itemFileId": 654, "body": { "name": "renamed.txt" } } }
+{ "tool": "plaky_delete_item_file", "arguments": { "spaceId": 123, "boardId": 456, "itemId": 789, "itemFileId": 654 } }
+```
+
+MCP upload accepts base64 only, with no local path input. The SDK uses `Blob`
+and the CLI streams a file or stdin instead.
