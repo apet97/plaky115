@@ -73,4 +73,9 @@ test("GoReleaser and both installers target the monorepo with matching archive n
   assert.match(powershell, /raw\.githubusercontent\.com\/apet97\/plaky115\/main\/cli\/scripts\/install\.ps1/);
   assert.match(shell, /\$\{BINARY_NAME\}_\$\{os\}_\$\{arch\}\.tar\.gz/);
   assert.match(powershell, /plaky115_Windows_\$arch\.zip/);
+  assert.equal(
+    readFileSync(`${root}/cli/LICENSE`, "utf8"),
+    readFileSync(`${root}/LICENSE`, "utf8"),
+    "CLI release archives must ship the repository MIT license",
+  );
 });
