@@ -5,13 +5,19 @@ official Plaky or CAKE.com package.
 
 ## Version
 
-`vX.Y.Z`
+`v0.2.0`
 
 ## Highlights
 
-- SDK:
-- CLI:
-- MCP:
+- SDK: adds typed Item Group and item-file resources for all twelve new
+  operations, GET-only retries, detailed bounded search results, and
+  deterministic spreadsheet-safe CSV export (with explicit raw opt-out).
+- CLI: adds curated group/file commands, streams file/stdin uploads, requires
+  confirmation for archive/delete, reports search truncation, and uses the root
+  monorepo GoReleaser workflow and installers.
+- MCP: adds the generated group/file raw tools, defaults to curated/read,
+  accepts bounded base64 uploads without filesystem paths, and keeps signed
+  download links sensitive and one-shot.
 
 ## Verification
 
@@ -27,3 +33,6 @@ official Plaky or CAKE.com package.
 - The SDK remains schema-types-only with hand-written resource methods.
 - Curated MCP tools can be selected with `mcp start --mode curated`.
 - Use `includeRaw: true` only when raw Plaky API payloads are needed.
+- Mutations are single-attempt even with an explicit idempotency key; the header
+  is caller-managed and is not a write-deduplication guarantee.
+- `item-groups-archive` requires `--confirm` outside dry-run mode.

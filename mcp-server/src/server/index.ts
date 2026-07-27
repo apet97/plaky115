@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import { readFileSync } from "node:fs";
 import {
   PlakyAbortError,
   PlakyApiError,
@@ -23,6 +24,18 @@ import type {
   McpToolResponse,
 } from "../runtime/types.js";
 
+declare const PLAKY115_MCP_PACKAGE_VERSION: string | undefined;
+
+function readPackageVersion(): string {
+  const value = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")) as { version?: unknown };
+  if (typeof value.version !== "string" || value.version.length === 0) throw new Error("MCP package version is missing");
+  return value.version;
+}
+
+export const SERVER_VERSION = typeof PLAKY115_MCP_PACKAGE_VERSION === "string"
+  ? PLAKY115_MCP_PACKAGE_VERSION
+  : readPackageVersion();
+
 export type ServerOptions = {
   apiKey: string;
   serverURL?: string;
@@ -37,7 +50,7 @@ export function buildServer(opts: ServerOptions): { server: McpServer; tools: Mc
   });
   const tools = filterByScopes(selectTools(opts.mode), new Set(opts.scopes));
   const server = new McpServer(
-    { name: "plaky115", version: "0.1.0" },
+    { name: "plaky115", version: SERVER_VERSION },
     {
       instructions:
         "Unofficial, hand-crafted toolkit for the Plaky public API. Not affiliated with Plaky or CAKE.com. See SECURITY.md for API-key handling and the destructive-operation model.",

@@ -55,7 +55,7 @@
 - [x] `L002` | Phase 11 — Live proof | DONE | Exercise Item Groups and Item files through API, SDK, CLI, and MCP
 - [x] `L003` | Phase 11 — Live proof | DONE | Add fault injection, privacy assertions, and strict live workflow preflight
 - [x] `R001` | Phase 12 — Release and verification | DONE | Update all documentation and examples to the implemented behavior
-- [ ] `R002` | Phase 12 — Release and verification | NOT STARTED | Bump versions, synchronize runtime version, and refresh package snapshots
+- [x] `R002` | Phase 12 — Release and verification | DONE | Bump versions, synchronize runtime version, and refresh package snapshots
 - [ ] `REL001` | Phase 12 — Release automation | NOT STARTED | Add tokenless npm trusted publishing with provenance and release preflights
 - [ ] `SEC002` | Phase 12 — Supply-chain hardening | NOT STARTED | Pin every GitHub Action by full SHA and enforce least-privilege workflow policy
 - [ ] `R003` | Phase 12 — Release and verification | NOT STARTED | Run the full offline release gate from a clean real Git checkout
@@ -432,3 +432,11 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - Added a syntax-checked SDK group/file lifecycle example with opt-in mutations, in-memory upload bytes, cleanup, and signed-URL-safe output. CLI recipes use exact IDs, bounded item search, safe CSV, and optional item-file reads; MCP recipes include exact read/write/destructive payloads with base64-only upload.
 - Codegen instructions start from candidate fetch/diff/review/accept/manifest checks and retain explicit rich metadata rather than method/path heuristics. Release/live docs point to the root monorepo workflow and UUID-scoped run-owned cleanup.
 - The generated 42-entry MCP docs index was refreshed through `npm run generate:docs-index` and produced no tracked drift. All four docs-surface tests and all eight example syntax checks passed; the stale-claim search found only intentional default/status-ledger wording, and `git diff --check` exited 0.
+
+### R002
+
+- SDK and MCP package manifests and lockfiles are synchronized at `0.2.0`; the MCP peer range requires `plaky115@0.2.0`.
+- MCP source reads its package version for normal ESM execution, while the Bun binary build injects the same validated package value. Protocol initialization reported `0.2.0` from both the ESM server and bundled stdio binary.
+- CLI builds retain `dev` locally and report the injected version/build time when built with the GoReleaser linker flags.
+- SDK tests passed 175 cases and MCP tests passed 67 cases. SDK/MCP dry-run packs reported `0.2.0` and included their licenses; package artifact audit, pack smoke, consumer smoke, snapshot drift, and GoReleaser configuration validation exited 0.
+- Package snapshots were regenerated through `npm run packsnapshot:write` and now record 139 SDK files and 209 MCP files, including the intentional workflow internals added in this release. No environment file, live artifact, candidate artifact, secret, or raw HTML fixture is present.

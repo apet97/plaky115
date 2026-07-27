@@ -1,6 +1,6 @@
 {
   "name": "plaky115-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Hand-crafted MCP server for the Plaky public API. Unofficial.",
   "license": "MIT",
   "author": "Plaky115",
@@ -42,7 +42,7 @@
     "zod": "^3.25.0 || ^4.0.0"
   },
   "peerDependencies": {
-    "plaky115": "0.1.0"
+    "plaky115": "0.2.0"
   },
   "repository": {
     "type": "git",
