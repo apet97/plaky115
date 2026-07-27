@@ -9,10 +9,12 @@ import {
   createShutdownCoordinator,
   executeWithCleanup,
   isOwnedArtifact,
+  waitForAbsent,
   preflightLiveSweep,
   serializeLiveFailure,
   serializeLiveSummary,
   trackArtifact,
+  verifyDeleteOutcome,
 } from "./live-workspace-sweep.mjs";
 
 const RUN_A = "11111111-1111-4111-8111-111111111111";
@@ -134,6 +136,52 @@ test("cleanup treats 404 as absent but fails closed on timeouts and other errors
     throw error;
   };
   await assert.rejects(cleanupOwnedArtifacts({ ledger: timeoutLedger, adapters: timeoutAdapters }), AggregateError);
+});
+
+test("an ambiguous 400 delete succeeds only after exact absence verification", async () => {
+  const ambiguous = new Error("ambiguous delete response");
+  ambiguous.status = 400;
+
+  await verifyDeleteOutcome(
+    async () => { throw ambiguous; },
+    async () => true,
+  );
+  await assert.rejects(
+    verifyDeleteOutcome(
+      async () => { throw ambiguous; },
+      async () => false,
+    ),
+    (error) => error === ambiguous,
+  );
+
+  const timeout = new Error("request timed out");
+  timeout.name = "AbortError";
+  let verified = false;
+  await assert.rejects(
+    verifyDeleteOutcome(
+      async () => { throw timeout; },
+      async () => { verified = true; return true; },
+    ),
+    (error) => error === timeout,
+  );
+  assert.equal(verified, false, "non-400 failures must not be converted into success");
+});
+
+test("absence verification polls reads without retrying the mutation", async () => {
+  let checks = 0;
+  const absent = await waitForAbsent(
+    async () => ++checks === 3,
+    { attempts: 3, delayMs: 0 },
+  );
+  assert.equal(absent, true);
+  assert.equal(checks, 3);
+
+  checks = 0;
+  assert.equal(
+    await waitForAbsent(async () => { checks++; return false; }, { attempts: 2, delayMs: 0 }),
+    false,
+  );
+  assert.equal(checks, 2);
 });
 
 test("an API timeout still settles cleanup before the run rejects", async () => {

@@ -242,6 +242,25 @@ export function summarizeDownloadLink(value) {
   return { urlPresent: true, expiresInSeconds: value.expiresInSeconds };
 }
 
+export async function verifyDeleteOutcome(remove, isAbsent) {
+  try {
+    return await remove();
+  } catch (error) {
+    if (error?.status !== 400 || !(await isAbsent())) throw error;
+    return undefined;
+  }
+}
+
+export async function waitForAbsent(isAbsent, { attempts = 20, delayMs = 100 } = {}) {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    if (await isAbsent()) return true;
+    if (attempt < attempts && delayMs > 0) {
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, delayMs));
+    }
+  }
+  return false;
+}
+
 export async function cleanupOwnedArtifacts({ ledger: targetLedger, adapters }) {
   const order = ["comments", "files", "items", "groups"];
   const failures = [];
@@ -400,6 +419,25 @@ async function api(method, path, body, options = {}) {
   return parsed;
 }
 
+async function deleteItemGroupWithVerification(itemGroupId, remove) {
+  return verifyDeleteOutcome(remove, () => waitForAbsent(() => itemGroupIsAbsent(itemGroupId)));
+}
+
+async function itemGroupIsAbsent(itemGroupId) {
+  const path = `/v1/public/spaces/${spaceId}/boards/${boardId}/item-groups/${itemGroupId}`;
+  const response = await fetch(`${baseURL.replace(/\/$/, "")}${path}`, {
+    headers: { "X-API-Key": apiKey, Accept: "application/json" },
+  });
+  await response.arrayBuffer();
+  if (response.status === 404) return true;
+  if (!response.ok) {
+    const error = new Error(`GET item group state failed with HTTP ${response.status}`);
+    error.status = response.status;
+    throw error;
+  }
+  return false;
+}
+
 // ---------- 1. direct API sweep ----------
 
 async function directAPISweep() {
@@ -461,19 +499,23 @@ async function directAPIItemGroupSweep() {
     ranking: current?.ranking ?? "0|hzzzzz:",
   });
   record("api", "itemGroups.update", { itemGroupId: groupId });
-  assertVoidResult(await api("DELETE", `${path}/${groupId}`, undefined, { responseType: "void" }), "api item group delete");
+  await deleteItemGroupWithVerification(groupId, async () => {
+    assertVoidResult(await api("DELETE", `${path}/${groupId}`, undefined, { responseType: "void" }), "api item group delete");
+  });
   forgetArtifact("groups", groupId);
   record("api", "itemGroups.delete", { itemGroupId: groupId });
 
   const archiveTitle = smokeTitle("api-group-archive");
-  const archiveGroup = await api("POST", path, { title: archiveTitle });
+  const archiveGroup = await api("POST", path, { title: archiveTitle, color: "#3366FF", ranking: "0|hzzzzz:" });
   const archiveId = idOf(archiveGroup);
   if (!archiveId) throw new Error("api archive-group create response is missing an ID");
   trackArtifact(ledger, "groups", { id: String(archiveId), title: archiveTitle, surface: "api", operation: "itemGroups.archive" });
   assertVoidResult(await api("PUT", `${path}/${archiveId}/archive`, undefined, { responseType: "void" }), "api item group archive");
   record("api", "itemGroups.archive", { itemGroupId: archiveId });
   try {
-    assertVoidResult(await api("DELETE", `${path}/${archiveId}`, undefined, { responseType: "void" }), "api archived item group delete");
+    await deleteItemGroupWithVerification(archiveId, async () => {
+      assertVoidResult(await api("DELETE", `${path}/${archiveId}`, undefined, { responseType: "void" }), "api archived item group delete");
+    });
     forgetArtifact("groups", archiveId);
   } catch (error) {
     throw archivedGroupDeletionError(archiveId, error);
@@ -582,19 +624,23 @@ async function sdkItemGroupSweep(client, ids) {
     },
   });
   record("sdk", "itemGroups.update", { itemGroupId: groupId });
-  assertVoidResult(await client.itemGroups.delete({ ...scope, itemGroupId: groupId }), "sdk item group delete");
+  await deleteItemGroupWithVerification(groupId, async () => {
+    assertVoidResult(await client.itemGroups.delete({ ...scope, itemGroupId: groupId }), "sdk item group delete");
+  });
   forgetArtifact("groups", groupId);
   record("sdk", "itemGroups.delete", { itemGroupId: groupId });
 
   const archiveTitle = smokeTitle("sdk-group-archive");
-  const archiveGroup = await client.itemGroups.create({ ...scope, body: { title: archiveTitle } });
+  const archiveGroup = await client.itemGroups.create({ ...scope, body: { title: archiveTitle, color: "#3366FF", ranking: "0|hzzzzz:" } });
   const archiveId = idOf(archiveGroup);
   if (!archiveId) throw new Error("sdk archive-group create response is missing an ID");
   trackArtifact(ledger, "groups", { id: String(archiveId), title: archiveTitle, surface: "sdk", operation: "itemGroups.archive" });
   assertVoidResult(await client.itemGroups.archive({ ...scope, itemGroupId: archiveId }), "sdk item group archive");
   record("sdk", "itemGroups.archive", { itemGroupId: archiveId });
   try {
-    assertVoidResult(await client.itemGroups.delete({ ...scope, itemGroupId: archiveId }), "sdk archived item group delete");
+    await deleteItemGroupWithVerification(archiveId, async () => {
+      assertVoidResult(await client.itemGroups.delete({ ...scope, itemGroupId: archiveId }), "sdk archived item group delete");
+    });
     forgetArtifact("groups", archiveId);
   } catch (error) {
     throw archivedGroupDeletionError(archiveId, error);
@@ -681,19 +727,23 @@ async function cliItemGroupSweep(bin, env) {
     }),
   ], env);
   record("cli", "itemGroups.update", { itemGroupId: groupId });
-  assertOkReceipt(runCLIParsed(bin, ["raw", "delete-item-group", ...base, "--item-group-id", String(groupId), "--confirm"], env), "cli item group delete");
+  await deleteItemGroupWithVerification(groupId, async () => {
+    assertOkReceipt(runCLIParsed(bin, ["raw", "delete-item-group", ...base, "--item-group-id", String(groupId), "--confirm", "--json"], env), "cli item group delete");
+  });
   forgetArtifact("groups", groupId);
   record("cli", "itemGroups.delete", { itemGroupId: groupId });
 
   const archiveTitle = smokeTitle("cli-group-archive");
-  const archiveGroup = runCLIParsed(bin, ["item-groups-create", ...base, "--title", archiveTitle], env);
+  const archiveGroup = runCLIParsed(bin, ["item-groups-create", ...base, "--title", archiveTitle, "--color", "#3366FF", "--ranking", "0|hzzzzz:"], env);
   const archiveId = idOf(archiveGroup);
   if (!archiveId) throw new Error("cli archive-group create response is missing an ID");
   trackArtifact(ledger, "groups", { id: String(archiveId), title: archiveTitle, surface: "cli", operation: "itemGroups.archive" });
   assertOkReceipt(runCLIParsed(bin, ["item-groups-archive", ...base, "--item-group-id", String(archiveId), "--confirm"], env), "cli item group archive");
   record("cli", "itemGroups.archive", { itemGroupId: archiveId });
   try {
-    assertOkReceipt(runCLIParsed(bin, ["raw", "delete-item-group", ...base, "--item-group-id", String(archiveId), "--confirm"], env), "cli archived item group delete");
+    await deleteItemGroupWithVerification(archiveId, async () => {
+      assertOkReceipt(runCLIParsed(bin, ["raw", "delete-item-group", ...base, "--item-group-id", String(archiveId), "--confirm", "--json"], env), "cli archived item group delete");
+    });
     forgetArtifact("groups", archiveId);
   } catch (error) {
     throw archivedGroupDeletionError(archiveId, error);
@@ -721,13 +771,18 @@ async function cliItemFileSweep(bin, env, itemId) {
     JSON.stringify({ name: `${runMarker}updated-cli.txt`, description: smokeText("cli-file-description") }),
   ], env);
   record("cli", "itemFiles.update", { itemFileId });
-  assertOkReceipt(runCLIParsed(bin, ["raw", "delete-item-file", ...base, "--item-file-id", String(itemFileId), "--confirm"], env), "cli item file delete");
+  assertOkReceipt(runCLIParsed(bin, ["raw", "delete-item-file", ...base, "--item-file-id", String(itemFileId), "--confirm", "--json"], env), "cli item file delete");
   forgetArtifact("files", itemFileId);
   record("cli", "itemFiles.delete", { itemFileId });
 }
 
 function assertOkReceipt(value, label) {
-  if (!value || value.ok !== true) throw new Error(`${label} must return an ok receipt for a void operation`);
+  if (!value || value.ok !== true) {
+    const error = new Error(`${label} must return an ok receipt for a void operation`);
+    const status = value?.error?.status ?? value?.status;
+    if (Number.isInteger(status)) error.status = status;
+    throw error;
+  }
   return value;
 }
 
@@ -857,19 +912,23 @@ async function mcpItemGroupSweep(tools, ctx, mcpSpaceId, mcpBoardId) {
     },
   });
   record("mcp", "itemGroups.update", { itemGroupId: groupId });
-  assertOkReceipt(await invokeMcpTool(tools, ctx, "plaky_delete_item_group", { ...scope, itemGroupId: groupId }), "mcp item group delete");
+  await deleteItemGroupWithVerification(groupId, async () => {
+    assertOkReceipt(await invokeMcpTool(tools, ctx, "plaky_delete_item_group", { ...scope, itemGroupId: groupId }), "mcp item group delete");
+  });
   forgetArtifact("groups", groupId);
   record("mcp", "itemGroups.delete", { itemGroupId: groupId });
 
   const archiveTitle = smokeTitle("mcp-group-archive");
-  const archiveGroup = await invokeMcpTool(tools, ctx, "plaky_create_item_group", { ...scope, body: { title: archiveTitle } });
+  const archiveGroup = await invokeMcpTool(tools, ctx, "plaky_create_item_group", { ...scope, body: { title: archiveTitle, color: "#3366FF", ranking: "0|hzzzzz:" } });
   const archiveId = idOf(archiveGroup);
   if (!archiveId) throw new Error("mcp archive-group create response is missing an ID");
   trackArtifact(ledger, "groups", { id: String(archiveId), title: archiveTitle, surface: "mcp", operation: "itemGroups.archive" });
   assertOkReceipt(await invokeMcpTool(tools, ctx, "plaky_archive_item_group", { ...scope, itemGroupId: archiveId }), "mcp item group archive");
   record("mcp", "itemGroups.archive", { itemGroupId: archiveId });
   try {
-    assertOkReceipt(await invokeMcpTool(tools, ctx, "plaky_delete_item_group", { ...scope, itemGroupId: archiveId }), "mcp archived item group delete");
+    await deleteItemGroupWithVerification(archiveId, async () => {
+      assertOkReceipt(await invokeMcpTool(tools, ctx, "plaky_delete_item_group", { ...scope, itemGroupId: archiveId }), "mcp archived item group delete");
+    });
     forgetArtifact("groups", archiveId);
   } catch (error) {
     throw archivedGroupDeletionError(archiveId, error);
@@ -992,7 +1051,10 @@ function createCleanupAdapters() {
     },
     groups: {
       list: listAllGroups,
-      remove: (artifact) => api("DELETE", `/v1/public/spaces/${spaceId}/boards/${boardId}/item-groups/${artifact.id}`),
+      remove: (artifact) => deleteItemGroupWithVerification(
+        artifact.id,
+        () => api("DELETE", `/v1/public/spaces/${spaceId}/boards/${boardId}/item-groups/${artifact.id}`),
+      ),
     },
   };
 }
@@ -1079,7 +1141,11 @@ function runCLIParsed(bin, args, env, options = {}) {
     ...(options.input !== undefined ? { input: options.input } : {}),
   });
   if (r.status !== 0) {
-    throw new Error(`CLI ${args.join(" ")} failed: ${redact((r.stderr ?? "").slice(0, 200))}`);
+    const stderr = r.stderr ?? "";
+    const error = new Error(`CLI ${args.join(" ")} failed: ${redact(stderr.slice(0, 200))}`);
+    const status = Number(/status=(\d{3})/.exec(stderr)?.[1]);
+    if (Number.isInteger(status)) error.status = status;
+    throw error;
   }
   try {
     return JSON.parse(r.stdout ?? "");

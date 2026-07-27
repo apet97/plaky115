@@ -111,6 +111,34 @@ test("live sweep covers item groups and item files on every surface", () => {
   assert.match(liveSweep, /--file", "-"/);
 });
 
+test("archive probes create groups with the live-required color and ranking", () => {
+  assert.match(
+    liveSweep,
+    /archiveGroup = await api\("POST", path, \{ title: archiveTitle, color: "#3366FF", ranking: "0\|hzzzzz:" \}\)/,
+  );
+  assert.match(
+    liveSweep,
+    /archiveGroup = await client\.itemGroups\.create\(\{ \.\.\.scope, body: \{ title: archiveTitle, color: "#3366FF", ranking: "0\|hzzzzz:" \} \}\)/,
+  );
+  assert.match(
+    liveSweep,
+    /"item-groups-create", \.\.\.base, "--title", archiveTitle, "--color", "#3366FF", "--ranking", "0\|hzzzzz:"/,
+  );
+  assert.match(
+    liveSweep,
+    /"plaky_create_item_group", \{ \.\.\.scope, body: \{ title: archiveTitle, color: "#3366FF", ranking: "0\|hzzzzz:" \} \}/,
+  );
+});
+
+test("CLI raw deletes request machine-readable void receipts", () => {
+  const deletes = liveSweep.match(/\["raw", "delete-item-group", \.\.\.base,[^\n]+"--confirm", "--json"\]/g) ?? [];
+  assert.equal(deletes.length, 2);
+  assert.match(
+    liveSweep,
+    /\["raw", "delete-item-file", \.\.\.base,[^\n]+"--confirm", "--json"\]/,
+  );
+});
+
 test("live sweep helpers enforce multipart, void, array, and sensitive-output contracts", () => {
   const fixture = createTextFixture("smoke:plaky115:00000000-0000-4000-8000-000000000000:", "mock");
   assert.equal(fixture.contentType, "text/plain");
