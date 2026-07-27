@@ -2924,15 +2924,9 @@
             "value": ""
           }
         ],
-        "subitems": [
-
-        ],
-        "subscribedTeams": [
-
-        ],
-        "subscribedUsers": [
-
-        ]
+        "subitems": [],
+        "subscribedTeams": [],
+        "subscribedUsers": []
       }
     },
     "deleteItem": {
@@ -2965,12 +2959,8 @@
         "updatedAt": null,
         "pinned": false,
         "deleted": false,
-        "reactions": [
-
-        ],
-        "replies": [
-
-        ]
+        "reactions": [],
+        "replies": []
       }
     },
     "deleteItemComment": {
@@ -2993,12 +2983,8 @@
         "updatedAt": "2026-06-28T12:05:00Z",
         "pinned": false,
         "deleted": false,
-        "reactions": [
-
-        ],
-        "replies": [
-
-        ]
+        "reactions": [],
+        "replies": []
       }
     },
     "replaceCommentReactions": {
