@@ -399,7 +399,8 @@ if $PROGRAM_NAME == __FILE__
   begin
     options = parse_options(ARGV)
     payload = generate_metadata(options.fetch(:source))
-    File.write(options.fetch(:out), "#{JSON.pretty_generate(payload)}\n")
+    formatted = JSON.pretty_generate(payload).gsub(/\[\s*\]/, "[]")
+    File.write(options.fetch(:out), "#{formatted}\n")
   rescue StandardError => e
     warn "generate-operation-metadata: #{e.message}"
     exit 1

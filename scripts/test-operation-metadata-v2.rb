@@ -13,6 +13,16 @@ GENERATOR = File.join(ROOT, "scripts/generate-operation-metadata.rb")
 FIXTURES = File.join(ROOT, "test/fixtures/openapi")
 
 class OperationMetadataV2Test < Minitest::Test
+  def test_generated_json_compacts_empty_arrays_across_json_gem_versions
+    Dir.mktmpdir("plaky115-metadata-format-") do |dir|
+      out = File.join(dir, "metadata.json")
+      _stdout, stderr, status = Open3.capture3("ruby", GENERATOR, "--source", File.join(ROOT, "openapi/plaky115-dx.openapi.yaml"), "--out", out)
+
+      assert status.success?, stderr
+      refute_match(/\[\n\s*\]/, File.read(out))
+    end
+  end
+
   def test_semantics_all_32_are_exact_and_explicit
     metadata = generate(File.join(ROOT, "openapi/plaky115-dx.openapi.yaml"))
     operations = metadata.fetch("operations")
