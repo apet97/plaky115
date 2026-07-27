@@ -1,0 +1,47 @@
+# Changelog
+
+All notable user-visible changes are recorded here. The project follows
+semantic versioning from `0.2.0` onward.
+
+## [0.2.0] - 2026-07-27
+
+First complete public release of the hand-crafted Plaky toolkit.
+
+### TypeScript SDK
+
+- Added resource-oriented Item Group and item-file APIs.
+- Added generated schema types while keeping operation modules private.
+- Added typed IDs, request/response metadata, interceptors, cancellation,
+  dynamic authentication/headers, rate-limit snapshots, and detailed errors.
+- Added paginated iterators, detailed item search, and deterministic
+  spreadsheet-safe CSV export.
+- Restricted automatic retries to `GET`; writes remain single-attempt.
+- Preserved `PlakyClient`, `requestWithResponse`, runtime exports, and additive
+  `CommentShape` compatibility.
+
+### Go CLI
+
+- Added 32 operation-shaped raw commands plus curated discovery, export, item,
+  comment, group, and file workflows.
+- Added dry-run/confirmation controls, stdin/file JSON bodies, streaming file
+  uploads, versioned user agent, installers, and GoReleaser archives.
+- Added complete pagination, detailed search metadata, and canonical CSV output.
+
+### MCP server
+
+- Added curated read/mutation workflows and 32 generated raw tools.
+- Added structured results/errors, conservative output schemas, safe defaults,
+  explicit scopes, upload bounds, and sensitive download-link handling.
+- Default startup is curated/read-only; write and destructive tools are opt-in.
+
+### Contract, security, and release
+
+- Added deterministic local OpenAPI overlay, operation metadata, codegen, drift,
+  cross-surface parity, and upstream freshness checks.
+- Added centralized API-key redaction, direct filesystem secret scanning,
+  package-content audits, consumer smoke tests, and exact action pinning.
+- Added OIDC npm publishing with provenance and multi-platform CLI releases.
+- Added UUID-scoped sacrificial live proof across API, SDK, CLI, and MCP with
+  exact-ID cleanup and a single mutation-attempt budget.
+
+[0.2.0]: https://github.com/apet97/plaky115/releases/tag/v0.2.0

@@ -1,97 +1,37 @@
 # Plaky115
 
 [![CI](https://github.com/apet97/plaky115/actions/workflows/ci.yml/badge.svg)](https://github.com/apet97/plaky115/actions/workflows/ci.yml)
+[![GitHub release](https://img.shields.io/github/v/release/apet97/plaky115?display_name=tag&sort=semver)](https://github.com/apet97/plaky115/releases)
+[![SDK on npm](https://img.shields.io/npm/v/plaky115?label=SDK)](https://www.npmjs.com/package/plaky115)
+[![MCP on npm](https://img.shields.io/npm/v/plaky115-mcp?label=MCP)](https://www.npmjs.com/package/plaky115-mcp)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Node.js >=22.12](https://img.shields.io/badge/node-%3E%3D22.12-339933?logo=node.js&logoColor=white)](sdk/package.json)
+[![Go 1.26](https://img.shields.io/badge/go-1.26-00ADD8?logo=go&logoColor=white)](cli/go.mod)
 
-Unofficial, hand-crafted developer toolkit for the Plaky public API:
+One repository for working with the Plaky public API from TypeScript, a terminal,
+or an MCP host.
 
-- TypeScript SDK package: `plaky115`
-- Go/Cobra CLI: `plaky115`
-- MCP server package: `plaky115-mcp`
+| Surface | Package | Best for |
+| --- | --- | --- |
+| TypeScript SDK | [`plaky115`](sdk/README.md) | Typed applications, scripts, pagination, and workflows |
+| Go CLI | [`plaky115`](cli/README.md) | Shell automation, exports, diagnostics, and exact raw commands |
+| MCP server | [`plaky115-mcp`](mcp-server/README.md) | Claude, Cursor, and other MCP clients with safe defaults |
 
 > [!IMPORTANT]
-> **Unofficial and independent.** Plaky115 is **not affiliated with, endorsed by,
-> or sponsored by Plaky or CAKE.com**. "Plaky" and "CAKE.com" are trademarks of
-> their respective owners. This project only targets the documented public Plaky
-> API and is provided as-is under the [MIT License](LICENSE).
+> Plaky115 is unofficial and independent. It is not affiliated with, endorsed by,
+> or sponsored by Plaky or CAKE.com. “Plaky” and “CAKE.com” are trademarks of
+> their respective owners.
 
-The repo keeps generated code narrow and reviewable: OpenAPI schema types, raw
-CLI commands, raw MCP tools, and metadata indexes are generated locally and
-checked in. The SDK client, runtime behavior, curated CLI commands, curated MCP
-tools, retry logic, pagination, and release gates are hand-written.
+## Quick start
 
-## What It Ships
-
-- TypeScript SDK with stable `PlakyClient` resource methods.
-- Exact raw coverage for all 32 public operations, including the six Item Group
-  and six item-file operations.
-- Generated OpenAPI schema types exported as type-only escape hatches.
-- Pagination helpers: page APIs, `listAll`, and async iterators.
-- Runtime controls: retries, idempotency keys, timeouts, abort signals,
-  interceptors, custom fetch, custom headers, user-agent control, and rate-limit
-  snapshots.
-- Typed API errors with status, request ID, retry-after, headers, and response
-  body.
-- `requestWithResponse()` for status, headers, request IDs, and raw API paths.
-- Go CLI with curated workflows, generated raw API commands, idempotency flags,
-  file/stdin JSON bodies, and dry-run helpers.
-- MCP server with curated workflows, generated raw tools, `structuredContent`,
-  conservative `outputSchema` values, and structured tool errors.
-- Local release gates for generated drift, package contents, consumer smoke,
-  live smoke, secret scanning, and GoReleaser validation.
-
-## Repository Layout
-
-| Path | Purpose |
-| --- | --- |
-| `sdk/` | TypeScript package `plaky115`; hand-written client plus generated schema types. |
-| `cli/` | Go/Cobra CLI `plaky115`; curated commands plus generated raw subtree. |
-| `mcp-server/` | TypeScript MCP server `plaky115-mcp`; curated tools plus generated raw tools. |
-| `scripts/` | Local codegen, drift checks, package audits, live sweep, and release helpers. |
-| `docs/` | Surface, codegen, live-smoke, release, and API-evolution notes. |
-| `openapi/` | Overlay-applied OpenAPI document and operation metadata. |
-
-## Requirements
-
-- Node.js `>=22.12` for SDK and MCP package builds.
-- Bun `1.2.17` for the MCP executable bundle.
-- Go `1.26.x` for the CLI.
-- Ruby for local OpenAPI overlay, lint, and metadata checks.
-- GoReleaser for CLI release configuration validation.
-
-Set an API key when calling live Plaky endpoints:
+### TypeScript SDK
 
 ```bash
-export PLAKY115_API_KEY=...
+npm install plaky115
 ```
-
-`PLAKY115_API_KEY_AUTH` remains a compatibility fallback. Never commit or print
-`plk_` values; `npm run secret:scan` is part of the release gate.
-
-## Install Locally
-
-```bash
-npm --prefix sdk ci
-npm --prefix mcp-server ci
-(cd cli && go mod download)
-```
-
-Build the SDK and MCP packages:
-
-```bash
-npm --prefix sdk run build
-npm --prefix mcp-server run build
-```
-
-Build the CLI:
-
-```bash
-(cd cli && go build -o /tmp/plaky115 ./cmd/plaky115)
-```
-
-## TypeScript SDK
 
 ```ts
-import { PlakyClient, fieldValues, statusField } from "plaky115";
+import { PlakyClient } from "plaky115";
 
 const plaky = new PlakyClient({
   apiKey: process.env.PLAKY115_API_KEY!,
@@ -100,207 +40,145 @@ const plaky = new PlakyClient({
 for await (const space of plaky.spaces.iterate({ pageSize: 100 })) {
   console.log(space.id, space.title);
 }
-
-const spaceId = 123;
-const boardId = 456;
-
-const items = await plaky.items.listAll({ spaceId, boardId });
-
-await plaky.items.create({
-  spaceId,
-  boardId,
-  body: {
-    title: "Ship API wrapper",
-    fields: fieldValues({ Status: statusField("Done") }),
-  },
-});
 ```
 
-Only `GET` requests can retry. Writes remain single-attempt even when an
-idempotency key is present, and the SDK never generates a key. A caller may
-supply an explicit key to populate `Idempotency-Key`; the public contract does
-not promise write deduplication.
+See the [SDK guide](sdk/README.md) for resources, pagination, errors, retries,
+uploads, typed IDs, interceptors, and workflow helpers.
 
-Item Groups are available through `plaky.itemGroups.list`, `iterate`, `listAll`,
-`get`, `create`, `update`, `archive`, and `delete`. Item files are available
-through `plaky.itemFiles.list`, `upload`, `get`, `getDownload`, `update`, and
-`delete`. SDK uploads take a `Blob`, never a filesystem path; download metadata
-is returned once and the SDK never follows or logs the signed URL.
+### Go CLI
 
-The exported `searchItemsDetailed()` workflow returns `data`, `scanned`,
-`matched`, `truncated`, and (when more pages remain at the scan cap) `nextPage`.
-CSV export is deterministic and spreadsheet-safe by default; set
-`csvSafety: "raw"` only when the consumer explicitly wants unescaped formula
-prefixes.
-
-Use `requestWithResponse()` when you need status, headers, request IDs, or a raw
-API path:
-
-```ts
-const response = await plaky.requestWithResponse({
-  method: "GET",
-  path: "/v1/public/spaces",
-});
-
-console.log(response.status, response.requestId, response.data);
-```
-
-`CommentShape` exposes both `content` for the API response field and `text` for
-caller compatibility.
-
-## Base URL and Pagination
-
-Real Plaky workspaces are account-prefixed, for example
-`https://<account>.api.plaky.com`. The SDK and CLI default to
-`https://api.plaky.com`; set the host explicitly when the generic host does not
-route for your workspace:
-
-- SDK: `new PlakyClient({ apiKey, serverURL: "https://<account>.api.plaky.com" })`
-- CLI: `plaky115 --server-url https://<account>.api.plaky.com ...`
-- Live sweep: `PLAKY115_BASE_URL=https://<account>.api.plaky.com`
-
-The API is strictly page-based. `page` and `pageSize` are honored server-side;
-`limit` and `offset` are not server parameters. The SDK iterator `limit` option
-is a client-side cap on items yielded, not an API parameter. Verified wire
-behavior and real request/response payloads are in `docs/api-behavior.md`.
-
-## CLI
+macOS or Linux:
 
 ```bash
-plaky115 --help
-plaky115 doctor
-
-# Curated workflows
-plaky115 workspace-map
-plaky115 find --type item --space-id 123 --board-id 456 --query "invoice"
-plaky115 fields-list --space-id 123 --board-id 456
-plaky115 items-export --space-id 123 --board-id 456 --format jsonl
-plaky115 items-create-simple --space-id 123 --board-id 456 --title "Follow up" --dry-run
-plaky115 comments-add --space-id 123 --board-id 456 --item-id 789 --text "Note" --dry-run
-plaky115 comments-thread --space-id 123 --board-id 456 --item-id 789
-plaky115 reactions-replace --space-id 123 --board-id 456 --item-id 789 --comment-id 321 --body '{"reactions":[{"value":"1f44d"}]}' --dry-run
-plaky115 items-bulk-update --file updates.json --dry-run
-plaky115 item-groups-list --space-id 123 --board-id 456
-plaky115 item-groups-create --space-id 123 --board-id 456 --title "Backlog" --dry-run
-plaky115 item-groups-archive --space-id 123 --board-id 456 --item-group-id 321 --confirm
-plaky115 item-files-list --space-id 123 --board-id 456 --item-id 789
-plaky115 item-files-upload --space-id 123 --board-id 456 --item-id 789 --file ./report.pdf
-plaky115 item-files-download-link --space-id 123 --board-id 456 --item-id 789 --item-file-id 654
-
-# Generated raw operations
-plaky115 raw list-spaces
-plaky115 raw get-item --space-id 123 --board-id 456 --item-id 789
-plaky115 raw create-item --space-id 123 --board-id 456 --idempotency-key import-123 --body '{"title":"hi"}'
-plaky115 raw update-item-fields --space-id 123 --board-id 456 --item-id 789 --body @payload.json
-printf '{"title":"stdin"}' | plaky115 raw create-item --space-id 123 --board-id 456 --body @-
-plaky115 raw delete-item --space-id 123 --board-id 456 --item-id 789 --confirm
+curl -fsSL https://raw.githubusercontent.com/apet97/plaky115/main/cli/scripts/install.sh | bash
 ```
 
-Raw write commands require `--body`; they do not send implicit empty JSON. Raw
-DELETE commands require `--confirm`.
+Windows PowerShell:
 
-`find --type item` accepts `--limit` (default 200) and reports `scanned`,
-`matched`, `truncated`, and `nextPage` when applicable. CSV export defaults to
-`--csv-safety spreadsheet`; `--csv-safety raw` is an explicit opt-out.
+```powershell
+iwr -useb https://raw.githubusercontent.com/apet97/plaky115/main/cli/scripts/install.ps1 | iex
+```
 
-## MCP Server
+```bash
+export PLAKY115_API_KEY=...
+plaky115 doctor
+plaky115 workspace-map
+plaky115 find --type item --space-id 123 --board-id 456 --query "invoice"
+```
+
+See the [CLI guide](cli/README.md) for curated workflows, file uploads, CSV
+exports, dry runs, and all 32 raw commands.
+
+### MCP server
+
+```bash
+npx --yes plaky115-mcp --help
+```
 
 ```json
 {
   "mcpServers": {
     "plaky115": {
       "command": "npx",
-      "args": ["--yes", "--package", "/absolute/path/to/mcp-server", "--", "mcp", "start"],
-      "env": { "PLAKY115_API_KEY": "set-this-in-your-secret-store" }
+      "args": ["--yes", "plaky115-mcp"],
+      "env": { "PLAKY115_API_KEY": "set-in-your-secret-store" }
     }
   }
 }
 ```
 
-Modes:
+The server defaults to curated tools and read scope. Write and destructive tools
+must be enabled explicitly. See the [MCP guide](mcp-server/README.md) and
+[client installation snippets](docs/install-snippets.md).
 
-- `--mode curated` for assistant-friendly workflows.
-- `--mode generated` for one raw tool per Plaky operation.
-- `--mode all` for both surfaces.
+## What ships
 
-With no flags, startup defaults to `--mode curated --scope read`. Request the
-previous broad surface explicitly with `--mode all --scope read --scope write
---scope destructive`; invalid modes, scopes, or arguments exit with usage status
-instead of broadening access.
+- Exact raw coverage for all **32 public operations** across CLI and MCP.
+- Hand-written, resource-oriented `PlakyClient` methods with generated schema
+  types as type-only escape hatches.
+- Item Group and item-file lifecycle support across SDK, CLI, and MCP.
+- Page helpers, `listAll`, async iterators, detailed item search, and
+  deterministic spreadsheet-safe CSV export.
+- Typed API, timeout, abort, connection, and decode errors.
+- Request/response metadata, rate-limit snapshots, custom fetch and headers,
+  cancellation, and interceptors.
+- Curated CLI and MCP workflows alongside exact operation-shaped raw surfaces.
+- Deterministic local code generation, package-content snapshots, consumer
+  smoke tests, secret scanning, and release provenance checks.
 
-Scopes:
+Only `GET` requests can retry. Writes remain single-attempt even when an
+idempotency key is present. Callers may attach an explicit key, but the public
+Plaky contract does not promise write deduplication.
 
-- `--scope read`
-- `--scope write`
-- `--scope destructive`
+## Configuration
 
-Curated tools:
+The tools read `PLAKY115_API_KEY`; `PLAKY115_API_KEY_AUTH` is a compatibility
+fallback. Never commit keys or paste them into logs.
 
-- `plaky_search_docs`
-- `plaky_workspace_context`
-- `plaky_find`
-- `plaky_plan_mutation`
-- `plaky_execute_workflow`
+The default API host is `https://api.plaky.com`. If a workspace requires its
+account-prefixed host, configure `https://<account>.api.plaky.com`:
 
-Generated mode exposes the 32 operation-shaped raw tools. The new families are
-`plaky_list_item_groups`, `plaky_get_item_group`,
-`plaky_create_item_group`, `plaky_update_item_group`,
-`plaky_archive_item_group`, `plaky_delete_item_group`,
-`plaky_list_item_files`, `plaky_upload_item_file`, `plaky_get_item_file`,
-`plaky_get_item_file_download`, `plaky_update_item_file`, and
-`plaky_delete_item_file`. MCP upload accepts canonical `fileBase64`, a filename,
-and an optional media type; it accepts no local path and enforces a 10 MiB
-default decoded limit with a 25 MiB hard ceiling. Signed download links are
-returned only by the requested tool and are never followed or logged.
+- SDK: `new PlakyClient({ apiKey, serverURL })`
+- CLI: `plaky115 --server-url https://<account>.api.plaky.com ...`
+- MCP/live sweep: `PLAKY115_BASE_URL=https://<account>.api.plaky.com`
 
-Tool results include redacted JSON text for readability and the same object in
-`structuredContent` for clients. Known Plaky API failures return `isError: true`
-with structured error details instead of crashing the tool call.
+The API is page-based. `page` and `pageSize` are server parameters; SDK iterator
+`limit` is a client-side yield cap. See [verified API behavior](docs/api-behavior.md).
 
-See `docs/install-snippets.md` for Claude Desktop, Claude Code, Cursor, and
-local CLI examples.
+## Surface map
 
-## Examples
+```text
+api-1.yaml + overlays/
+        │
+        ├── generated schema types
+        ├── generated CLI raw commands + Go request helpers
+        └── generated MCP raw tools
 
-Runnable, secret-free examples live in `examples/` (SDK scripts, CLI recipes, and
-an MCP host config). They read credentials from the environment. See
-`examples/README.md`.
+hand-written SDK resources ── curated CLI commands ── curated MCP workflows
+```
 
-## Security
+Generated artifacts are built locally and checked for deterministic drift. The
+SDK runtime, resource methods, curated commands, workflows, pagination, and
+error behavior remain hand-written and reviewable. See [surface ownership](docs/surfaces.md)
+and [code generation](docs/codegen.md).
 
-Credential handling, transport, idempotency, the absence of webhooks, and the
-MCP destructive model are documented in `SECURITY.md`. Report vulnerabilities
-through GitHub Security Advisories.
+## Documentation
 
-## Quality Gates
+| Audience | Guide |
+| --- | --- |
+| SDK users | [TypeScript SDK](sdk/README.md) |
+| CLI users | [Go CLI](cli/README.md) |
+| MCP users | [MCP server](mcp-server/README.md), [host snippets](docs/install-snippets.md), [recipes](examples/mcp/recipes.md) |
+| API behavior | [Verified wire behavior](docs/api-behavior.md) |
+| Contributors | [Contributing](CONTRIBUTING.md), [API evolution](docs/api-evolution.md), [codegen](docs/codegen.md) |
+| Security | [Security policy](SECURITY.md) |
+| Maintainers | [Release checklist](docs/release-checklist.md), [action pin provenance](docs/release/action-pins.md) |
+| History | [Changelog](CHANGELOG.md) |
 
-Run the release-grade local gate:
+Runnable, secret-free examples live in [`examples/`](examples/README.md).
+
+## Development
+
+Requirements: Node.js `>=22.12`, Bun `1.2.17`, Go `1.26.x`, Ruby `3.3`, and
+GoReleaser for release validation.
 
 ```bash
+npm --prefix sdk ci
+npm --prefix mcp-server ci
+(cd cli && go mod download)
 npm run verify
 ```
 
-It covers overlay validation, OpenAPI linting, metadata tests (including example
-payload and query-param coverage checks), deterministic generation, drift checks,
-example syntax, SDK/MCP type/lint/test suites, CLI tests/build/help, cross-surface
-parity, surface status, package artifact audit, pack smoke, consumer smoke, secret
-scan, and GoReleaser validation.
+`npm run verify` covers OpenAPI/metadata validation, deterministic generation,
+SDK/MCP lint and tests, Go tests/build, 32-operation parity, package audits,
+consumer installation, secret scanning, and GoReleaser configuration.
 
-Useful focused checks:
+See [CONTRIBUTING.md](CONTRIBUTING.md) before changing generated surfaces or
+public contracts.
 
-```bash
-npm run status:surfaces:strict
-npm run generated:drift
-npm run codegen:test
-npm run postgen:drift
-npm run package:consumer-smoke
-npm run examples:check
-npm run secret:scan
-```
+## Live smoke
 
-## Live Smoke
-
-Only run the live sweep against a sacrificial workspace:
+Use only an explicitly sacrificial workspace:
 
 ```bash
 export PLAKY115_API_KEY=...
@@ -310,26 +188,19 @@ export PLAKY115_SMOKE_ALLOW_ARCHIVE=1
 npm run live:sweep
 ```
 
-The sweep exercises API, SDK, CLI, and MCP paths with one UUID-scoped run marker.
-It covers groups, items, comments, and files, recovers a lost create response,
-cleans only run-owned artifacts, and requires a final paginated leftover count
-of `0`. The archive acknowledgement is mandatory because Plaky exposes no
-unarchive endpoint. See `docs/live-smoke.md` before running it.
+The sweep runs API, SDK, CLI, and MCP probes with one UUID-scoped marker. It
+must finish with zero discovered leftovers and zero tracked artifacts. Archive
+acknowledgement is mandatory because the public API has no unarchive endpoint.
+Read [the live-smoke contract](docs/live-smoke.md) first.
 
-## Regenerate
+## Security and support
 
-```bash
-npm run generate:all
-```
+Report vulnerabilities through GitHub Security Advisories. Never include API
+keys, signed download URLs, or real workspace data. See [SECURITY.md](SECURITY.md).
 
-This rebuilds SDK schema types, MCP raw tools, CLI raw commands, Go raw helpers,
-and the MCP docs index. Change generators under `scripts/lib/` or operation
-metadata rather than hand-editing generated outputs.
-
-No cloud API generation is involved. OpenAPI overlay validation and linting run
-through repo-local Ruby scripts.
+For API behavior questions or reproducible defects, open a GitHub issue with the
+affected surface, version, minimal secret-free example, and observed response.
 
 ## License
 
-MIT — see [LICENSE](LICENSE). The published `plaky115` and `plaky115-mcp` npm
-packages each ship the license text.
+[MIT](LICENSE). Published npm packages include the license text.

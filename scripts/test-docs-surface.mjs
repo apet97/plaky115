@@ -74,7 +74,7 @@ test("stale generated docs, examples, and local plans are not tracked", () => {
   assert.equal(result.stdout.trim(), "");
 });
 
-test("public repository docs exclude internal ledgers and include contributor entry points", () => {
+test("public repository docs include contributor entry points", () => {
   for (const [rel, pattern] of [
     ["CONTRIBUTING.md", /npm run verify/],
     ["CHANGELOG.md", /## \[0\.2\.0\]/],
@@ -83,6 +83,9 @@ test("public repository docs exclude internal ledgers and include contributor en
     assert.match(read(rel), pattern);
   }
 
+});
+
+test("public repository docs exclude internal ledgers", () => {
   const internal = [
     "docs/implementation/plaky115-v0.2-baseline.md",
     "docs/implementation/plaky115-v0.2-status.md",

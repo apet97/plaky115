@@ -1,137 +1,92 @@
 # Claude Project Context
 
-Read `AGENTS.md` first. It is the shared agent contract for commands, generated
-surface rules, public compatibility, live proof, and secret handling.
+Read `AGENTS.md` first. It owns the shared architecture, public compatibility,
+verification, live-proof, release, and secret-handling contract. This file adds
+only Claude-specific orientation and current non-obvious behavior.
 
-## What Matters Most
-
-- This is a hand-crafted SDK/CLI/MCP toolkit for the Plaky public API.
-- Keep public imports and tool names stable.
-- Keep generated raw surfaces deterministic and drift-checked.
-- Keep the TypeScript SDK schema-types-only for generated API material; resource
-  methods and runtime behavior are hand-written.
-- Do not print or persist API key values.
-
-## Fast Orientation
+## Fast orientation
 
 ```bash
 git status --short --branch
 npm run status:surfaces:strict
-npm run verify
+node -e 'const p=require("./package.json"); console.log(p.scripts)'
 ```
 
-Important directories:
+Key paths:
 
-- `sdk/src/client/` - hand-written SDK resources and public shapes.
-- `sdk/src/runtime/http.ts` - public SDK transport.
-- `sdk/src/runtime/internal/` - private transport helpers.
-- `cli/internal/cli/` - curated CLI commands and tests.
-- `cli/internal/plakysdk/operations.go` - generated raw Go helpers.
-- `mcp-server/src/tools/curated/` - curated MCP tools.
-- `mcp-server/src/tools/raw/` - generated MCP raw tools.
-- `scripts/lib/` - generators for generated surfaces.
+- `sdk/src/client/` — hand-written SDK resources and public shapes.
+- `sdk/src/runtime/http.ts` — public transport seam.
+- `sdk/src/runtime/internal/` — private transport helpers.
+- `cli/internal/cli/` — curated CLI; `cli/internal/cli/raw/` is generated.
+- `cli/internal/plakysdk/operations.go` — generated Go operations.
+- `mcp-server/src/tools/curated/` — hand-written agent workflows.
+- `mcp-server/src/tools/raw/` — generated operation tools.
+- `scripts/lib/` — generator ownership.
+- `openapi/plaky115-operation-metadata.json` — generated operation semantics.
 
-## Common Tasks
-
-After codegen-related changes:
-
-```bash
-npm run generate:all
-npm run generated:drift
-npm run codegen:test
-npm run postgen:drift
-npm run metadata:test   # also validates example payloads + spec query-param coverage
-```
-
-After SDK public-surface changes:
+## Choose the smallest gate
 
 ```bash
-npm --prefix sdk run typecheck
-npm --prefix sdk run test:types
-npm --prefix sdk test
-npm run package:consumer-smoke
-```
+# Docs
+npm run generate:docs-index && npm run docs:surface:test && npm run examples:check
 
-After MCP changes:
+# SDK
+npm --prefix sdk run typecheck && npm --prefix sdk run test:types && npm --prefix sdk test
 
-```bash
-npm --prefix mcp-server run lint
-npm --prefix mcp-server test
-```
+# MCP
+npm --prefix mcp-server run lint && npm --prefix mcp-server test
 
-After CLI changes:
-
-```bash
+# CLI
 (cd cli && go test ./... && go build -o /tmp/plaky115 ./cmd/plaky115)
+
+# Generated/contract surfaces
+npm run generate:all && npm run generated:drift && npm run codegen:test
+
+# Release candidate
+npm run verify && npm run secret:scan
 ```
 
-Raw generated write commands fail without `--body`; raw generated DELETE
-commands fail without `--confirm`.
+Do not “fix” generated output directly. Find the owning metadata or generator,
+change it, regenerate, and review the complete drift.
 
-Before release or direct push:
+## Current behavior worth preserving
 
-```bash
-npm run verify
-npm run secret:scan
-```
+- The accepted contract contains exactly 32 operations.
+- SDK generated API material is schema-types-only; resources are hand-written.
+- Only `GET` requests retry. Writes are single-attempt even with an explicit
+  idempotency key, and the SDK never generates one.
+- `ItemExpand` is the exact generated `listItems` enum; undocumented values
+  return HTTP 400.
+- `comments.list` normalizes the API's bare array into a `PagedResult` so
+  `iterate` and `listAll` remain useful.
+- Item-file listing stays a bare array in SDK/CLI and a documented `data`
+  envelope at the MCP boundary.
+- MCP defaults are `--mode curated --scope read`; invalid flags fail closed.
+- MCP uploads take `fileBase64`/filename/media type, with a 10 MiB default and
+  25 MiB hard limit. They never accept arbitrary filesystem paths.
+- `searchItemsDetailed` exposes scan/truncation metadata; deprecated
+  `searchItems` remains the array-returning compatibility wrapper.
+- SDK and Go CSV exports are deterministic and spreadsheet-safe by default.
+- `CommentShape` intentionally includes both `content` and `text`.
+- Dynamic user/item filters are threaded across SDK, CLI raw, and MCP raw and
+  are guarded by cross-surface parity tests.
+- SDK runtime internals and generated operation paths are intentionally private.
 
-For docs updates, refresh generated docs and check for stale language:
+## Live and release work
 
-```bash
-npm run generate:docs-index
-npm run docs:surface:test
-npm run examples:check   # node --check the SDK examples + bash -n the CLI recipe
-rg -n "s[p]eakeasy|S[p]eakeasy|x-s[p]eakeasy|\\.s[p]eakeasy" . -g '!**/node_modules/**' -g '!**/.git/**'
-```
+Use live credentials only after explicit sacrificial authorization. Pass values
+through environment variables or hidden terminal input, never command text or
+files. `PLAKY115_SMOKE_ALLOW_ARCHIVE=1` is mandatory. A successful run has all
+four surfaces and zero discovered/leftover/tracked artifacts.
 
-## Live Sweep
+Before a release, verify the GitHub environment and both npm trust relationships
+outside the repository; static workflow correctness does not prove external
+configuration. Never create a tag until the stable versions are absent and all
+gates are green.
 
-Use `npm run live:sweep` only when the user has requested live proof or explicitly
-allowed sacrificial Plaky data. The live gate expects these environment variables:
+## Public documentation
 
-- `PLAKY115_API_KEY`
-- `PLAKY115_SMOKE_SPACE_ID`
-- `PLAKY115_SMOKE_BOARD_ID`
-
-Do not echo their values. A successful live sweep must run API, SDK, CLI, and MCP
-sections and finish with cleanup scanning all item pages and leftover count `0`.
-
-## Documentation Style
-
-- Use direct, specific language.
-- Avoid promotional phrasing and generic AI-sounding claims.
-- Keep README examples runnable and aligned with current SDK, CLI, and MCP
-  behavior.
-
-## Current Compatibility Notes
-
-- Node floor for SDK and MCP packages is `>=22.12`.
-- CI covers Node `22.12.0`, `24`, and `26`.
-- `CommentShape` intentionally includes both `content?: string` and
-  `text?: string`. Shapes mirror `sdk/src/generated/types.ts`; fields the API
-  does not emit are kept as `@deprecated` optionals, not removed.
-- `ItemExpand` is exactly the seven values the API accepts; passing others
-  (`subitems`, `subscribedUsers`, `subscribedTeams`) returns HTTP 400. A type
-  test pins `ItemExpand` to the generated `listItems` expand enum.
-- `comments.list` normalizes the non-paginated bare-array `listItemComments`
-  response into a `PagedResult` page, so `iterate`/`listAll` return comments.
-- The `listUsers` (`emails`/`status`/`type`) and `listItems`
-  (`boardViewId`/`parentId`/`subitemsBehaviour`) server-side filters are threaded
-  through the SDK, CLI raw, and MCP raw surfaces (`emails` as repeated keys).
-- `exportItems` / CLI `items-export` CSV expands `item.fields[]` into per-field
-  columns; the SDK and Go CLI emit byte-identical CSV for scalar field values
-  (a non-scalar value is JSON-encoded and may differ in object-key order). The
-  `searchItems` return type is `ItemShape[]` (refined from the older
-  `{id,title}` shape; richer and assignable to it).
-- Additive public exports: `asFieldKey`, `ItemFieldValueBody`,
-  `resolveSpaceAndBoard`, `PlakyDecodeError` (decode failures on a 2xx are not
-  retried and not mislabeled as connection errors).
-- The CLI reports `--version` (GoReleaser injects `main.version`/`main.buildTime`)
-  and sends a versioned `User-Agent`.
-- SDK runtime internals are intentionally private package subpaths.
-- The toolkit is unofficial and not affiliated with Plaky/CAKE.com; keep that
-  notice prominent in the README, sub-package READMEs, CLI help, and the MCP
-  server `instructions`.
-- MIT-licensed: the repo root and each published package (`sdk/`, `mcp-server/`)
-  ship a `LICENSE` allowlisted in `.npmignore`. Run `npm run packsnapshot:write`
-  after any change to published package contents.
+This is a public repository. Keep docs user-, contributor-, security-, or
+maintainer-facing. Do not commit execution ledgers, taskbooks, agent plans,
+credentials, realistic workspace data, or claims unsupported by a current test
+or live receipt.
