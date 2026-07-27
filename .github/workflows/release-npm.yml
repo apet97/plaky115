@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing release tag to publish
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -17,6 +23,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -25,10 +32,9 @@ jobs:
         with:
           node-version: "24"
           registry-url: https://registry.npmjs.org
-          cache: false
 
       - name: Install trusted-publishing npm CLI
-        run: npm install --global npm@11.5.1
+        run: npm install --global npm@12.0.1
 
       - name: Set up Go
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
@@ -52,7 +58,9 @@ jobs:
           install-only: true
 
       - name: Validate tag and package metadata
-        run: node scripts/check-release-version.mjs --tag "${GITHUB_REF_NAME}" --offline
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+        run: node scripts/check-release-version.mjs --tag "${RELEASE_TAG}" --offline
 
       - name: Install dependencies
         run: |
@@ -76,7 +84,9 @@ jobs:
           npm run package:consumer-smoke
 
       - name: Require unpublished exact versions
-        run: node scripts/check-release-version.mjs --tag "${GITHUB_REF_NAME}" --registry-preflight
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+        run: node scripts/check-release-version.mjs --tag "${RELEASE_TAG}" --registry-preflight
 
       - name: Publish SDK
         run: (cd sdk && npm publish --access public)
