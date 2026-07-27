@@ -59,7 +59,7 @@
 - [x] `REL001` | Phase 12 — Release automation | DONE | Add tokenless npm trusted publishing with provenance and release preflights
 - [x] `SEC002` | Phase 12 — Supply-chain hardening | DONE | Pin every GitHub Action by full SHA and enforce least-privilege workflow policy
 - [x] `R003` | Phase 12 — Release and verification | DONE | Run the full offline release gate from a clean real Git checkout
-- [ ] `R004` | Phase 12 — Release and verification | NOT STARTED | Run sacrificial live proof, adversarial review, and release readiness audit
+- [ ] `R004` | Phase 12 — Release and verification | BLOCKED | Run sacrificial live proof, adversarial review, and release readiness audit
 
 ## Evidence log
 
@@ -465,3 +465,13 @@ Evidence is appended per task with commands, exit codes, and concise outcomes. S
 - From a new clean start after those fixes, `npm run verify` completed without API credentials and was repeated successfully with `NPM_CONFIG_OFFLINE=true`. It covered workflow policy, OpenAPI/metadata/codegen drift, docs/examples/live source guards, SDK type/lint/175 tests, MCP lint/67 tests, Go tests/build/help/doctor, 33 parity tests including the 32-operation inventory assertion, strict surfaces, scanner tests/scans, package audits/snapshots/consumer smoke, and GoReleaser validation.
 - A second `npm run generate:all` produced no tracked diff; `gofmt -l cli` was empty. SDK and MCP dry-run packs reported `0.2.0`, 139 and 209 files respectively. GoReleaser snapshot built all six Darwin/Linux/Windows x86_64/arm64 archives and checksums without publishing.
 - The final post-generation/post-pack/post-snapshot secret scan exited 0. Final tracked status was empty; only ignored `cli/dist/` build output remained. The three preserved ignored planning/taskbook inputs were restored with their original SHA-256 values. No tag, publish, release, or live API request was made.
+- R004's independent review found that the declared contract inventory test still expected 20 operations and was absent from `verify:offline`. Commit `56af4f9` updated the test to the exact 32-operation set, added it immediately after workflow policy in the offline gate, corrected the documented raw-delete confirmation flag, and changed trusted-publisher verification from a completed claim to an unchecked prerequisite.
+- R003 was then restarted from a clean post-fix state. Exact dependency installs, offline `npm run verify`, a second `npm run generate:all`, empty `gofmt -l`, both dry-run packs, the six-target GoReleaser snapshot, final isolated secret scan, and input-hash restoration all passed again.
+
+### R004
+
+- **BLOCKED:** `PLAKY115_API_KEY`, `PLAKY115_SMOKE_SPACE_ID`, and `PLAKY115_SMOKE_BOARD_ID` are set, but `PLAKY115_SMOKE_ALLOW_ARCHIVE` is unset. The live sweep was not run because its sacrificial archive probe requires explicit irreversible-operation acknowledgement; no live API request or mutation was made.
+- **BLOCKED:** The GitHub API returned HTTP 404 for repository environment `npm-release`. The exact protected-environment policy and both npm trusted-publisher configurations therefore remain externally unverified and must be established or verified by a maintainer before tagging.
+- Static readiness checks passed: the upstream manifest and expected-operation set are exactly 32 with no missing or unexpected operations; the workflow policy passed 4 tests; the combined scanner/npm-release suite passed 9 tests; the final secret scan passed; and the registry preflight confirmed both exact `0.2.0` package versions remain absent.
+- The separate read-only adversarial reviewer initially reported one P1 and two P2 findings. Commit `56af4f9` resolved all three, R003 was fully repeated, and the reviewer's final receipt confirmed the 32-operation inventory test passes 3/3, is enforced by `verify:offline`, both documentation corrections are present, and no P0/P1 remains.
+- No tag, push, npm publish, GitHub release, or non-sacrificial data mutation was attempted.
