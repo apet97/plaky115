@@ -1,5 +1,9 @@
 # plaky115 CLI
 
+[![GitHub release](https://img.shields.io/github/v/release/apet97/plaky115?display_name=tag&sort=semver)](https://github.com/apet97/plaky115/releases)
+[![Go 1.26](https://img.shields.io/badge/go-1.26-00ADD8?logo=go&logoColor=white)](go.mod)
+[![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](../LICENSE)
+
 Unofficial Go/Cobra CLI for the Plaky public API. Curated commands live at the
 top level; raw OpenAPI-shaped commands live under `raw`. Not affiliated with,
 endorsed by, or sponsored by Plaky or CAKE.com.

@@ -4,7 +4,7 @@ The MCP server exposes curated workflow tools and one generated raw tool per
 Plaky operation. Start it in curated mode for assistant-friendly workflows:
 
 ```bash
-npx --yes --package /absolute/path/to/mcp-server -- mcp start --mode curated --scope read
+npx --yes plaky115-mcp --mode curated --scope read
 ```
 
 Set `PLAKY115_API_KEY` in the host environment. Real workspaces are

@@ -51,6 +51,13 @@ Passes when no generated surface reports stale, missing, or legacy output.
 
 ## Tag And Publish
 
+For the first release of a new unscoped npm package, the package must exist
+before npm permits a trusted publisher to be configured. Bootstrap each package
+from an inspected temporary copy at a prerelease version (for example
+`0.2.0-beta.0`) under the `beta` dist-tag, then configure trusted publishing.
+Never change the tracked stable manifests for this bootstrap and never use a
+long-lived CI token.
+
 1. Confirm `sdk/package.json` and `mcp-server/package.json` use the same version,
    then run `node scripts/check-release-version.mjs --tag vX.Y.Z --offline`.
 2. Update release notes with curated diff highlights.
@@ -61,7 +68,8 @@ Passes when no generated surface reports stale, missing, or legacy output.
    configuration is a blocking prerequisite; npm does not validate it when the
    publisher is saved.
 4. Confirm the protected GitHub environment `npm-release` has the intended
-   reviewer policy, then tag `git tag vX.Y.Z && git push --tags`.
+   reviewer/tag policy, then create and push one annotated tag:
+   `git tag -a vX.Y.Z -m "Plaky115 vX.Y.Z" && git push origin vX.Y.Z`.
 5. The tag starts two root workflows. `.github/workflows/release-npm.yml` runs
    the complete gates, checks both exact versions are absent from npm, then
    publishes SDK before MCP with OIDC trusted publishing and automatic

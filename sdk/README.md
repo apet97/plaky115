@@ -1,8 +1,16 @@
 # plaky115
 
+[![npm](https://img.shields.io/npm/v/plaky115)](https://www.npmjs.com/package/plaky115)
+[![Node.js >=22.12](https://img.shields.io/badge/node-%3E%3D22.12-339933?logo=node.js&logoColor=white)](package.json)
+[![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Unofficial TypeScript SDK for the Plaky public API. The public entry point is
 the hand-written `PlakyClient`. Not affiliated with, endorsed by, or sponsored
 by Plaky or CAKE.com.
+
+Repository documentation: [overview](https://github.com/apet97/plaky115#readme) ·
+[verified API behavior](https://github.com/apet97/plaky115/blob/main/docs/api-behavior.md) ·
+[security](https://github.com/apet97/plaky115/blob/main/SECURITY.md)
 
 ## Installation
 

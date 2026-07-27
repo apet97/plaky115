@@ -1,5 +1,9 @@
 # plaky115-mcp
 
+[![npm](https://img.shields.io/npm/v/plaky115-mcp)](https://www.npmjs.com/package/plaky115-mcp)
+[![Node.js >=22.12](https://img.shields.io/badge/node-%3E%3D22.12-339933?logo=node.js&logoColor=white)](package.json)
+[![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Unofficial local MCP server for the Plaky public API. It ships a small curated
 tool surface for agents plus optional raw tools for one-to-one API operations.
 Not affiliated with, endorsed by, or sponsored by Plaky or CAKE.com.
@@ -8,7 +12,7 @@ Not affiliated with, endorsed by, or sponsored by Plaky or CAKE.com.
 
 ```bash
 export PLAKY115_API_KEY=...
-npx --yes --package . -- mcp start
+npx --yes plaky115-mcp
 ```
 
 Requires Node.js `>=22.12`.
