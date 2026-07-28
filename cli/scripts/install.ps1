@@ -9,7 +9,12 @@ $InstallDir = if ($env:PLAKY115_INSTALL_DIR) { $env:PLAKY115_INSTALL_DIR } else 
 if ($Version -eq "latest") {
     $Version = (Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest").tag_name
 }
-if ($Version -notmatch '^v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$') { throw "version must be an exact v<semver> tag" }
+if ($Version -notmatch '^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$') { throw "version must be an exact v<semver> tag" }
+if ($Version -match '-([^+]+)') {
+    foreach ($identifier in $Matches[1].Split('.')) {
+        if ($identifier -match '^0\d+$') { throw "version must be an exact v<semver> tag" }
+    }
+}
 $arch = switch ($env:PROCESSOR_ARCHITECTURE) { "AMD64" { "x86_64" } "ARM64" { "arm64" } default { throw "unsupported architecture" } }
 $archiveName = "plaky115_Windows_$arch.zip"
 

@@ -52,12 +52,14 @@ test("both installers fail closed on checksum, archive path, and test-URL bounda
 });
 
 test("Unix installer rejects non-SemVer tags before download", () => {
-  const result = spawnSync("bash", [installer], {
-    encoding: "utf8",
-    env: { ...process.env, PLAKY115_VERSION: "v1evil.2.3" },
-  });
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /exact v<semver> tag/i);
+  for (const version of ["v1evil.2.3", "v01.2.3", "v1.0.0-01", "v1.0.0-alpha..1"]) {
+    const result = spawnSync("bash", [installer], {
+      encoding: "utf8",
+      env: { ...process.env, PLAKY115_VERSION: version },
+    });
+    assert.notEqual(result.status, 0, version);
+    assert.match(result.stderr, /exact v<semver> tag/i, version);
+  }
 });
 
 async function createFixture({ checksum, mode } = {}) {

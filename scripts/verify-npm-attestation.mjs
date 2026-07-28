@@ -8,17 +8,20 @@ import { pathToFileURL } from "node:url";
 
 const provenanceType = "https://slsa.dev/provenance/v1";
 const repository = "https://github.com/apet97/plaky115";
+const sourceRepository = `git+${repository}`;
 const workflowPath = ".github/workflows/release-npm.yml";
 
 export function verifyProvenance({ statement, integrity, packageName, version, commit, tag }) {
   const expectedDigest = integrityToHex(integrity);
   const subject = statement?.subject?.find((entry) => entry?.name === `pkg:npm/${packageName}@${version}`);
   const workflow = statement?.predicate?.buildDefinition?.externalParameters?.workflow;
-  const dependency = statement?.predicate?.buildDefinition?.resolvedDependencies?.find((entry) => entry?.digest?.gitCommit);
+  const sourceURI = `${sourceRepository}@refs/tags/${tag}`;
+  const dependency = statement?.predicate?.buildDefinition?.resolvedDependencies?.find((entry) => entry?.uri === sourceURI);
   const checks = {
     predicate: statement?.predicateType === provenanceType,
     digest: subject?.digest?.sha512 === expectedDigest,
     commit: dependency?.digest?.gitCommit === commit,
+    source: dependency?.uri === sourceURI,
     repository: workflow?.repository === repository,
     workflow: workflow?.path === workflowPath,
     ref: workflow?.ref === `refs/tags/${tag}`,
@@ -31,7 +34,9 @@ export function verifyProvenance({ statement, integrity, packageName, version, c
 function integrityToHex(integrity) {
   const match = /^sha512-([A-Za-z0-9+/]+={0,2})$/.exec(integrity ?? "");
   if (!match) throw new Error("registry integrity must be sha512 SRI");
-  return Buffer.from(match[1], "base64").toString("hex");
+  const bytes = Buffer.from(match[1], "base64");
+  if (bytes.byteLength !== 64) throw new Error("registry integrity must contain one SHA-512 digest");
+  return bytes.toString("hex");
 }
 
 async function loadRegistryProvenance(packageName, version) {

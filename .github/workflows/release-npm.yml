@@ -26,6 +26,12 @@ jobs:
         run: |
           semver_tag='^refs/tags/v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
           [[ "${GITHUB_REF}" =~ ${semver_tag} ]]
+          version="${GITHUB_REF#refs/tags/v}"
+          if [[ "${version}" == *-* ]]; then
+            prerelease="${version#*-}"; prerelease="${prerelease%%+*}"
+            IFS=. read -r -a identifiers <<< "${prerelease}"
+            for identifier in "${identifiers[@]}"; do [[ ! "${identifier}" =~ ^0[0-9]+$ ]]; done
+          fi
           head_commit="$(git rev-parse HEAD)"
           tag_commit="$(git rev-parse "${GITHUB_REF}^{commit}")"
           test "${head_commit}" = "${tag_commit}"

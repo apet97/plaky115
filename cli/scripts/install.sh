@@ -27,6 +27,14 @@ fi
 if ! [[ "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
     fail "version must be an exact v<semver> tag"
 fi
+if [[ "$VERSION" == *-* ]]; then
+    prerelease="${VERSION#*-}"
+    prerelease="${prerelease%%+*}"
+    IFS=. read -r -a identifiers <<< "$prerelease"
+    for identifier in "${identifiers[@]}"; do
+        [[ "$identifier" =~ ^0[0-9]+$ ]] && fail "version must be an exact v<semver> tag"
+    done
+fi
 
 if [ -n "$TEST_BASE_URL" ]; then
     [ "${PLAKY115_INSTALL_TESTING:-}" = 1 ] || fail "test base URL is disabled"
