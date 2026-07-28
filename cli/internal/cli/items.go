@@ -74,13 +74,37 @@ func newItemsBulkUpdateCommand(getClient clientFactory) *cobra.Command {
 			if err := json.Unmarshal(raw, &updates); err != nil {
 				return fmt.Errorf("invalid JSON: %w", err)
 			}
+			validationErrors := make([]string, len(updates))
+			hasInvalid := false
+			for i, u := range updates {
+				if u.SpaceId == "" || u.BoardId == "" || u.ItemId == "" {
+					validationErrors[i] = "spaceId, boardId, and itemId are required"
+					hasInvalid = true
+					continue
+				}
+				for _, field := range []struct{ name, value string }{
+					{"spaceId", u.SpaceId},
+					{"boardId", u.BoardId},
+					{"itemId", u.ItemId},
+				} {
+					if _, err := canonicalInt64(field.value); err != nil {
+						validationErrors[i] = fmt.Sprintf("%s: %s", field.name, err)
+						hasInvalid = true
+						break
+					}
+				}
+			}
 			results := []map[string]any{}
-			for _, u := range updates {
+			for i, u := range updates {
 				// Pre-validate identifiers before any API call so a bad entry is
 				// reported as "invalid" up front rather than failing soft against
 				// the API (or, in dry-run, masking a malformed entry as planned).
-				if u.SpaceId == "" || u.BoardId == "" || u.ItemId == "" {
-					results = append(results, map[string]any{"itemId": u.ItemId, "status": "invalid", "detail": "spaceId, boardId, and itemId are required"})
+				if validationErrors[i] != "" {
+					results = append(results, map[string]any{"itemId": u.ItemId, "status": "invalid", "detail": validationErrors[i]})
+					continue
+				}
+				if hasInvalid {
+					results = append(results, map[string]any{"itemId": u.ItemId, "status": "not-run", "detail": "batch contains invalid identifiers"})
 					continue
 				}
 				if dry {
