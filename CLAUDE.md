@@ -75,6 +75,8 @@ change it, regenerate, and review the complete drift.
 - `CommentShape` intentionally includes both `content` and `text`.
 - Dynamic user/item filters are threaded across SDK, CLI raw, and MCP raw and
   are guarded by cross-surface parity tests.
+- All path IDs are canonical non-negative signed-int64 decimals and fail before
+  network access. Unsafe JSON integers decode as exact decimal strings.
 - SDK runtime internals and generated operation paths are intentionally private.
 - Remote HTTP is rejected except literal loopback; SDK/Go credential requests
   do not follow redirects; buffered responses default to 16 MiB with a 64 MiB
@@ -90,11 +92,15 @@ change it, regenerate, and review the complete drift.
 sacrificial mutation authorization, `PLAKY115_SMOKE_ALLOW_ARCHIVE=1`, all four
 surfaces passing, and zero discovered/leftover/tracked artifacts. Credentials
 belong only in secure environment injection, never command text or files.
+GET-only acceptance requires all 17 reads on both surfaces; only the paired
+item-file prerequisite skips are valid.
 
 Before a release, verify the GitHub environments and both npm trust relationships
 outside the repository. Never create a tag until versions are absent and all
 gates are green. After publication, run `scripts/verify-npm-attestation.mjs`
 against the peeled tag commit; static workflow correctness is not provenance.
+The verifier binds the exact registry digest and repository/tag dependency URI
+to that commit.
 
 ## Public documentation
 

@@ -48,6 +48,8 @@ npm --prefix mcp-server ci
 - MCP upload accepts base64 plus filename/media type, never a local path.
 - Every spec query parameter must be threaded or explicitly classified by the
   metadata tests. Array serialization follows OpenAPI `explode` metadata.
+- Path IDs are canonical non-negative signed-int64 decimals. Numbers above the
+  JavaScript safe-integer limit use strings, and malformed IDs fail before I/O.
 
 ## Verification by change type
 
@@ -110,6 +112,9 @@ npm --prefix sdk run build
 npm run live:read
 ```
 
+Acceptance requires all 17 reads per API and SDK surface; only the paired
+`getItemFile`/`getItemFileDownload` skips are allowed when no file exists.
+
 Run only with explicit permission for sacrificial data:
 
 ```bash
@@ -141,7 +146,9 @@ Before pushing `main` or a release tag:
 The tag workflows publish npm with OIDC/provenance and build CLI archives with
 GoReleaser. They are tag-only: workflow ref, checkout HEAD, peeled tag commit,
 and `GITHUB_SHA` must match. Never use a long-lived publish token, reuse or move
-a tag, or claim success before registry, attestation, and asset checks.
+a tag, or claim success before registry, attestation, and asset checks. Verify
+provenance against the exact repository/tag dependency URI and its commit, not
+an arbitrary `gitCommit` entry.
 
 ## Compatibility notes
 
@@ -151,6 +158,8 @@ a tag, or claim success before registry, attestation, and asset checks.
   only. Credential-bearing requests do not follow redirects. Buffered bodies
   default to 16 MiB and cannot exceed 64 MiB.
 - `CommentShape` exposes API `content?: string` and compatibility `text?: string`.
+- Unsafe JSON integer literals decode to exact decimal strings; safe integers
+  retain number compatibility.
 - `listUsers` filters and `listItems` filters must stay in parity across SDK,
   CLI raw, and MCP raw.
 - SDK runtime internals and generated operation paths must remain unexported.
