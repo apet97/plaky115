@@ -131,6 +131,13 @@ test("archive probes create groups with the live-required color and ranking", ()
   );
 });
 
+test("live workflow injects the approved environment credential and tenant URL", () => {
+  assert.match(liveWorkflow, /^    environment: live-read$/m);
+  assert.match(liveWorkflow, /^          PLAKY115_API_KEY: \$\{\{ secrets\.PLAKY115_READ_API_KEY \}\}$/m);
+  assert.match(liveWorkflow, /^          PLAKY115_BASE_URL: \$\{\{ vars\.PLAKY115_BASE_URL \}\}$/m);
+  assert.doesNotMatch(liveWorkflow, /secrets\.PLAKY115_API_KEY/);
+});
+
 test("CLI raw deletes request machine-readable void receipts", () => {
   const deletes = liveSweep.match(/\["raw", "delete-item-group", \.\.\.base,[^\n]+"--confirm", "--json"\]/g) ?? [];
   assert.equal(deletes.length, 2);

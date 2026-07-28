@@ -28,6 +28,7 @@ permissions:
 
 jobs:
   live:
+    environment: live-read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -54,7 +55,8 @@ jobs:
         run: npm run live:sweep:test
       - name: Run live sweep
         env:
-          PLAKY115_API_KEY: ${{ secrets.PLAKY115_API_KEY }}
+          PLAKY115_API_KEY: ${{ secrets.PLAKY115_READ_API_KEY }}
+          PLAKY115_BASE_URL: ${{ vars.PLAKY115_BASE_URL }}
           PLAKY115_SMOKE_SPACE_ID: ${{ inputs.space_id }}
           PLAKY115_SMOKE_BOARD_ID: ${{ inputs.board_id }}
           PLAKY115_SMOKE_ALLOW_ARCHIVE: ${{ inputs.allow_archive && '1' || '0' }}
