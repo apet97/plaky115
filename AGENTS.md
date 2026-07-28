@@ -129,7 +129,8 @@ Never print environment values. Acceptance requires API, SDK, CLI, and MCP
 sections to pass and final cleanup to report zero discovered, leftover, and
 tracked artifacts. One run-scoped exact-ID mutation budget spans surface probes
 and cleanup; never retry an ambiguous write or broaden cleanup to a generic
-prefix.
+prefix. Direct live adapters must preserve unsafe integer IDs as exact strings,
+bound response bodies, and cap cleanup pagination.
 
 ## Release contract
 

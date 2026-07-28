@@ -93,7 +93,8 @@ sacrificial mutation authorization, `PLAKY115_SMOKE_ALLOW_ARCHIVE=1`, all four
 surfaces passing, and zero discovered/leftover/tracked artifacts. Credentials
 belong only in secure environment injection, never command text or files.
 GET-only acceptance requires all 17 reads on both surfaces; only the paired
-item-file prerequisite skips are valid.
+item-file prerequisite skips are valid. Direct live adapters use the shared
+bounded/exact JSON reader, and cleanup pagination must remain capped.
 
 Before a release, verify the GitHub environments and both npm trust relationships
 outside the repository. Never create a tag until versions are absent and all

@@ -358,6 +358,7 @@ test("new mutation workflows return completed receipts with exact target IDs", a
     const path = new URL(url).pathname;
     if (method !== "GET") {
       writeCalls++;
+      assert.ok(init.signal instanceof AbortSignal, `${method} ${path} must carry the MCP cancellation signal`);
       return Response.json({ id: path.endsWith("/files") ? "50" : path.endsWith("/item-groups") ? "40" : path.split("/").at(-1) });
     }
     if (path.endsWith("/spaces")) return Response.json({ data: [{ id: "1", title: "Space" }], hasMore: false });
@@ -387,6 +388,37 @@ test("new mutation workflows return completed receipts with exact target IDs", a
       assert.equal(response.structuredContent.targetIds.boardId, "2");
     }
     assert.equal(writeCalls, inputs.length);
+  } finally {
+    await server.close();
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("direct item and comment workflows forward the MCP cancellation signal", async () => {
+  const signals = [];
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    const path = new URL(url).pathname;
+    if ((init?.method ?? "GET") !== "GET") {
+      signals.push(init.signal);
+      return Response.json({ id: "9", title: "created" });
+    }
+    if (path.endsWith("/spaces")) return Response.json({ data: [{ id: "1", title: "Space" }], hasMore: false });
+    if (path.endsWith("/boards")) return Response.json({ data: [{ id: "2", title: "Board" }], hasMore: false });
+    if (path.endsWith("/items")) return Response.json({ data: [{ id: "3", title: "Item" }], hasMore: false });
+    throw new Error(`unexpected cancellation path: ${path}`);
+  };
+  const { client, server } = await connectedPair({ mode: "curated", scopes: ["read", "write"], serverURL: "https://example.test" });
+  try {
+    for (const arguments_ of [
+      { workflowId: "items.create", input: { spaceId: "Space", boardId: "Board", body: { title: "New" } }, dryRun: false },
+      { workflowId: "comments.add", input: { spaceId: "Space", boardId: "Board", itemId: "Item", text: "Note" }, dryRun: false },
+    ]) {
+      const response = await client.callTool({ name: "plaky_execute_mutation_workflow", arguments: arguments_ });
+      assert.notEqual(response.isError, true, `${arguments_.workflowId}: ${response.content[0].text}`);
+    }
+    assert.equal(signals.length, 2);
+    assert.ok(signals.every((signal) => signal instanceof AbortSignal));
   } finally {
     await server.close();
     globalThis.fetch = previousFetch;

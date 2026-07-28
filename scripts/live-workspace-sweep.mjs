@@ -32,6 +32,7 @@ import {
   assertBareFileList, assertVoidResult, createFixtureFormData, createTextFixture,
   normalizePlakyBaseURL, preflightLiveSweep, summarizeDownloadLink,
 } from "./live/contracts.mjs";
+import { parseLiveJSON, readBoundedLiveText } from "./live/http.mjs";
 
 export {
   attemptMutationOnce, cleanupOwnedArtifacts, collectPages, createArtifactLedger, createCleanupCoordinator,
@@ -146,9 +147,9 @@ async function api(method, path, body, options = {}) {
   const init = { method, headers, redirect: "error" };
   if (body !== undefined) init.body = multipart ? body : JSON.stringify(body);
   const resp = await fetch(url, init);
-  const text = await resp.text();
+  const text = await readBoundedLiveText(resp);
   let parsed;
-  try { parsed = text ? JSON.parse(text) : undefined; } catch { parsed = text; }
+  try { parsed = text ? parseLiveJSON(text) : undefined; } catch { parsed = text; }
   if (!resp.ok) {
     const error = new Error(`${method} ${path} failed with HTTP ${resp.status}`);
     error.status = resp.status;
@@ -180,7 +181,7 @@ async function itemGroupIsAbsent(itemGroupId) {
     headers: { "X-API-Key": apiKey, Accept: "application/json" },
     redirect: "error",
   });
-  await response.arrayBuffer();
+  await readBoundedLiveText(response);
   if (response.status === 404) return true;
   if (!response.ok) {
     const error = new Error(`GET item group state failed with HTTP ${response.status}`);
@@ -780,7 +781,7 @@ function parseMcpResponse(response) {
   if (response.structuredContent) return response.structuredContent;
   const text = response.content?.[0]?.text ?? "";
   try {
-    return text ? JSON.parse(text) : undefined;
+    return text ? parseLiveJSON(text) : undefined;
   } catch {
     return text;
   }

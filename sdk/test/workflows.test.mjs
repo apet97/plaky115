@@ -183,6 +183,26 @@ test("bulkUpdateItems can stop after an ambiguous write failure", async () => {
   assert.equal(writeCalls, 1);
 });
 
+test("bulkUpdateItems forwards cancellation to the in-flight write", async () => {
+  const controller = new AbortController();
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
+  c.spaces.listAll = async () => [{ id: 1, title: "Ops" }];
+  c.boards.listAll = async () => [{ id: 11, title: "Roadmap" }];
+  c.items.updateFields = async (_input, options) => {
+    assert.equal(options?.signal, controller.signal);
+    controller.abort();
+    throw options.signal.reason;
+  };
+
+  await assert.rejects(bulkUpdateItems(c, {
+    space: 1,
+    board: 11,
+    updates: [{ itemId: 100, body: {} }],
+    signal: controller.signal,
+    throwOnError: true,
+  }), (error) => error?.name === "AbortError");
+});
+
 test("exportItems csv byte-matches the shared safe and raw fixtures", async () => {
   const fixtureItems = JSON.parse(readFileSync(new URL("../../test/fixtures/export/items.json", import.meta.url), "utf8"));
   const expectedSafe = readFileSync(new URL("../../test/fixtures/export/items.safe.csv", import.meta.url), "utf8");

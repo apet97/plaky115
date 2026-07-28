@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { buildReadOperations, runSurface, validateSurfaceCoverage } from "./live-read-sweep.mjs";
+import { parseLiveJSON, readBoundedLiveText } from "./live/http.mjs";
+
+test("live response parsing preserves unsafe integer IDs and bounds streamed bodies", async () => {
+  assert.deepEqual(
+    parseLiveJSON('{"safe":9007199254740991,"large":9223372036854775807,"nested":[-9223372036854775808]}'),
+    { safe: 9007199254740991, large: "9223372036854775807", nested: ["-9223372036854775808"] },
+  );
+  await assert.rejects(readBoundedLiveText(new Response("12345"), 4), /exceeds 4 bytes/);
+});
 
 test("read sweep covers all 17 documented GET operations and cannot construct writes", () => {
   const operations = buildReadOperations({ spaceId: "1", boardId: "2", itemGroupId: "3", itemId: "4", itemFileId: "5", teamId: "6" });

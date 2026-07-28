@@ -30,13 +30,15 @@ export function isOwnedArtifact(artifact, marker) {
     .some((value) => typeof value === "string" && value.startsWith(marker));
 }
 
-export async function collectPages(fetchPage) {
+export async function collectPages(fetchPage, { maxPages = 10_000 } = {}) {
+  if (!Number.isSafeInteger(maxPages) || maxPages <= 0) throw new RangeError("maxPages must be a positive safe integer");
   const records = [];
-  for (let page = 1; ; page++) {
+  for (let page = 1; page <= maxPages; page++) {
     const response = await fetchPage(page);
     records.push(...(Array.isArray(response?.data) ? response.data : []));
     if (response?.hasMore !== true) return records;
   }
+  throw new Error(`cleanup pagination exceeded ${maxPages} pages`);
 }
 
 export async function verifyDeleteOutcome(remove, isAbsent) {

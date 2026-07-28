@@ -65,6 +65,9 @@ try {
         Move-Item $target $backup
     }
     try {
+        if ($env:PLAKY115_INSTALL_TESTING -eq "1" -and $env:PLAKY115_INSTALL_TEST_FAIL_REPLACE -eq "1") {
+            throw "simulated atomic replacement failure"
+        }
         Move-Item $staged $target
         $staged = $null
         if ($backup) { Remove-Item $backup -Force; $backup = $null }

@@ -27,8 +27,8 @@ test("Unix installer preserves an existing binary on checksum mismatch", async (
   } finally { await rm(fixture.root, { recursive: true, force: true }); }
 });
 
-test("Unix installer rejects missing binaries and duplicate checksum entries", async () => {
-  for (const mode of ["missing", "duplicate"]) {
+test("Unix installer rejects missing binaries, duplicate checksums, and archive traversal", async () => {
+  for (const mode of ["missing", "duplicate", "traversal"]) {
     const fixture = await createFixture({ mode });
     try {
       const result = runInstaller(fixture);
@@ -41,13 +41,18 @@ test("Unix installer rejects missing binaries and duplicate checksum entries", a
 test("both installers fail closed on checksum, archive path, and test-URL boundaries", async () => {
   const shell = await readFile(installer, "utf8");
   const powershell = await readFile(join(root, "cli/scripts/install.ps1"), "utf8");
+  const ci = await readFile(join(root, ".github/workflows/ci.yml"), "utf8");
   assert.match(shell, /sha256sum|shasum/);
   assert.match(shell, /archive contains an unsafe path/);
   assert.match(shell, /PLAKY115_INSTALL_TESTING/);
   assert.match(powershell, /Get-FileHash -Algorithm SHA256/);
   assert.match(powershell, /archive contains an unsafe path/);
   assert.match(powershell, /PLAKY115_INSTALL_TESTING/);
+  assert.match(powershell, /PLAKY115_INSTALL_TESTING -eq "1" -and \$env:PLAKY115_INSTALL_TEST_FAIL_REPLACE -eq "1"/);
   assert.match(powershell, /Remove-Item \$target -Force[\s\S]*Move-Item \$backup \$target/);
+  for (const failure of ["checksum mismatch was not rejected", "archive traversal was not rejected", "replacement failure did not restore existing binary"]) {
+    assert.match(ci, new RegExp(failure));
+  }
   assert.doesNotMatch(`${shell}\n${powershell}`, /raw\.githubusercontent\.com.*\|\s*(bash|iex)/i);
 });
 
@@ -70,7 +75,15 @@ async function createFixture({ checksum, mode } = {}) {
   await Promise.all([mkdir(release, { recursive: true }), mkdir(payload), mkdir(install)]);
   await writeFile(join(install, "plaky115"), "old binary\n");
   const archive = join(release, archiveName());
-  if (mode === "missing") {
+  if (mode === "traversal") {
+    execFileSync("python3", ["-c", [
+      "import io, sys, tarfile",
+      "with tarfile.open(sys.argv[1], 'w:gz') as archive:",
+      "  info = tarfile.TarInfo('../escape')",
+      "  info.size = 1",
+      "  archive.addfile(info, io.BytesIO(b'x'))",
+    ].join("\n"), archive]);
+  } else if (mode === "missing") {
     await writeFile(join(payload, "README.md"), "missing\n");
     execFileSync("tar", ["-czf", archive, "README.md"], { cwd: payload });
   } else {

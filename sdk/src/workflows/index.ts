@@ -130,7 +130,7 @@ export async function bulkUpdateItems(client: PlakyClient, params: BulkUpdatePar
         boardId: asBoardId(board.id!),
         itemId: asItemId(update.itemId),
         body: update.body,
-      });
+      }, params.signal ? { signal: params.signal } : undefined);
       out.push({ itemId: update.itemId, status: "updated" as const });
     } catch (err) {
       if (params.throwOnError === true) throw err;

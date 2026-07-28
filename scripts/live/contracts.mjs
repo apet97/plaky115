@@ -11,7 +11,9 @@ export async function preflightLiveSweep({
   if (typeof apiKey !== "string" || apiKey.length === 0) throw new Error("Plaky API key is required");
   if (typeof spaceId !== "string" || spaceId.length === 0) throw new Error("sacrificial space ID is required");
   if (typeof boardId !== "string" || boardId.length === 0) throw new Error("sacrificial board ID is required");
-  if (!/^\d+$/.test(spaceId) || !/^\d+$/.test(boardId)) throw new Error("space ID and board ID must be numeric");
+  if (!isCanonicalInt64Id(spaceId) || !isCanonicalInt64Id(boardId)) {
+    throw new Error("space ID and board ID must be canonical non-negative int64 decimals");
+  }
   if (!allowArchive) throw new Error("PLAKY115_SMOKE_ALLOW_ARCHIVE=1 acknowledgement is required");
 
   const builds = {};
@@ -28,6 +30,10 @@ export async function preflightLiveSweep({
     if (!builds.mcpBin) throw new Error("MCP server build is missing");
   }
   return builds;
+}
+
+function isCanonicalInt64Id(value) {
+  return /^(0|[1-9]\d*)$/.test(value) && BigInt(value) <= 9_223_372_036_854_775_807n;
 }
 
 export function createTextFixture(marker, surface) {

@@ -152,4 +152,33 @@ jobs:
             Start-Sleep -Seconds 2
             & ./cli/scripts/install.ps1
             if ((Get-Content (Join-Path $install "plaky115.exe") -Raw) -ne "verified binary") { throw "installed binary mismatch" }
+
+            Set-Content -NoNewline -Path (Join-Path $install "plaky115.exe") -Value "existing binary"
+            Set-Content -Path (Join-Path $release "checksums.txt") -Value "$('0' * 64)  plaky115_Windows_x86_64.zip"
+            try { & ./cli/scripts/install.ps1; $checksumRejected = $false } catch { $checksumRejected = $_.Exception.Message -match "checksum mismatch" }
+            if (-not $checksumRejected) { throw "checksum mismatch was not rejected" }
+            if ((Get-Content (Join-Path $install "plaky115.exe") -Raw) -ne "existing binary") { throw "checksum failure replaced existing binary" }
+
+            Remove-Item $archive -Force
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            $zip = [IO.Compression.ZipFile]::Open($archive, [IO.Compression.ZipArchiveMode]::Create)
+            try {
+              $entry = $zip.CreateEntry("../escape.exe")
+              $writer = [IO.StreamWriter]::new($entry.Open())
+              try { $writer.Write("escape") } finally { $writer.Dispose() }
+            } finally { $zip.Dispose() }
+            $hash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+            Set-Content -Path (Join-Path $release "checksums.txt") -Value "$hash  plaky115_Windows_x86_64.zip"
+            try { & ./cli/scripts/install.ps1; $traversalRejected = $false } catch { $traversalRejected = $_.Exception.Message -match "unsafe path" }
+            if (-not $traversalRejected) { throw "archive traversal was not rejected" }
+            if ((Get-Content (Join-Path $install "plaky115.exe") -Raw) -ne "existing binary") { throw "traversal failure replaced existing binary" }
+
+            Remove-Item $archive -Force
+            Compress-Archive -Path (Join-Path $payload "plaky115.exe") -DestinationPath $archive
+            $hash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+            Set-Content -Path (Join-Path $release "checksums.txt") -Value "$hash  plaky115_Windows_x86_64.zip"
+            $env:PLAKY115_INSTALL_TEST_FAIL_REPLACE = "1"
+            try { & ./cli/scripts/install.ps1; $rollbackExercised = $false } catch { $rollbackExercised = $_.Exception.Message -match "simulated atomic replacement failure" }
+            if (-not $rollbackExercised) { throw "replacement failure was not exercised" }
+            if ((Get-Content (Join-Path $install "plaky115.exe") -Raw) -ne "existing binary") { throw "replacement failure did not restore existing binary" }
           } finally { Stop-Process $server -Force }

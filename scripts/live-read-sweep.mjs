@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 import { pathToFileURL } from "node:url";
 import { normalizePlakyBaseURL, summarizeDownloadLink } from "./live/contracts.mjs";
-
-const maxBytes = 16 * 1024 * 1024;
+import { MAX_LIVE_RESPONSE_BYTES, readBoundedLiveJSON } from "./live/http.mjs";
 
 export function buildReadOperations(ids = {}) {
   const path = (parts) => `/v1/public/${parts.map((part) => encodeURIComponent(String(part))).join("/")}`;
@@ -106,7 +105,7 @@ async function main() {
   };
   const ids = await discover(apiCall);
   const operations = buildReadOperations(ids);
-  const client = new PlakyClient({ apiKey, serverURL, maxResponseBytes: maxBytes });
+  const client = new PlakyClient({ apiKey, serverURL, maxResponseBytes: MAX_LIVE_RESPONSE_BYTES });
   const sdkCall = async ({ method, path }) => {
     const response = await client.requestWithResponse({ method, path });
     return { data: response.data, status: response.status };
@@ -118,32 +117,7 @@ async function main() {
 }
 
 async function boundedJson(response) {
-  const length = Number(response.headers.get("content-length"));
-  if (Number.isFinite(length) && length > maxBytes) throw new Error("response exceeds read-sweep limit");
-  const reader = response.body?.getReader();
-  if (!reader) return undefined;
-  const chunks = [];
-  let size = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > maxBytes) throw new Error("response exceeds read-sweep limit");
-      chunks.push(value);
-    }
-  } catch (error) {
-    await reader.cancel().catch(() => {});
-    throw error;
-  }
-  const bytes = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  if (bytes.byteLength === 0) return undefined;
-  return JSON.parse(new TextDecoder().decode(bytes));
+  return readBoundedLiveJSON(response);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();

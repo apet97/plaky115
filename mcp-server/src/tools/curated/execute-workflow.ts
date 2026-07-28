@@ -89,7 +89,7 @@ export async function executeWorkflow(
         spaceId: asSpaceId(readRef(resolvedArgs, "space")),
         boardId: asBoardId(readRef(resolvedArgs, "board")),
         body: resolvedArgs["body"] as ItemCreateBody,
-      }), { compactKind: "item" });
+      }, { signal: ctx.signal }), { compactKind: "item" });
     case "items.updateFields":
       {
       const updates = resolvedArgs["updates"] as Array<{ itemId: string | number; body: Record<string, unknown> }>;
@@ -110,12 +110,12 @@ export async function executeWorkflow(
         boardId: asBoardId(readRef(resolvedArgs, "board")),
         itemId: asItemId(readRef(resolvedArgs, "item")),
         body: { text: resolvedArgs["text"] as string },
-      }), { compactKind: "comment" });
+      }, { signal: ctx.signal }), { compactKind: "comment" });
     case "itemGroups.create": {
       const result = await ctx.client.itemGroups.create({
         spaceId: asSpaceId(readRef(resolvedArgs, "space")), boardId: asBoardId(readRef(resolvedArgs, "board")),
         body: resolvedArgs["body"] as { title: string; color?: string; ranking?: string },
-      });
+      }, { signal: ctx.signal });
       return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result, "itemGroupId"));
     }
     case "itemGroups.update": {
@@ -123,7 +123,7 @@ export async function executeWorkflow(
         spaceId: asSpaceId(readRef(resolvedArgs, "space")), boardId: asBoardId(readRef(resolvedArgs, "board")),
         itemGroupId: readRef(resolvedArgs, "itemGroup"),
         body: resolvedArgs["body"] as { title: string; ranking: string; color?: string },
-      });
+      }, { signal: ctx.signal });
       return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result));
     }
     case "itemFiles.upload": {
@@ -137,7 +137,7 @@ export async function executeWorkflow(
       const result = await ctx.client.itemFiles.upload({
         spaceId: asSpaceId(readRef(resolvedArgs, "space")), boardId: asBoardId(readRef(resolvedArgs, "board")),
         itemId: asItemId(readRef(resolvedArgs, "item")), file, fileName: resolvedArgs["fileName"] as string,
-      });
+      }, { signal: ctx.signal });
       return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result, "itemFileId"));
     }
     case "itemFiles.update": {
@@ -145,7 +145,7 @@ export async function executeWorkflow(
         spaceId: asSpaceId(readRef(resolvedArgs, "space")), boardId: asBoardId(readRef(resolvedArgs, "board")),
         itemId: asItemId(readRef(resolvedArgs, "item")), itemFileId: readRef(resolvedArgs, "itemFile"),
         body: resolvedArgs["body"] as { name: string; description?: string },
-      });
+      }, { signal: ctx.signal });
       return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result));
     }
     case "comments.thread": {
