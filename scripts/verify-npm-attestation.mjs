@@ -40,7 +40,7 @@ function integrityToHex(integrity) {
 }
 
 async function loadRegistryProvenance(packageName, version) {
-  const encoded = packageName.startsWith("@") ? packageName.replace("/", "%2f") : packageName;
+  const encoded = packageName.startsWith("@") ? packageName.replaceAll("/", "%2f") : packageName;
   const manifest = await fetchJson(`https://registry.npmjs.org/${encoded}/${version}`);
   const url = manifest?.dist?.attestations?.url;
   if (typeof url !== "string" || !url.startsWith("https://registry.npmjs.org/")) {
