@@ -394,9 +394,10 @@ before(async () => {
           res.setHeader("content-type", "application/json");
           res.end(operation.successKind === "json-array" ? "[]" : "{}");
         }
-      } catch (error) {
+      } catch {
         res.statusCode = 500;
-        res.end(error instanceof Error ? error.message : String(error));
+        res.setHeader("content-type", "text/plain; charset=utf-8");
+        res.end("parity recorder failure");
       }
     });
   });

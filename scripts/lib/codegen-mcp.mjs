@@ -98,6 +98,7 @@ function formatTsPath(path, parameters) {
   if (parameters.length === 0) return JSON.stringify(path);
   const parameterNames = new Set(parameters.map(({ name }) => name));
   const escaped = path
+    .replace(/\\/g, "\\\\")
     .replace(/`/g, "\\`")
     .replace(/\{([^}]+)\}/g, (_, key) => {
       if (!parameterNames.has(key)) throw new Error(`path placeholder ${key} has no path parameter metadata`);

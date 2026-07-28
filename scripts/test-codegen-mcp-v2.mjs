@@ -99,6 +99,15 @@ test("MCP generator has no method/path transport or compaction heuristics", () =
   assert.doesNotMatch(source, /function pickCompact|op\.path\.includes/);
 });
 
+test("MCP generator escapes every template-literal metacharacter in paths", () => {
+  const source = buildRawToolModule(operation({
+    path: "/v1/widgets\\segment`/{widgetId}",
+    parameters: [parameter("widgetId", "path", { type: "string" }, true, "Widget identifier.")],
+  }));
+  const pathLine = source.split("\n").find((line) => line.trimStart().startsWith("path:"));
+  assert.equal(pathLine, '      path: `/v1/widgets\\\\segment\\`/${encodeURIComponent(String(parsed.widgetId))}`,');
+});
+
 test("MCP multipart generation rejects every shape except one required binary file part", () => {
   const base = cases.find(([fixture]) => fixture === "mcp-multipart.ts")[1];
   for (const parts of [
