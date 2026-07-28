@@ -137,12 +137,12 @@ jobs:
           $release = Join-Path $fixture "v0.2.1"
           $payload = Join-Path $env:RUNNER_TEMP "installer-payload"
           $install = Join-Path $env:RUNNER_TEMP "install with spaces"
-          New-Item -ItemType Directory -Force $release, $payload, $install | Out-Null
-          Set-Content -NoNewline (Join-Path $payload "plaky115.exe") "verified binary"
+          New-Item -ItemType Directory -Force -Path @($release, $payload, $install) | Out-Null
+          Set-Content -NoNewline -Path (Join-Path $payload "plaky115.exe") -Value "verified binary"
           $archive = Join-Path $release "plaky115_Windows_x86_64.zip"
-          Compress-Archive (Join-Path $payload "plaky115.exe") $archive
+          Compress-Archive -Path (Join-Path $payload "plaky115.exe") -DestinationPath $archive
           $hash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
-          Set-Content (Join-Path $release "checksums.txt") "$hash  plaky115_Windows_x86_64.zip"
+          Set-Content -Path (Join-Path $release "checksums.txt") -Value "$hash  plaky115_Windows_x86_64.zip"
           $server = Start-Process python -ArgumentList "-m", "http.server", "8765", "--directory", $fixture -PassThru
           try {
             $env:PLAKY115_VERSION = "v0.2.1"
