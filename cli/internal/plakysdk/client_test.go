@@ -55,6 +55,39 @@ func TestClientDoPreservesLargeJSONNumber(t *testing.T) {
 	}
 }
 
+func TestGeneratedOperationsRejectInvalidIDsBeforeNetwork(t *testing.T) {
+	requests := 0
+	client := testClient(t, roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		requests++
+		return jsonResponse(http.StatusOK, `{}`), nil
+	}))
+	for _, id := range []string{"-1", "01", "9223372036854775808"} {
+		if _, err := client.GetSpace(context.Background(), GetSpaceOptions{SpaceId: id}); err == nil {
+			t.Fatalf("GetSpace(%q) succeeded", id)
+		}
+	}
+	if requests != 0 {
+		t.Fatalf("invalid IDs made %d requests", requests)
+	}
+}
+
+func TestClientDoConvertsOnlySafeJSONIntegers(t *testing.T) {
+	const payload = `{"safe":9007199254740991,"positiveBoundary":9007199254740992,"negativeBoundary":-9007199254740992}`
+	client := serverClient(t, http.StatusOK, payload, "")
+	var out map[string]any
+	if err := client.Do(t.Context(), Request{Method: http.MethodGet, Path: "/boundaries"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if out["safe"] != float64(9007199254740991) {
+		t.Fatalf("safe = %#v", out["safe"])
+	}
+	for _, key := range []string{"positiveBoundary", "negativeBoundary"} {
+		if _, ok := out[key].(json.Number); !ok {
+			t.Fatalf("%s = %#v, want json.Number", key, out[key])
+		}
+	}
+}
+
 func TestDecodeRejectsTrailingJSON(t *testing.T) {
 	client := serverClient(t, http.StatusOK, `{"ok":true} {"extra":true}`, "")
 	var out any
@@ -266,6 +299,9 @@ func TestNewRejectsInvalidOptionsBeforeNetworkAccess(t *testing.T) {
 		{name: "URL without host", opts: ClientOptions{APIKey: "fixture", ServerURL: "https:///api"}},
 		{name: "URL with query", opts: ClientOptions{APIKey: "fixture", ServerURL: "https://example.test/api?token=bad"}},
 		{name: "URL with fragment", opts: ClientOptions{APIKey: "fixture", ServerURL: "https://example.test/api#fragment"}},
+		{name: "remote plaintext URL", opts: ClientOptions{APIKey: "fixture", ServerURL: "http://example.test/api"}},
+		{name: "URL with credentials", opts: ClientOptions{APIKey: "fixture", ServerURL: "https://user:pass@example.test/api"}},
+		{name: "oversized response limit", opts: ClientOptions{APIKey: "fixture", MaxResponseBytes: MaxResponseBytes + 1}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -290,14 +326,71 @@ func TestNewPreservesAPIKeyAndCustomHTTPClient(t *testing.T) {
 	if client.APIKey() != "  exact-key  " {
 		t.Fatalf("API key = %q", client.APIKey())
 	}
-	if client.http != custom || client.http.Timeout != 91*time.Second {
-		t.Fatal("custom HTTP client was replaced or modified")
+	if client.http == custom || client.http.Timeout != 91*time.Second || client.http.CheckRedirect == nil {
+		t.Fatal("custom HTTP client was not safely cloned")
+	}
+	if custom.CheckRedirect != nil {
+		t.Fatal("caller-owned HTTP client was mutated")
 	}
 	if client.Timeout() != 7*time.Second {
 		t.Fatalf("reported timeout = %s", client.Timeout())
 	}
 	if client.ServerURL() != "https://example.test/base" {
 		t.Fatalf("server URL = %q", client.ServerURL())
+	}
+}
+
+func TestNewAcceptsLiteralLoopbackHTTP(t *testing.T) {
+	for _, serverURL := range []string{"http://localhost:1234", "http://127.0.0.42:1234", "http://[::1]:1234"} {
+		if _, err := New(ClientOptions{APIKey: "fixture", ServerURL: serverURL}); err != nil {
+			t.Fatalf("%s: %v", serverURL, err)
+		}
+	}
+}
+
+func TestClientNeverFollowsRedirectsOrForwardsAPIKey(t *testing.T) {
+	destinationCalls := 0
+	destination := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		destinationCalls++
+	}))
+	t.Cleanup(destination.Close)
+	sourceCalls := 0
+	source := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		sourceCalls++
+		if request.Header.Get("X-API-Key") != "fixture" {
+			t.Fatal("source did not receive API key")
+		}
+		http.Redirect(response, request, destination.URL, http.StatusTemporaryRedirect)
+	}))
+	t.Cleanup(source.Close)
+	client, err := New(ClientOptions{APIKey: "fixture", ServerURL: source.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = client.Do(t.Context(), Request{Method: http.MethodGet, Path: "/redirect"}, new(any))
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) || apiErr.Status != http.StatusTemporaryRedirect {
+		t.Fatalf("error = %T %v", err, err)
+	}
+	if sourceCalls != 1 || destinationCalls != 0 {
+		t.Fatalf("source calls = %d, destination calls = %d", sourceCalls, destinationCalls)
+	}
+}
+
+func TestClientBoundsSuccessAndErrorBodies(t *testing.T) {
+	for _, status := range []int{http.StatusOK, http.StatusBadRequest} {
+		client := testClient(t, roundTripperFunc(func(*http.Request) (*http.Response, error) {
+			response := jsonResponse(status, "12345")
+			response.ContentLength = 5
+			return response, nil
+		}))
+		client.opts.MaxResponseBytes = 4
+		var out any
+		err := client.Do(t.Context(), Request{Method: http.MethodGet, Path: "/large"}, &out)
+		var tooLarge *ResponseTooLargeError
+		if !errors.As(err, &tooLarge) || tooLarge.Limit != 4 {
+			t.Fatalf("status %d error = %T %v", status, err, err)
+		}
 	}
 }
 

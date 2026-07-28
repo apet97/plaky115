@@ -46,6 +46,13 @@ test("collectPages drains pagination to exhaustion in order", async () => {
   assert.deepEqual(records.map((entry) => entry.id), [1, 2]);
 });
 
+test("collectPages fails closed when a server never terminates pagination", async () => {
+  await assert.rejects(
+    collectPages(async () => ({ data: [], hasMore: true }), { maxPages: 2 }),
+    /exceeded 2 pages/,
+  );
+});
+
 test("cleanup deletes known children before parents", async () => {
   const marker = createRunMarker(RUN_A);
   const ledger = createArtifactLedger(marker);
@@ -305,6 +312,8 @@ test("strict preflight rejects missing IDs or builds before a mutation can run",
     [{ apiKey: "" }, /API key/],
     [{ spaceId: "" }, /space ID/],
     [{ boardId: "" }, /board ID/],
+    [{ spaceId: "01" }, /canonical non-negative int64/],
+    [{ boardId: "9223372036854775808" }, /canonical non-negative int64/],
     [{ allowArchive: false }, /ALLOW_ARCHIVE/],
   ]) {
     await assert.rejects(

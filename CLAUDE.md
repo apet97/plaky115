@@ -22,6 +22,8 @@ Key paths:
 - `mcp-server/src/tools/curated/` — hand-written agent workflows.
 - `mcp-server/src/tools/raw/` — generated operation tools.
 - `scripts/lib/` — generator ownership.
+- `scripts/lib/codegen-common.mjs` — normalized operation facts shared by the
+  CLI and MCP generators.
 - `openapi/plaky115-operation-metadata.json` — generated operation semantics.
 
 ## Choose the smallest gate
@@ -43,7 +45,10 @@ npm --prefix mcp-server run lint && npm --prefix mcp-server test
 npm run generate:all && npm run generated:drift && npm run codegen:test
 
 # Release candidate
-npm run verify && npm run secret:scan
+npm run audit:production && npm run govulncheck && npm run verify
+
+# GET-only live contract (rotated key, secure environment injection)
+npm --prefix sdk run build && npm run live:read
 ```
 
 Do not “fix” generated output directly. Find the owning metadata or generator,
@@ -70,19 +75,33 @@ change it, regenerate, and review the complete drift.
 - `CommentShape` intentionally includes both `content` and `text`.
 - Dynamic user/item filters are threaded across SDK, CLI raw, and MCP raw and
   are guarded by cross-surface parity tests.
+- All path IDs are canonical non-negative signed-int64 decimals and fail before
+  network access. Unsafe JSON integers decode as exact decimal strings.
 - SDK runtime internals and generated operation paths are intentionally private.
+- Remote HTTP is rejected except literal loopback; SDK/Go credential requests
+  do not follow redirects; buffered responses default to 16 MiB with a 64 MiB
+  hard ceiling.
+- MCP mutation plans resolve titles to exact IDs. Conflicting compatibility
+  aliases fail before network access; file plans never echo base64.
+- CLI credentials prefer the environment or `--api-key-stdin`; `--api-key` is
+  deprecated and must never be copied into examples.
 
 ## Live and release work
 
-Use live credentials only after explicit sacrificial authorization. Pass values
-through environment variables or hidden terminal input, never command text or
-files. `PLAKY115_SMOKE_ALLOW_ARCHIVE=1` is mandatory. A successful run has all
-four surfaces and zero discovered/leftover/tracked artifacts.
+`npm run live:read` is GET-only. `npm run live:sweep` requires separate
+sacrificial mutation authorization, `PLAKY115_SMOKE_ALLOW_ARCHIVE=1`, all four
+surfaces passing, and zero discovered/leftover/tracked artifacts. Credentials
+belong only in secure environment injection, never command text or files.
+GET-only acceptance requires all 17 reads on both surfaces; only the paired
+item-file prerequisite skips are valid. Direct live adapters use the shared
+bounded/exact JSON reader, and cleanup pagination must remain capped.
 
-Before a release, verify the GitHub environment and both npm trust relationships
-outside the repository; static workflow correctness does not prove external
-configuration. Never create a tag until the stable versions are absent and all
-gates are green.
+Before a release, verify the GitHub environments and both npm trust relationships
+outside the repository. Never create a tag until versions are absent and all
+gates are green. After publication, run `scripts/verify-npm-attestation.mjs`
+against the peeled tag commit; static workflow correctness is not provenance.
+The verifier binds the exact registry digest and repository/tag dependency URI
+to that commit.
 
 ## Public documentation
 

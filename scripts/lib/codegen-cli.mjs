@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { describeOperation } from "./codegen-common.mjs";
 
 export function buildCobraCommand(op) {
   const descriptor = describeOperation(op);
@@ -37,7 +38,6 @@ export function buildCobraCommand(op) {
     const required = op.request.required ? " (required)" : "";
     lines.push(`\tcmd.Flags().String("body", "", "Request body JSON, @file.json, or @- for stdin${required}")`);
   } else if (descriptor.requestKind === "multipart") {
-    validateMultipartRequest(op);
     lines.push(`\tcmd.Flags().String("file", "", "File to upload; use - for stdin (required)")`);
     lines.push(`\tcmd.Flags().String("filename", "", "Multipart filename; required with --file - and otherwise defaults to the path basename")`);
     lines.push(`\tcmd.Flags().String("content-type", "", "Optional file media type, such as application/pdf")`);
@@ -101,6 +101,11 @@ export function buildGoOperations(ops) {
     lines.push(`// ${fn} executes the ${op.operationId} operation: ${op.method} ${op.path}`);
     const returnType = descriptor.isVoid ? "error" : "(any, error)";
     lines.push(`func (c *Client) ${fn}(ctx context.Context, opts ${fn}Options) ${returnType} {`);
+    for (const parameter of pathParameters.filter(isInt64)) {
+      lines.push(`\tif _, err := CanonicalInt64ID(opts.${cap(parameter.name)}); err != nil {`);
+      lines.push(descriptor.isVoid ? `\t\treturn err` : `\t\treturn nil, err`);
+      lines.push(`\t}`);
+    }
     lines.push(`\tpath := ${formatGoPath(op.path, pathParameters.map(({ name }) => name))}`);
     if (hasQuery) {
       lines.push(`\tquery := url.Values{}`);
@@ -241,20 +246,6 @@ function formatGoPath(path, params) {
   return expr;
 }
 
-function describeOperation(op) {
-  const parameters = op.parameters ?? [];
-  return {
-    pathParameters: parameters.filter((parameter) => parameter.in === "path"),
-    queryParameters: uniqueParameters([
-      ...parameters.filter((parameter) => parameter.in === "query"),
-      ...(op.pagination?.inputs ?? []),
-    ]),
-    requestKind: op.request.kind,
-    isVoid: op.success.kind === "void",
-    acceptsIdempotencyKey: op.mutation === true && op.request.kind !== "none",
-  };
-}
-
 function goQueryLines(parameter) {
   const field = `opts.${cap(parameter.name)}`;
   const name = JSON.stringify(parameter.name);
@@ -298,7 +289,7 @@ function runnerFlagRead(parameter, required) {
   const variable = localName(parameter.name);
   const flag = JSON.stringify(flagFor(parameter.name));
   let helper;
-  if (required) helper = "requiredStringFlag";
+  if (required) helper = isInt64(parameter) ? "requiredInt64IDFlag" : "requiredStringFlag";
   else {
     switch (parameter.schema.type) {
       case "string": helper = "optionalStringFlag"; break;
@@ -317,6 +308,10 @@ function runnerFlagRead(parameter, required) {
   ];
 }
 
+function isInt64(parameter) {
+  return parameter.schema.type === "integer" && parameter.schema.format === "int64";
+}
+
 function localName(name) {
   const value = name[0].toLowerCase() + name.slice(1);
   const keywords = new Set([
@@ -333,15 +328,6 @@ function repeatedArray(q) { return q.array === true && q.explode !== false; }
 function cap(s) { return s[0].toUpperCase() + s.slice(1); }
 function flagFor(p) { return p.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase(); }
 function goSlug(operationId) { return operationId.replace(/([A-Z])/g, "-$1").toLowerCase().replace(/^-/, ""); }
-
-function uniqueParameters(parameters) {
-  const seen = new Set();
-  return parameters.filter(({ name }) => {
-    if (seen.has(name)) return false;
-    seen.add(name);
-    return true;
-  });
-}
 
 function cobraFlagLine(parameter) {
   const name = JSON.stringify(flagFor(parameter.name));
@@ -372,16 +358,6 @@ function flagDescription(parameter) {
 
 function collapseWhitespace(value) {
   return value.replace(/\s+/g, " ").trim();
-}
-
-function validateMultipartRequest(op) {
-  const parts = op.request.parts;
-  const valid = parts.length === 1
-    && parts[0].name === "file"
-    && parts[0].required === true
-    && parts[0].type === "string"
-    && parts[0].format === "binary";
-  if (!valid) throw new Error(`${op.operationId}: expected a single required binary multipart part named file`);
 }
 
 function formatGo(source) {

@@ -1,5 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import type { ServerNotification, ServerRequest } from "@modelcontextprotocol/sdk/types.js";
+import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import { readFileSync } from "node:fs";
 import {
   PlakyAbortError,
@@ -57,9 +59,10 @@ export function buildServer(opts: ServerOptions): { server: McpServer; tools: Mc
     },
   );
 
-  const ctx: McpToolContext = {
+  const createContext = (extra: RequestHandlerExtra<ServerRequest, ServerNotification>): McpToolContext => ({
     client,
-    requestOptions: client.requestOptions(),
+    requestOptions: client.requestOptions({ signal: extra.signal }),
+    signal: extra.signal,
     respond(value, ro): McpToolResponse {
       const compacted = ro?.compactKind
         ? compactByKind(value, ro.compactKind, { includeRaw: ro.includeRaw === true })
@@ -70,13 +73,16 @@ export function buildServer(opts: ServerOptions): { server: McpServer; tools: Mc
         structuredContent,
       };
     },
-    progress: () => {
-      /* no-op for now */
+    async progress(progress, total, message) {
+      const progressToken = extra._meta?.progressToken;
+      if (progressToken === undefined) return;
+      await extra.sendNotification({ method: "notifications/progress", params: { progressToken, progress, total, message } });
     },
-  };
+  });
 
   for (const tool of tools) {
-    const handler = (input: unknown): Promise<McpToolResponse> => invokeTool(tool, input, ctx);
+    const handler = (input: unknown, extra: RequestHandlerExtra<ServerRequest, ServerNotification>): Promise<McpToolResponse> =>
+      invokeTool(tool, input, createContext(extra));
     server.registerTool(
       tool.name,
       {
@@ -91,7 +97,7 @@ export function buildServer(opts: ServerOptions): { server: McpServer; tools: Mc
   }
 
   const toolsByName = new Map(tools.map((tool) => [tool.name, tool]));
-  server.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  server.server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
     const tool = toolsByName.get(request.params.name);
     if (!tool) return toToolErrorResponse(new UsageError(`Tool ${request.params.name} not found.`));
     if (request.params.task !== undefined) {
@@ -104,7 +110,7 @@ export function buildServer(opts: ServerOptions): { server: McpServer; tools: Mc
     } catch (error) {
       return toToolErrorResponse(error, tool.name);
     }
-    return invokeTool(tool, input, ctx);
+    return invokeTool(tool, input, createContext(extra));
   });
 
   return { server, tools };

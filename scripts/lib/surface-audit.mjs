@@ -96,7 +96,17 @@ function buildSdkReport(root, spec) {
 
 function buildCliReport(root, spec) {
   const generatedDir = join(root, "cli/internal/cli/raw");
-  const curatedFile = join(root, "cli/internal/cli/dx.go");
+  const curatedDir = join(root, "cli/internal/cli");
+  const requiredCuratedFiles = [
+    "comments.go",
+    "curated_helpers.go",
+    "discovery.go",
+    "item_files.go",
+    "item_groups.go",
+    "items.go",
+    "reactions.go",
+    "workspace.go",
+  ];
   const legacySDK = join(root, "cli/internal/sdk");
   const generatedCommands = existsSync(generatedDir)
     ? (() => {
@@ -109,8 +119,14 @@ function buildCliReport(root, spec) {
     : existsSync(legacySDK)
       ? { status: "legacy", path: relative(root, legacySDK) }
       : { status: "missing" };
-  const curatedCommands = existsSync(curatedFile)
-    ? { status: "fresh", path: relative(root, curatedFile) }
+  const curatedCommands = existsSync(curatedDir)
+    ? (() => {
+        const present = readdirSync(curatedDir);
+        const missing = requiredCuratedFiles.filter((file) => !present.includes(file));
+        return missing.length === 0
+          ? { status: "fresh", path: relative(root, curatedDir) }
+          : { status: "incomplete", missing };
+      })()
     : { status: "missing" };
   return { generatedCommands, curatedCommands };
 }

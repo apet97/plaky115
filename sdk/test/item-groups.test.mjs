@@ -26,14 +26,14 @@ test("itemGroups.list sends the paged query and preserves the response envelope"
   });
 
   const page = await client.itemGroups.list({
-    spaceId: "space/id",
-    boardId: "board id",
+    spaceId: "9223372036854775807",
+    boardId: "9007199254740992",
     page: 2,
     pageSize: 25,
   });
 
   assert.equal(request.init.method, "GET");
-  assert.equal(request.url.pathname, "/proxy/plaky/v1/public/spaces/space%2Fid/boards/board%20id/item-groups");
+  assert.equal(request.url.pathname, "/proxy/plaky/v1/public/spaces/9223372036854775807/boards/9007199254740992/item-groups");
   assert.equal(request.url.searchParams.get("page"), "2");
   assert.equal(request.url.searchParams.get("pageSize"), "25");
   assert.equal(page.data[0].title, "Backlog");
@@ -53,15 +53,15 @@ test("itemGroups.iterate and listAll walk paged group responses", async () => {
   assert.deepEqual((await client.itemGroups.listAll({ spaceId: 1, boardId: 2, pageSize: 1 })).map((g) => g.id), [1, 2]);
 });
 
-test("itemGroups.get encodes every path identifier", async () => {
+test("itemGroups.get preserves every exact int64 path identifier", async () => {
   let pathname;
   const client = clientWith(async (url) => {
     pathname = new URL(url.toString()).pathname;
     return json({ id: 3, title: "Group" });
   });
 
-  const group = await client.itemGroups.get({ spaceId: "s/1", boardId: "b 2", itemGroupId: "g/3" });
-  assert.equal(pathname, "/proxy/plaky/v1/public/spaces/s%2F1/boards/b%202/item-groups/g%2F3");
+  const group = await client.itemGroups.get({ spaceId: "9223372036854775807", boardId: "9007199254740992", itemGroupId: "3" });
+  assert.equal(pathname, "/proxy/plaky/v1/public/spaces/9223372036854775807/boards/9007199254740992/item-groups/3");
   assert.equal(group.id, 3);
 });
 

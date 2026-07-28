@@ -1,10 +1,11 @@
 // AUTO-GENERATED. Source: openapi/plaky115-operation-metadata.json operationId=listBoards
 import { z } from "zod/v3";
 import { request } from "plaky115/runtime/http.js";
+import { int64Id } from "../../runtime/ids.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
-  spaceId: z.number().int().describe("Represents unique space identifier across the system."),
+  spaceId: int64Id.describe("Represents unique space identifier across the system."),
   page: z.number().int().describe("Page number.").optional(),
   pageSize: z.number().int().describe("Page size.").optional(),
 });

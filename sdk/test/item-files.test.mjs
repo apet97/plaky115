@@ -64,7 +64,7 @@ test("itemFiles.list returns the official bare array without pagination", async 
   assert.equal("data" in result, false);
 });
 
-test("itemFiles.get encodes every path identifier", async () => {
+test("itemFiles.get preserves every exact int64 path identifier", async () => {
   let pathname;
   const client = clientWith(async (url) => {
     pathname = new URL(url.toString()).pathname;
@@ -72,12 +72,12 @@ test("itemFiles.get encodes every path identifier", async () => {
   });
 
   const file = await client.itemFiles.get({
-    spaceId: "s/1",
-    boardId: "b 2",
-    itemId: "i/3",
-    itemFileId: "f 4",
+    spaceId: "9223372036854775807",
+    boardId: "9007199254740992",
+    itemId: "3",
+    itemFileId: "4",
   });
-  assert.equal(pathname, "/proxy/plaky/v1/public/spaces/s%2F1/boards/b%202/items/i%2F3/files/f%204");
+  assert.equal(pathname, "/proxy/plaky/v1/public/spaces/9223372036854775807/boards/9007199254740992/items/3/files/4");
   assert.equal(file.id, 4);
 });
 

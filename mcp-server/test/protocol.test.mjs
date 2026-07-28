@@ -112,6 +112,47 @@ test("missing required body surfaces as an in-band tool error over the protocol"
   }
 });
 
+test("raw int64 identifiers preserve decimal strings and reject unsafe numbers before fetch", async () => {
+  const previousFetch = globalThis.fetch;
+  let calls = 0;
+  let path = "";
+  globalThis.fetch = async (url) => {
+    calls++;
+    path = new URL(url).pathname;
+    return new Response("{}", { headers: { "content-type": "application/json" } });
+  };
+  const { client, server } = await connectedPair({ mode: "generated", scopes: ["read"], serverURL: "https://example.test" });
+  try {
+    const exact = await client.callTool({ name: "plaky_get_space", arguments: { spaceId: "9007199254740992" } });
+    assert.notEqual(exact.isError, true);
+    assert.match(path, /\/9007199254740992$/);
+
+    const unsafe = await client.callTool({ name: "plaky_get_space", arguments: { spaceId: 9007199254740992 } });
+    assert.equal(unsafe.isError, true);
+    assert.equal(calls, 1);
+  } finally {
+    await server.close();
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("raw required JSON bodies reject non-object roots before fetch", async () => {
+  const previousFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; return new Response("{}"); };
+  const { client, server } = await connectedPair({ mode: "generated", scopes: ["write"], serverURL: "https://example.test" });
+  try {
+    for (const body of [null, [], "value", 1, true]) {
+      const response = await client.callTool({ name: "plaky_create_item", arguments: { spaceId: 1, boardId: 2, body } });
+      assert.equal(response.isError, true);
+    }
+    assert.equal(calls, 0);
+  } finally {
+    await server.close();
+    globalThis.fetch = previousFetch;
+  }
+});
+
 test("upload validation failures return the standard validation envelope", async () => {
   const { client, server } = await connectedPair({ mode: "generated", scopes: ["write"] });
   try {
@@ -216,7 +257,7 @@ test("every read workflow accepts its exact valid input", async () => {
   globalThis.fetch = async (url) => {
     const path = new URL(url.toString()).pathname;
     if (path.endsWith("/comments")) return new Response("[]", { headers: { "content-type": "application/json" } });
-    if (path.endsWith("/items")) return new Response(JSON.stringify({ data: [], hasMore: false }), { headers: { "content-type": "application/json" } });
+    if (path.endsWith("/items")) return new Response(JSON.stringify({ data: [{ id: 3, title: "Item" }], hasMore: false }), { headers: { "content-type": "application/json" } });
     if (path.endsWith("/boards")) return new Response(JSON.stringify({ data: [{ id: 2, title: "Board" }], hasMore: false }), { headers: { "content-type": "application/json" } });
     return new Response(JSON.stringify({ data: [{ id: 1, title: "Space" }], hasMore: false }), { headers: { "content-type": "application/json" } });
   };
@@ -238,28 +279,164 @@ test("every read workflow accepts its exact valid input", async () => {
   }
 });
 
-test("every mutation workflow and mutation plan accepts exact valid input without writing by default", async () => {
-  let fetchCalls = 0;
+test("item search emits bounded progress only when the client supplies a token", async () => {
   const previousFetch = globalThis.fetch;
-  globalThis.fetch = async () => {
-    fetchCalls++;
-    throw new Error("dry-run workflow must not fetch");
+  globalThis.fetch = async (url) => {
+    const path = new URL(url).pathname;
+    if (path.endsWith("/spaces")) return Response.json({ data: [{ id: 1, title: "Space" }], hasMore: false });
+    if (path.endsWith("/boards")) return Response.json({ data: [{ id: 2, title: "Board" }], hasMore: false });
+    return Response.json({ data: [{ id: 3, title: "Item" }], hasMore: false });
+  };
+  const { client, server } = await connectedPair({ mode: "curated", scopes: ["read"], serverURL: "https://example.test" });
+  try {
+    const progress = [];
+    const response = await client.callTool({
+      name: "plaky_execute_read_workflow",
+      arguments: { workflowId: "items.search", input: { spaceId: 1, boardId: 2, query: "Item", limit: 10 } },
+    }, undefined, { onprogress: (value) => progress.push(value) });
+    assert.notEqual(response.isError, true);
+    assert.ok(progress.length <= 10);
+    assert.deepEqual(progress.at(-1), { progress: 1, total: 10, message: "items scanned" });
+  } finally {
+    await server.close();
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("every mutation workflow and mutation plan resolves exact targets without writing by default", async () => {
+  let writeCalls = 0;
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    if ((init?.method ?? "GET") !== "GET") writeCalls++;
+    const path = new URL(url).pathname;
+    if (path.endsWith("/spaces")) return Response.json({ data: [{ id: "1", title: "Space" }], hasMore: false });
+    if (path.endsWith("/boards")) return Response.json({ data: [{ id: "2", title: "Board" }], hasMore: false });
+    if (path.endsWith("/item-groups")) return Response.json({ data: [{ id: "4", title: "Group" }], hasMore: false });
+    if (path.endsWith("/files")) return Response.json([{ id: "5", name: "old.txt" }]);
+    if (path.endsWith("/items")) return Response.json({ data: [{ id: "3", title: "Item" }], hasMore: false });
+    throw new Error(`unexpected dry-run path: ${path}`);
   };
   const { client, server } = await connectedPair({ mode: "curated", scopes: ["read", "write"], serverURL: "https://example.test" });
   try {
     const inputs = [
-      { workflowId: "items.create", input: { spaceId: 1, boardId: 2, body: { title: "New" } } },
-      { workflowId: "items.updateFields", input: { spaceId: 1, boardId: 2, updates: [{ itemId: 3, body: { Status: "Done" } }] } },
-      { workflowId: "comments.add", input: { spaceId: 1, boardId: 2, itemId: 3, text: "Note" } },
+      { workflowId: "items.create", input: { spaceId: "Space", boardId: "Board", body: { title: "New" } } },
+      { workflowId: "items.updateFields", input: { spaceId: "Space", boardId: "Board", updates: [{ itemId: "Item", body: { Status: "Done" } }] } },
+      { workflowId: "comments.add", input: { spaceId: "Space", boardId: "Board", itemId: "Item", text: "Note" } },
+      { workflowId: "itemGroups.create", input: { spaceId: "Space", boardId: "Board", body: { title: "New group" } } },
+      { workflowId: "itemGroups.update", input: { spaceId: "Space", boardId: "Board", itemGroupId: "Group", body: { title: "Group", ranking: "m" } } },
+      { workflowId: "itemFiles.upload", input: { spaceId: "Space", boardId: "Board", itemId: "Item", fileBase64: "aGk=", fileName: "note.txt", contentType: "text/plain" } },
+      { workflowId: "itemFiles.update", input: { spaceId: "Space", boardId: "Board", itemId: "Item", itemFileId: "old.txt", body: { name: "new.txt" } } },
     ];
     for (const args of inputs) {
       const executed = await client.callTool({ name: "plaky_execute_mutation_workflow", arguments: args });
       assert.notEqual(executed.isError, true, `${args.workflowId}: ${executed.content[0].text}`);
       assert.equal(executed.structuredContent.dryRun, true);
+      assert.equal(executed.structuredContent.input.spaceId, "1");
+      assert.equal(executed.structuredContent.input.boardId, "2");
       const planned = await client.callTool({ name: "plaky_plan_mutation", arguments: args });
       assert.notEqual(planned.isError, true, `${args.workflowId}: ${planned.content[0].text}`);
       assert.equal(planned.structuredContent.dryRun, true);
+      assert.equal(planned.structuredContent.input.spaceId, "1");
+      assert.equal(planned.structuredContent.input.boardId, "2");
+      if (args.workflowId === "itemFiles.upload") {
+        assert.equal("fileBase64" in planned.structuredContent.input, false);
+        assert.equal(planned.structuredContent.input.decodedBytes, 2);
+      }
     }
+    assert.equal(writeCalls, 0);
+  } finally {
+    await server.close();
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("new mutation workflows return completed receipts with exact target IDs", async () => {
+  let writeCalls = 0;
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    const method = init?.method ?? "GET";
+    const path = new URL(url).pathname;
+    if (method !== "GET") {
+      writeCalls++;
+      assert.ok(init.signal instanceof AbortSignal, `${method} ${path} must carry the MCP cancellation signal`);
+      return Response.json({ id: path.endsWith("/files") ? "50" : path.endsWith("/item-groups") ? "40" : path.split("/").at(-1) });
+    }
+    if (path.endsWith("/spaces")) return Response.json({ data: [{ id: "1", title: "Space" }], hasMore: false });
+    if (path.endsWith("/boards")) return Response.json({ data: [{ id: "2", title: "Board" }], hasMore: false });
+    if (path.endsWith("/item-groups")) return Response.json({ data: [{ id: "4", title: "Group" }], hasMore: false });
+    if (path.endsWith("/files")) return Response.json([{ id: "5", name: "old.txt" }]);
+    if (path.endsWith("/items")) return Response.json({ data: [{ id: "3", title: "Item" }], hasMore: false });
+    throw new Error(`unexpected receipt path: ${path}`);
+  };
+  const { client, server } = await connectedPair({ mode: "curated", scopes: ["read", "write"], serverURL: "https://example.test" });
+  try {
+    const inputs = [
+      { workflowId: "itemGroups.create", input: { spaceId: "Space", boardId: "Board", body: { title: "New group" } } },
+      { workflowId: "itemGroups.update", input: { spaceId: "Space", boardId: "Board", itemGroupId: "Group", body: { title: "Group", ranking: "m" } } },
+      { workflowId: "itemFiles.upload", input: { spaceId: "Space", boardId: "Board", itemId: "Item", fileBase64: "aGk=", fileName: "note.txt" } },
+      { workflowId: "itemFiles.update", input: { spaceId: "Space", boardId: "Board", itemId: "Item", itemFileId: "old.txt", body: { name: "new.txt" } } },
+    ];
+    for (const args of inputs) {
+      const response = await client.callTool({
+        name: "plaky_execute_mutation_workflow",
+        arguments: { ...args, dryRun: false },
+      });
+      assert.notEqual(response.isError, true, `${args.workflowId}: ${response.content[0].text}`);
+      assert.equal(response.structuredContent.workflowId, args.workflowId);
+      assert.equal(response.structuredContent.status, "completed");
+      assert.equal(response.structuredContent.targetIds.spaceId, "1");
+      assert.equal(response.structuredContent.targetIds.boardId, "2");
+    }
+    assert.equal(writeCalls, inputs.length);
+  } finally {
+    await server.close();
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("direct item and comment workflows forward the MCP cancellation signal", async () => {
+  const signals = [];
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    const path = new URL(url).pathname;
+    if ((init?.method ?? "GET") !== "GET") {
+      signals.push(init.signal);
+      return Response.json({ id: "9", title: "created" });
+    }
+    if (path.endsWith("/spaces")) return Response.json({ data: [{ id: "1", title: "Space" }], hasMore: false });
+    if (path.endsWith("/boards")) return Response.json({ data: [{ id: "2", title: "Board" }], hasMore: false });
+    if (path.endsWith("/items")) return Response.json({ data: [{ id: "3", title: "Item" }], hasMore: false });
+    throw new Error(`unexpected cancellation path: ${path}`);
+  };
+  const { client, server } = await connectedPair({ mode: "curated", scopes: ["read", "write"], serverURL: "https://example.test" });
+  try {
+    for (const arguments_ of [
+      { workflowId: "items.create", input: { spaceId: "Space", boardId: "Board", body: { title: "New" } }, dryRun: false },
+      { workflowId: "comments.add", input: { spaceId: "Space", boardId: "Board", itemId: "Item", text: "Note" }, dryRun: false },
+    ]) {
+      const response = await client.callTool({ name: "plaky_execute_mutation_workflow", arguments: arguments_ });
+      assert.notEqual(response.isError, true, `${arguments_.workflowId}: ${response.content[0].text}`);
+    }
+    assert.equal(signals.length, 2);
+    assert.ok(signals.every((signal) => signal instanceof AbortSignal));
+  } finally {
+    await server.close();
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("workflow schemas reject conflicting compatibility aliases before fetch", async () => {
+  let fetchCalls = 0;
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async () => { fetchCalls++; throw new Error("conflicting aliases must not fetch"); };
+  const { client, server } = await connectedPair({ mode: "curated", scopes: ["read", "write"], serverURL: "https://example.test" });
+  try {
+    const response = await client.callTool({
+      name: "plaky_execute_mutation_workflow",
+      arguments: { workflowId: "items.create", input: { space: "One", spaceId: "Two", boardId: "Board", body: {} } },
+    });
+    assert.equal(response.isError, true);
+    assert.match(response.content[0].text, /conflicting inputs/i);
     assert.equal(fetchCalls, 0);
   } finally {
     await server.close();
@@ -282,6 +459,7 @@ test("workflow schemas reject missing IDs/body/query, wrong types, and unknown f
       ["plaky_execute_read_workflow", { workflowId: "comments.thread", input: { spaceId: 1, boardId: 2, itemId: false } }],
       ["plaky_execute_mutation_workflow", { workflowId: "items.create", input: { spaceId: 1, boardId: 2 } }],
       ["plaky_execute_mutation_workflow", { workflowId: "comments.add", input: { spaceId: 1, boardId: 2, itemId: 3, text: "x", extra: true } }],
+      ["plaky_execute_mutation_workflow", { workflowId: "items.create", input: { spaceId: 1, boardId: 2, itemId: 3, body: {} } }],
     ];
     for (const [name, args] of invalid) {
       const response = await client.callTool({ name, arguments: args });

@@ -8,6 +8,12 @@ const repositoryRoot = new URL("..", import.meta.url);
 const expectedRepository = "apet97/plaky115";
 const semverPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
 
+export function isExactSemVer(version) {
+  if (typeof version !== "string" || !semverPattern.test(version)) return false;
+  const prerelease = version.match(/-([^+]+)/)?.[1];
+  return prerelease === undefined || prerelease.split(".").every((identifier) => !/^0\d+$/.test(identifier));
+}
+
 export async function checkReleaseVersion({
   tag,
   sdkPackage,
@@ -15,7 +21,7 @@ export async function checkReleaseVersion({
   registryPreflight = false,
   runCommand = npmView,
 }) {
-  if (typeof tag !== "string" || !tag.startsWith("v") || !semverPattern.test(tag.slice(1))) {
+  if (typeof tag !== "string" || !tag.startsWith("v") || !isExactSemVer(tag.slice(1))) {
     throw new Error("release tag must match v<semver>");
   }
   const version = tag.slice(1);
@@ -47,7 +53,7 @@ function validateManifest(manifest) {
   if (!manifest || typeof manifest !== "object" || typeof manifest.name !== "string") {
     throw new Error("release package manifest is invalid");
   }
-  if (typeof manifest.version !== "string" || !semverPattern.test(manifest.version)) {
+  if (!isExactSemVer(manifest.version)) {
     throw new Error(`${manifest.name} has an invalid package version`);
   }
   const repositoryUrl = typeof manifest.repository === "string"

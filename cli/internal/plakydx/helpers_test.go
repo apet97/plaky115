@@ -30,6 +30,18 @@ func TestJSONBodyFlagParsesInlineAndRequiresConfiguredBody(t *testing.T) {
 	}
 }
 
+func TestRequiredJSONBodyRejectsNonObjectRoots(t *testing.T) {
+	for _, raw := range []string{"null", "[]", `"value"`, "1", "true"} {
+		cmd := helperCommand()
+		if err := cmd.Flags().Set("body", raw); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := jsonBodyFlag(cmd, true); err == nil || !strings.Contains(err.Error(), "JSON object") {
+			t.Fatalf("body %s error = %v", raw, err)
+		}
+	}
+}
+
 func TestOpenUploadFlagStreamsFileAndDefaultsFilename(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "fixture.bin")
 	if err := os.WriteFile(path, []byte("fixture"), 0o600); err != nil {

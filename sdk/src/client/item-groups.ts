@@ -1,5 +1,5 @@
 import type { PlakyClient } from "./client.js";
-import { pathSegment } from "./path.js";
+import { idPathSegment } from "./path.js";
 import { paginate, type PaginatedIterator } from "../runtime/pagination.js";
 import { resolveExplicitIdempotencyKey } from "../runtime/idempotency.js";
 import type { PlakyRequestOverrides } from "../runtime/types.js";
@@ -51,7 +51,7 @@ export class ItemGroupsResource {
     return this.client.request<PagedResult<ItemGroupShape>>(
       {
         method: "GET",
-        path: `/v1/public/spaces/${pathSegment(spaceId)}/boards/${pathSegment(boardId)}/item-groups`,
+        path: `/v1/public/spaces/${idPathSegment(spaceId)}/boards/${idPathSegment(boardId)}/item-groups`,
         query,
         operationId: "listItemGroups",
       },
@@ -96,7 +96,7 @@ export class ItemGroupsResource {
     return this.client.request<ItemGroupShape>(
       {
         method: "POST",
-        path: `/v1/public/spaces/${pathSegment(params.spaceId)}/boards/${pathSegment(params.boardId)}/item-groups`,
+        path: `/v1/public/spaces/${idPathSegment(params.spaceId)}/boards/${idPathSegment(params.boardId)}/item-groups`,
         body: params.body,
         operationId: "createItemGroup",
       },
@@ -145,5 +145,5 @@ export class ItemGroupsResource {
 }
 
 function itemGroupPath(params: ItemGroupGetParams): string {
-  return `/v1/public/spaces/${pathSegment(params.spaceId)}/boards/${pathSegment(params.boardId)}/item-groups/${pathSegment(params.itemGroupId)}`;
+  return `/v1/public/spaces/${idPathSegment(params.spaceId)}/boards/${idPathSegment(params.boardId)}/item-groups/${idPathSegment(params.itemGroupId)}`;
 }

@@ -23,6 +23,8 @@ surface is local credential handling, transport, and the request/response path.
 - Keys are read from the environment (`PLAKY115_API_KEY`, with
   `PLAKY115_API_KEY_AUTH` as a compatibility fallback) or from a caller-supplied
   provider. They are sent as the `X-API-Key` header.
+- The CLI `--api-key-stdin` path keeps one-shot credentials out of argv. The
+  deprecated `--api-key` flag warns without echoing its value.
 - Keys are never written to logs, errors, screenshots, docs, or command output.
   The SDK, MCP server, CLI, and live sweep use the grammar and sole marker in
   `security/plaky-api-key-grammar.md`.
@@ -34,8 +36,13 @@ surface is local credential handling, transport, and the request/response path.
 
 ### Transport
 
-- All requests go over HTTPS. Use TLS 1.2 or later. Do not disable certificate
-  verification with a custom `fetch`.
+- Remote requests require HTTPS. Literal loopback HTTP (`localhost`, `127/8`,
+  and `::1`) is accepted only for local development and tests.
+- SDK and Go transports do not follow redirects while carrying `X-API-Key`.
+  A custom `fetch` or `http.Client` must preserve that rule and TLS validation.
+- Buffered success and error bodies default to a 16 MiB ceiling; SDK callers
+  may lower it or raise it only to the 64 MiB hard ceiling. Explicit streaming
+  responses are not buffered.
 - The default base URL is `https://api.plaky.com`. Real workspaces are
   account-prefixed (for example `https://<account>.api.plaky.com`); set
   `serverURL` (SDK), `--server-url` (CLI), or `PLAKY115_BASE_URL` (live sweep) to
@@ -101,3 +108,5 @@ inconsistency to reconcile.
 ## Supported surfaces
 
 Security fixes target the current `main`. There is no long-term support branch.
+See `docs/threat-model.md` for trust boundaries and `docs/compatibility.md` for
+the supported toolchain and deprecation policy.

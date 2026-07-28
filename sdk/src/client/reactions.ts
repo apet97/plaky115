@@ -1,5 +1,5 @@
 import type { PlakyClient } from "./client.js";
-import { pathSegment } from "./path.js";
+import { idPathSegment } from "./path.js";
 import { resolveExplicitIdempotencyKey } from "../runtime/idempotency.js";
 import type { PlakyRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId, ItemId, CommentId } from "../runtime/ids.js";
@@ -57,7 +57,7 @@ export class ReactionsResource {
     return this.client.request<ReactionReplaceResult>(
       {
         method: "PUT",
-        path: `/v1/public/spaces/${pathSegment(params.spaceId)}/boards/${pathSegment(params.boardId)}/items/${pathSegment(params.itemId)}/comments/${pathSegment(params.itemCommentId)}/reactions`,
+        path: `/v1/public/spaces/${idPathSegment(params.spaceId)}/boards/${idPathSegment(params.boardId)}/items/${idPathSegment(params.itemId)}/comments/${idPathSegment(params.itemCommentId)}/reactions`,
         body: params.body,
         operationId: "replaceCommentReactions",
       },

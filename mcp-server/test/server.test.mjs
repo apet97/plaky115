@@ -163,11 +163,13 @@ test("raw delete tools return structured ok receipts", async () => {
 
 test("execute_workflow accepts both space/board/item and spaceId/boardId/itemId spellings", async () => {
   const previousFetch = globalThis.fetch;
-  globalThis.fetch = async () =>
-    new Response(JSON.stringify([{ id: 1, content: "hi", createdAt: "t", createdBy: 7 }]), {
-      status: 200,
-      headers: { "content-type": "application/json" },
-    });
+  globalThis.fetch = async (url) => {
+    const path = new URL(url).pathname;
+    if (path.endsWith("/spaces")) return Response.json({ data: [{ id: 1, title: "Space" }], hasMore: false });
+    if (path.endsWith("/boards")) return Response.json({ data: [{ id: 2, title: "Board" }], hasMore: false });
+    if (path.endsWith("/items")) return Response.json({ data: [{ id: 3, title: "Item" }], hasMore: false });
+    return Response.json([{ id: 1, content: "hi", createdAt: "t", createdBy: 7 }]);
+  };
   try {
     const { client, server } = await connectedServer({ apiKey: "test-api-key", serverURL: "https://example.test", mode: "all", scopes: ["read", "write"] });
     try {

@@ -1,0 +1,28 @@
+name: Live read contract
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 2"
+
+permissions:
+  contents: read
+
+jobs:
+  read:
+    environment: live-read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+      - run: npm --prefix sdk ci
+      - run: npm --prefix sdk run build
+      - name: Run sanitized GET-only sweep
+        env:
+          PLAKY115_API_KEY: ${{ secrets.PLAKY115_READ_API_KEY }}
+          PLAKY115_BASE_URL: ${{ vars.PLAKY115_BASE_URL }}
+        run: node scripts/live-read-sweep.mjs

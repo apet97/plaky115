@@ -2,8 +2,11 @@
 package cli
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/apet97/plaky115-cli/internal/cli/raw"
@@ -32,7 +35,8 @@ func NewRootCommand() (*cobra.Command, error) {
 	root.SetVersionTemplate("plaky115 version {{.Version}} (built " + BuildTime + ")\n")
 
 	root.PersistentFlags().String("server-url", "", "Override Plaky API base URL (default: https://api.plaky.com)")
-	root.PersistentFlags().String("api-key", "", "Plaky API key (or set PLAKY115_API_KEY / PLAKY115_API_KEY_AUTH)")
+	root.PersistentFlags().String("api-key", "", "Deprecated: Plaky API key in argv; prefer PLAKY115_API_KEY or --api-key-stdin")
+	root.PersistentFlags().Bool("api-key-stdin", false, "Read the Plaky API key as one line from stdin")
 	root.PersistentFlags().String("timeout", "", "HTTP timeout as a duration, for example 10s or 2m")
 	root.PersistentFlags().String("user-agent", "", "Override the User-Agent sent to Plaky")
 	root.PersistentFlags().Bool("json", false, "Emit errors as a JSON envelope on stderr")
@@ -65,11 +69,23 @@ func NewRootCommand() (*cobra.Command, error) {
 
 func buildClient(root *cobra.Command) (*plakysdk.Client, error) {
 	apiKey, _ := root.PersistentFlags().GetString("api-key")
-	if apiKey == "" {
+	readStdin, _ := root.PersistentFlags().GetBool("api-key-stdin")
+	if root.PersistentFlags().Changed("api-key") {
+		if readStdin {
+			return nil, fmt.Errorf("--api-key and --api-key-stdin cannot be used together")
+		}
+		_, _ = fmt.Fprintln(root.ErrOrStderr(), "warning: --api-key exposes credentials through argv; prefer PLAKY115_API_KEY or --api-key-stdin")
+	} else if readStdin {
+		value, err := readAPIKey(root.InOrStdin())
+		if err != nil {
+			return nil, err
+		}
+		apiKey = value
+	} else {
 		apiKey = os.Getenv("PLAKY115_API_KEY")
-	}
-	if apiKey == "" {
-		apiKey = os.Getenv("PLAKY115_API_KEY_AUTH")
+		if apiKey == "" {
+			apiKey = os.Getenv("PLAKY115_API_KEY_AUTH")
+		}
 	}
 	serverURL, _ := root.PersistentFlags().GetString("server-url")
 	timeoutText, _ := root.PersistentFlags().GetString("timeout")
@@ -95,6 +111,26 @@ func buildClient(root *cobra.Command) (*plakysdk.Client, error) {
 		apiKey = "missing"
 	}
 	return plakysdk.New(plakysdk.ClientOptions{APIKey: apiKey, ServerURL: serverURL, Timeout: timeout, UserAgent: userAgent})
+}
+
+func readAPIKey(input io.Reader) (string, error) {
+	reader := bufio.NewReader(io.LimitReader(input, 8*1024+2))
+	line, err := reader.ReadString('\n')
+	if err != nil && err != io.EOF {
+		return "", fmt.Errorf("read --api-key-stdin: %w", err)
+	}
+	key := strings.TrimSuffix(strings.TrimSuffix(line, "\n"), "\r")
+	if strings.TrimSpace(key) == "" {
+		return "", fmt.Errorf("--api-key-stdin requires one non-empty line")
+	}
+	extra, err := io.ReadAll(reader)
+	if err != nil {
+		return "", fmt.Errorf("read --api-key-stdin: %w", err)
+	}
+	if len(extra) > 0 {
+		return "", fmt.Errorf("--api-key-stdin accepts exactly one line")
+	}
+	return key, nil
 }
 
 func newDoctorCommand(getClient clientFactory) *cobra.Command {

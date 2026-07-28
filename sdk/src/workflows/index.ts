@@ -30,6 +30,8 @@ export type SearchItemsParams = {
   board: EntityRef;
   query: string;
   limit?: number;
+  signal?: AbortSignal;
+  onProgress?: (scanned: number, limit: number) => void | Promise<void>;
 };
 
 export type SearchItemsDetailedResult = {
@@ -57,12 +59,13 @@ export async function searchItemsDetailed(client: PlakyClient, params: SearchIte
       boardId: asBoardId(board.id!),
       page,
       pageSize: Math.min(100, limit - scanned),
-    });
+    }, params.signal ? { signal: params.signal } : undefined);
     const items = (response.data ?? []) as ItemShape[];
     for (const item of items.slice(0, limit - scanned)) {
       scanned++;
       if (itemMatchesSearch(item, needle)) data.push(item);
     }
+    await params.onProgress?.(scanned, limit);
 
     if (response.hasMore !== true) {
       return { data, scanned, matched: data.length, truncated: false };
@@ -106,14 +109,19 @@ export type BulkUpdateParams = {
   board: EntityRef;
   updates: Array<{ itemId: number | string; body: Record<string, unknown> }>;
   dryRun?: boolean;
+  throwOnError?: boolean;
+  signal?: AbortSignal;
+  onProgress?: (completed: number, total: number) => void | Promise<void>;
 };
 
 export async function bulkUpdateItems(client: PlakyClient, params: BulkUpdateParams): Promise<Array<{ itemId: number | string; status: "dry-run" | "updated" | "error"; detail?: unknown }>> {
   const { space, board } = await resolveSpaceAndBoard(client, { space: params.space, board: params.board });
   const out = [];
-  for (const update of params.updates) {
+  for (const [index, update] of params.updates.entries()) {
+    if (params.signal?.aborted) throw params.signal.reason ?? new DOMException("Aborted", "AbortError");
     if (params.dryRun === true) {
       out.push({ itemId: update.itemId, status: "dry-run" as const });
+      await params.onProgress?.(index + 1, params.updates.length);
       continue;
     }
     try {
@@ -122,11 +130,13 @@ export async function bulkUpdateItems(client: PlakyClient, params: BulkUpdatePar
         boardId: asBoardId(board.id!),
         itemId: asItemId(update.itemId),
         body: update.body,
-      });
+      }, params.signal ? { signal: params.signal } : undefined);
       out.push({ itemId: update.itemId, status: "updated" as const });
     } catch (err) {
+      if (params.throwOnError === true) throw err;
       out.push({ itemId: update.itemId, status: "error" as const, detail: (err as Error).message });
     }
+    await params.onProgress?.(index + 1, params.updates.length);
   }
   return out;
 }

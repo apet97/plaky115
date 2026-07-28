@@ -49,6 +49,13 @@ export class PlakyDecodeError extends PlakyError {
   }
 }
 
+/** Thrown before a non-streaming response body can exceed its configured limit. */
+export class PlakyResponseTooLargeError extends PlakyError {
+  constructor(readonly limit: number) {
+    super(`Plaky API response exceeds the ${limit}-byte buffer limit.`);
+  }
+}
+
 export type ApiErrorInput = {
   status: number;
   method: string;

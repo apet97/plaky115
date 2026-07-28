@@ -7,10 +7,14 @@ import {
   assertVoidResult,
   createFixtureFormData,
   createTextFixture,
+  normalizePlakyBaseURL,
   summarizeDownloadLink,
 } from "./live-workspace-sweep.mjs";
+import { redact } from "./live/safe-output.mjs";
 
-const liveSweep = readFileSync(fileURLToPath(new URL("live-workspace-sweep.mjs", import.meta.url)), "utf8");
+const liveSweep = ["live-workspace-sweep.mjs", "live/cleanup.mjs", "live/contracts.mjs", "live/mutation-budget.mjs", "live/safe-output.mjs"]
+  .map((path) => readFileSync(fileURLToPath(new URL(path, import.meta.url)), "utf8"))
+  .join("\n");
 const liveWorkflow = readFileSync(fileURLToPath(new URL("../.github/workflows/live.yml", import.meta.url)), "utf8");
 const corpus = JSON.parse(
   readFileSync(fileURLToPath(new URL("../test/fixtures/security/plaky-api-key-cases.json", import.meta.url)), "utf8"),
@@ -60,9 +64,6 @@ test("live sweep validates sensitive MCP output in memory and never records its 
 });
 
 test("live sweep redaction follows the shared split-literal corpus", () => {
-  const source = liveSweep.match(/function redact\(s\) \{\n([\s\S]*?)\n\}/)?.[1];
-  assert.ok(source, "redact helper source not found");
-  const redact = new Function("s", source);
   for (const entry of corpus.cases) {
     assert.equal(redact(entry.inputParts.join("")), entry.expectedParts.join(""), entry.name);
   }
@@ -162,6 +163,14 @@ test("live sweep helpers enforce multipart, void, array, and sensitive-output co
   );
   assert.throws(() => summarizeDownloadLink({ url: "", expiresInSeconds: 60 }), /non-empty HTTPS URL/);
   assert.throws(() => summarizeDownloadLink({ url: "https://example.invalid", expiresInSeconds: "60" }), /finite numeric expiry/);
+});
+
+test("live sweep base URL accepts only credential-free HTTPS Plaky API hosts", () => {
+  assert.equal(normalizePlakyBaseURL("https://account.api.plaky.com/"), "https://account.api.plaky.com");
+  for (const value of ["http://api.plaky.com", "https://example.com", "https://user:pass@api.plaky.com", "https://api.plaky.com?token=x", "not-a-url"]) {
+    assert.throws(() => normalizePlakyBaseURL(value), /PLAKY115_BASE_URL/);
+  }
+  assert.match(liveSweep, /redirect: "error"/);
 });
 
 test("live sweep never records download URLs or in-memory file contents", () => {

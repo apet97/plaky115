@@ -50,13 +50,22 @@ uploads, typed IDs, interceptors, and workflow helpers.
 macOS or Linux:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/apet97/plaky115/main/cli/scripts/install.sh | bash
+version=v1.0.0
+curl -fsSLo install-plaky115.sh "https://raw.githubusercontent.com/apet97/plaky115/${version}/cli/scripts/install.sh"
+less install-plaky115.sh
+PLAKY115_VERSION="$version" bash install-plaky115.sh
+rm install-plaky115.sh
 ```
 
 Windows PowerShell:
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/apet97/plaky115/main/cli/scripts/install.ps1 | iex
+$version = "v1.0.0"
+Invoke-WebRequest "https://raw.githubusercontent.com/apet97/plaky115/$version/cli/scripts/install.ps1" -OutFile install-plaky115.ps1
+Get-Content install-plaky115.ps1
+$env:PLAKY115_VERSION = $version
+./install-plaky115.ps1
+Remove-Item install-plaky115.ps1
 ```
 
 ```bash

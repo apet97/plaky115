@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { checkReleaseVersion } from "./check-release-version.mjs";
+import { checkReleaseVersion, isExactSemVer } from "./check-release-version.mjs";
 
 const sdk = pkg("plaky115");
 const mcp = pkg("plaky115-mcp");
@@ -13,6 +13,12 @@ test("matching tag, package versions, and repositories pass offline", async () =
 test("tag must be a valid exact semver", async () => {
   await assert.rejects(checkReleaseVersion({ tag: "0.2.0", sdkPackage: sdk, mcpPackage: mcp }), /tag must match/);
   await assert.rejects(checkReleaseVersion({ tag: "v01.2.0", sdkPackage: sdk, mcpPackage: mcp }), /tag must match/);
+  for (const version of ["1.0.0-01", "1.0.0-alpha.01", "1.0.0-alpha..1", "1.0.0-"]) {
+    assert.equal(isExactSemVer(version), false, version);
+  }
+  for (const version of ["1.0.0-0", "1.0.0-alpha.1", "1.0.0+01", "1.0.0-alpha+build.01"]) {
+    assert.equal(isExactSemVer(version), true, version);
+  }
 });
 
 test("tag and both package versions must match", async () => {

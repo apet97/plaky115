@@ -20,6 +20,7 @@ test("npm publishing is tag-only, GitHub-hosted, and protected by exact permissi
   assert.equal(workflow.jobs.publish.environment, "npm-release");
   assert.match(workflow.jobs.publish["runs-on"], /^ubuntu-/);
   assert.equal(findAction(workflow.jobs.publish.steps, "actions/checkout")?.with?.["persist-credentials"], false);
+  assert.equal(findAction(workflow.jobs.publish.steps, "actions/checkout")?.with?.ref, "${{ github.ref }}");
 });
 
 test("release job installs the complete toolchain and exact trusted-publishing npm floor", () => {
@@ -30,7 +31,9 @@ test("release job installs the complete toolchain and exact trusted-publishing n
   assert.ok(findAction(steps, "oven-sh/setup-bun"));
   assert.ok(findAction(steps, "ruby/setup-ruby"));
   assert.ok(findAction(steps, "goreleaser/goreleaser-action"));
-  assert.ok(steps.some((step) => step.run === "npm install --global npm@11.5.1"));
+  assert.ok(steps.some((step) => step.run === "npm install --global npm@11.16.0"));
+  assert.equal(findAction(steps, "actions/setup-go")?.with?.["go-version"], "1.26.5");
+  assert.equal(findAction(steps, "goreleaser/goreleaser-action")?.with?.version, "v2.15.2");
 });
 
 test("all verification and registry preflights precede SDK then MCP publication", () => {
@@ -44,8 +47,10 @@ test("all verification and registry preflights precede SDK then MCP publication"
     "npm --prefix mcp-server ci",
     "cd cli && go mod download",
     "npm run verify",
-    "npm --prefix sdk pack --dry-run --json",
-    "npm --prefix mcp-server pack --dry-run --json",
+    "cd sdk && npm pack --dry-run --json",
+    "cd mcp-server && npm pack --dry-run --json",
+    "npm run audit:production",
+    "npm run govulncheck",
     "npm run artifacts:audit",
     "node scripts/check-release-version.mjs --tag \"${GITHUB_REF_NAME}\" --registry-preflight",
   ]) {
@@ -58,6 +63,8 @@ test("workflow contains no long-lived publish token or provenance opt-out", () =
   const source = readFileSync(workflowPath, "utf8");
   assert.doesNotMatch(source, /NPM_TOKEN|NODE_AUTH_TOKEN|provenance\s*[=:]\s*false|NPM_CONFIG_PROVENANCE/);
   assert.doesNotMatch(source, /pull_request|workflow_dispatch/);
+  assert.match(source, /git rev-parse "\$\{GITHUB_REF\}\^\{commit\}"/);
+  assert.match(source, /test "\$\{head_commit\}" = "\$\{GITHUB_SHA\}"/);
 });
 
 function findAction(steps, repository) {

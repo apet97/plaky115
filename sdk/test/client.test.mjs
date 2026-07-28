@@ -108,18 +108,23 @@ test("client.items.list flows path params into URL", async () => {
   assert.match(captured, /\/spaces\/123\/boards\/456\/items/);
 });
 
-test("resource methods encode path ID segments", async () => {
-  let captured;
+test("resource methods preserve exact int64 IDs and reject lossy IDs before fetch", async () => {
+  const captured = [];
   globalThis.fetch = async (url) => {
-    captured = url.toString();
-    return new Response(JSON.stringify({ id: "space/with slash" }), {
+    captured.push(url.toString());
+    return new Response(JSON.stringify({ id: "9223372036854775807" }), {
       status: 200,
       headers: { "content-type": "application/json" },
     });
   };
   const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://example.test" });
-  await client.spaces.get(SpaceId("space/with slash"));
-  assert.match(captured, /\/spaces\/space%2Fwith%20slash$/);
+  await client.spaces.get(SpaceId("9223372036854775807"));
+  assert.match(captured[0], /\/spaces\/9223372036854775807$/);
+
+  for (const id of ["9223372036854775808", "01", "-9223372036854775808", -1, 9_007_199_254_740_992]) {
+    assert.throws(() => client.spaces.get(SpaceId(id)), /ID|IDs/);
+  }
+  assert.equal(captured.length, 1);
 });
 
 test("read methods apply per-request header overrides", async () => {
@@ -185,8 +190,15 @@ test("constructor rejects malformed or unsafe server URLs", () => {
     "https://user:pass@example.test/api",
     "https://example.test/api?token=value",
     "https://example.test/api#fragment",
+    "http://example.test/api",
   ]) {
     assert.throws(() => new PlakyClient({ apiKey: "test-api-key", serverURL }), /serverURL/);
+  }
+});
+
+test("constructor permits literal loopback HTTP only", () => {
+  for (const serverURL of ["http://localhost:3000", "http://127.0.0.42:3000", "http://[::1]:3000"]) {
+    assert.doesNotThrow(() => new PlakyClient({ apiKey: "test-api-key", serverURL }));
   }
 });
 

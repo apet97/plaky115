@@ -45,8 +45,8 @@ func TestCuratedCommandsUseCobraRequiredFlags(t *testing.T) {
 	}
 }
 
-// F16: items-bulk-update pre-validates identifiers per entry before any API
-// call; malformed entries are reported "invalid" and never hit the network.
+// F16: items-bulk-update pre-validates every identifier before any API call or
+// dry-run plan; one malformed entry prevents the entire batch from running.
 func TestItemsBulkUpdatePreValidatesEntries(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 		t.Fatal("invalid bulk-update entry must not call the API")
@@ -54,35 +54,50 @@ func TestItemsBulkUpdatePreValidatesEntries(t *testing.T) {
 	defer server.Close()
 
 	payload := t.TempDir() + "/updates.json"
-	body := `[{"itemId":"3","body":{"x":1}},{"spaceId":"1","boardId":"2","body":{"y":2}}]`
+	body := `[
+		{"spaceId":"1","boardId":"2","itemId":"3","body":{"ok":true}},
+		{"spaceId":"01","boardId":"2","itemId":"4","body":{"x":1}},
+		{"spaceId":"1","boardId":"-1","itemId":"5","body":{"y":2}},
+		{"spaceId":"1","boardId":"2","itemId":"9223372036854775808","body":{"z":3}},
+		{"spaceId":"1","boardId":"2","body":{"missing":true}}
+	]`
 	if err := os.WriteFile(payload, []byte(body), 0o600); err != nil {
 		t.Fatalf("write payload: %v", err)
 	}
 
-	out, err := executeRoot(t,
-		"--api-key", "from-flag",
-		"--server-url", server.URL,
-		"items-bulk-update",
-		"--file", payload,
-	)
-	if err != nil {
-		t.Fatalf("items-bulk-update returned error: %v", err)
-	}
-
-	var results []map[string]any
-	if err := json.Unmarshal([]byte(out), &results); err != nil {
-		t.Fatalf("decode results: %v\n%s", err, out)
-	}
-	if len(results) != 2 {
-		t.Fatalf("want 2 results, got %d: %s", len(results), out)
-	}
-	for _, r := range results {
-		if r["status"] != "invalid" {
-			t.Fatalf("entry not marked invalid: %#v", r)
+	for _, dryRun := range []bool{false, true} {
+		args := []string{
+			"--api-key", "from-flag",
+			"--server-url", server.URL,
+			"items-bulk-update",
+			"--file", payload,
 		}
-	}
-	if strings.Contains(out, `"updated"`) {
-		t.Fatalf("invalid entries should not be updated: %s", out)
+		if dryRun {
+			args = append(args, "--dry-run")
+		}
+		out, err := executeRoot(t, args...)
+		if err != nil {
+			t.Fatalf("items-bulk-update returned error: %v", err)
+		}
+
+		var results []map[string]any
+		if err := json.Unmarshal([]byte(out), &results); err != nil {
+			t.Fatalf("decode results: %v\n%s", err, out)
+		}
+		if len(results) != 5 {
+			t.Fatalf("want 5 results, got %d: %s", len(results), out)
+		}
+		if results[0]["status"] != "not-run" {
+			t.Fatalf("valid entry should be blocked by invalid batch: %#v", results[0])
+		}
+		for _, result := range results[1:] {
+			if result["status"] != "invalid" {
+				t.Fatalf("malformed entry not marked invalid: %#v", result)
+			}
+		}
+		if strings.Contains(out, `"updated"`) || strings.Contains(out, `"dry-run"`) {
+			t.Fatalf("invalid batch should neither update nor plan: %s", out)
+		}
 	}
 }
 

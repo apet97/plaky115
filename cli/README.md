@@ -14,9 +14,11 @@ endorsed by, or sponsored by Plaky or CAKE.com.
 export PLAKY115_API_KEY=...
 ```
 
-`PLAKY115_API_KEY_AUTH` remains a compatibility fallback. `--api-key`,
-`--server-url`, `--timeout`, and `--user-agent` override defaults for one
-invocation. Real Plaky workspaces are account-prefixed; pass
+`PLAKY115_API_KEY_AUTH` remains a compatibility fallback. `--api-key-stdin`
+reads exactly one non-empty line for one-shot use. The legacy `--api-key` flag
+is deprecated because argv may be visible in shell history and process lists;
+it is retained through 1.x and scheduled for removal in 2.0. Real Plaky
+workspaces are account-prefixed; pass
 `--server-url https://<account>.api.plaky.com` when the default
 `https://api.plaky.com` host does not route for your workspace.
 
@@ -25,16 +27,24 @@ invocation. Real Plaky workspaces are account-prefixed; pass
 Linux or macOS:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/apet97/plaky115/main/cli/scripts/install.sh | bash
+version=v1.0.0
+curl -fsSLo install-plaky115.sh "https://raw.githubusercontent.com/apet97/plaky115/${version}/cli/scripts/install.sh"
+less install-plaky115.sh
+PLAKY115_VERSION="$version" bash install-plaky115.sh
 ```
 
 Windows PowerShell:
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/apet97/plaky115/main/cli/scripts/install.ps1 | iex
+$version = "v1.0.0"
+Invoke-WebRequest "https://raw.githubusercontent.com/apet97/plaky115/$version/cli/scripts/install.ps1" -OutFile install-plaky115.ps1
+Get-Content install-plaky115.ps1
+$env:PLAKY115_VERSION = $version
+./install-plaky115.ps1
 ```
 
-Both installers resolve releases from `apet97/plaky115`. Set
+Both installers download the archive and `checksums.txt` from the same exact
+release and verify SHA-256 before extraction. Set
 `PLAKY115_VERSION` to a specific `v*` tag or leave it unset for the latest
 release.
 

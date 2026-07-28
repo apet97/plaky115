@@ -1,5 +1,5 @@
 import type { PlakyClient } from "./client.js";
-import { pathSegment } from "./path.js";
+import { idPathSegment, pathSegment } from "./path.js";
 import { paginate, type PaginatedIterator } from "../runtime/pagination.js";
 import { resolveExplicitIdempotencyKey } from "../runtime/idempotency.js";
 import type { PlakyRequestOverrides } from "../runtime/types.js";
@@ -116,7 +116,7 @@ export class ItemsResource {
     return this.client.request<PagedResult<ItemShape>>(
       {
         method: "GET",
-        path: `/v1/public/spaces/${pathSegment(spaceId)}/boards/${pathSegment(boardId)}/items`,
+        path: `/v1/public/spaces/${idPathSegment(spaceId)}/boards/${idPathSegment(boardId)}/items`,
         query,
         operationId: "listItems",
       },
@@ -139,7 +139,7 @@ export class ItemsResource {
     return this.client.request<ItemShape>(
       {
         method: "GET",
-        path: `/v1/public/spaces/${pathSegment(spaceId)}/boards/${pathSegment(boardId)}/items/${pathSegment(itemId)}`,
+        path: `/v1/public/spaces/${idPathSegment(spaceId)}/boards/${idPathSegment(boardId)}/items/${idPathSegment(itemId)}`,
         query,
         operationId: "getItem",
       },
@@ -162,7 +162,7 @@ export class ItemsResource {
     return this.client.request<PagedResult<ItemShape>>(
       {
         method: "GET",
-        path: `/v1/public/spaces/${pathSegment(spaceId)}/boards/${pathSegment(boardId)}/items/${pathSegment(itemId)}/sub-items`,
+        path: `/v1/public/spaces/${idPathSegment(spaceId)}/boards/${idPathSegment(boardId)}/items/${idPathSegment(itemId)}/sub-items`,
         query,
         operationId: "listSubitems",
       },
@@ -196,7 +196,7 @@ export class ItemsResource {
     return this.client.request<ItemShape>(
       {
         method: "POST",
-        path: `/v1/public/spaces/${pathSegment(params.spaceId)}/boards/${pathSegment(params.boardId)}/items`,
+        path: `/v1/public/spaces/${idPathSegment(params.spaceId)}/boards/${idPathSegment(params.boardId)}/items`,
         body: params.body,
         operationId: "createItem",
       },
@@ -217,7 +217,7 @@ export class ItemsResource {
     await this.client.request<void>(
       {
         method: "DELETE",
-        path: `/v1/public/spaces/${pathSegment(params.spaceId)}/boards/${pathSegment(params.boardId)}/items/${pathSegment(params.itemId)}`,
+        path: `/v1/public/spaces/${idPathSegment(params.spaceId)}/boards/${idPathSegment(params.boardId)}/items/${idPathSegment(params.itemId)}`,
         operationId: "deleteItem",
         responseType: "void",
       },
@@ -239,7 +239,7 @@ export class ItemsResource {
     return this.client.request<ItemShape>(
       {
         method: "PATCH",
-        path: `/v1/public/spaces/${pathSegment(params.spaceId)}/boards/${pathSegment(params.boardId)}/items/${pathSegment(params.itemId)}/fields/${pathSegment(params.itemFieldKey)}`,
+        path: `/v1/public/spaces/${idPathSegment(params.spaceId)}/boards/${idPathSegment(params.boardId)}/items/${idPathSegment(params.itemId)}/fields/${pathSegment(params.itemFieldKey)}`,
         body: params.body,
         operationId: "updateItemField",
       },
@@ -265,7 +265,7 @@ export class ItemsResource {
     return this.client.request<ItemShape>(
       {
         method: "PATCH",
-        path: `/v1/public/spaces/${pathSegment(params.spaceId)}/boards/${pathSegment(params.boardId)}/items/${pathSegment(params.itemId)}/fields`,
+        path: `/v1/public/spaces/${idPathSegment(params.spaceId)}/boards/${idPathSegment(params.boardId)}/items/${idPathSegment(params.itemId)}/fields`,
         body: params.body,
         operationId: "updateItemFields",
       },

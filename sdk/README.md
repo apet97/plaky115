@@ -52,6 +52,10 @@ The API is page-based: `page` and `pageSize` are server parameters, while the
 iterator `limit` is a client-side cap. Verified wire behavior is documented at
 <https://github.com/apet97/plaky115/blob/main/docs/api-behavior.md>.
 
+Remote hosts must use HTTPS; plain HTTP is accepted only for literal loopback
+hosts used in local tests. Credential-bearing requests never follow redirects,
+and a request interceptor cannot change the configured origin.
+
 ## Authentication
 
 Pass an API key string or an async provider. The provider is resolved for each
@@ -200,6 +204,18 @@ const client = new PlakyClient({
 await client.spaces.get(123, { timeoutMs: 5_000 });
 ```
 
+## Response limits
+
+Buffered success and error bodies default to 16 MiB and may be configured up to
+the 64 MiB hard ceiling. Explicit streaming responses are not buffered.
+
+```ts
+const client = new PlakyClient({
+  apiKey: process.env.PLAKY115_API_KEY!,
+  maxResponseBytes: 8 * 1024 * 1024,
+});
+```
+
 ## Cancellation
 
 Pass an `AbortSignal` per request.
@@ -251,7 +267,9 @@ console.log(response.data);
 
 ## Custom Fetch
 
-Inject `fetch` for tests, edge runtimes, custom agents, or instrumentation.
+Inject `fetch` for tests, edge runtimes, custom agents, or instrumentation. A
+custom implementation remains inside the caller's trust boundary and must
+preserve TLS, manual redirect handling, cancellation, and response limits.
 
 ```ts
 const client = new PlakyClient({

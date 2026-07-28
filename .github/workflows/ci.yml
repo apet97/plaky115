@@ -9,7 +9,73 @@ permissions:
   contents: read
 
 jobs:
-  verify:
+  baseline:
+    name: Baseline contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version: "1.26.5"
+          cache-dependency-path: cli/go.sum
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.2.17"
+      - uses: ruby/setup-ruby@003a5c4d8d6321bd302e38f6f0ec593f77f06600 # v1.319.0
+        with:
+          ruby-version: "3.3"
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          distribution: goreleaser
+          version: "v2.15.2"
+          install-only: true
+      - name: Install dependencies
+        run: |
+          npm --prefix sdk ci
+          npm --prefix mcp-server ci
+          cd cli && go mod download
+      - name: Verify contracts, generation, security, and release policy
+        run: |
+          npm run workflow:policy:test
+          npm run verification:inventory:test
+          npm run release:contract:test
+          npm run installer:test
+          npm run contract:source:test
+          npm run contract:inventory:test
+          npm run overlay:validate
+          npm run lint:openapi
+          npm run openapi:test
+          npm run metadata:test
+          npm run contract:expected:check
+          npm run generated:drift
+          npm run codegen:test
+          npm run test:surfaces
+          npm run postgen:drift
+          npm run docs:surface:test
+          npm run examples:check
+          npm run live:sweep:test
+          npm run audit:production
+          npm run govulncheck
+          cd cli && go test ./... && go build -o /tmp/plaky115 ./cmd/plaky115 && goreleaser check
+      - name: Verify packages and cross-surface parity once
+        run: |
+          npm --prefix sdk run build
+          npm --prefix mcp-server run build
+          npm run parity:test
+          npm run status:surfaces:strict
+          npm run secret:scan:test
+          npm run secret:scan
+          npm run artifacts:audit
+          npm run pack:smoke
+          npm run packsnapshot:drift
+
+  node-compatibility:
+    name: Node ${{ matrix.node-version }} packages
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -22,21 +88,97 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ matrix.node-version }}
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
-        with:
-          go-version: "1.26.x"
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: "1.2.17"
-      - uses: ruby/setup-ruby@003a5c4d8d6321bd302e38f6f0ec593f77f06600 # v1.319.0
+      - run: npm --prefix sdk ci
+      - run: npm --prefix mcp-server ci
+      - run: npm --prefix sdk run typecheck && npm --prefix sdk run test:types && npm --prefix sdk run lint && npm --prefix sdk test
+      - run: npm --prefix mcp-server run lint && npm --prefix mcp-server test
+      - run: npm run package:consumer-smoke
+
+  macos-cli:
+    name: macOS CLI and installer
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          ruby-version: "3.3"
-      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          install-only: true
-      - name: Install package deps
+          node-version: "24"
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version: "1.26.5"
+      - run: cd cli && go test ./... && go build -o "$RUNNER_TEMP/plaky115" ./cmd/plaky115 && "$RUNNER_TEMP/plaky115" --help >/dev/null
+      - run: npm run installer:test
+
+  windows-cli:
+    name: Windows CLI and installer
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version: "1.26.5"
+      - shell: pwsh
         run: |
-          npm --prefix sdk ci
-          npm --prefix mcp-server ci
-      - name: Verify
-        run: npm run verify
+          cd cli
+          go test ./...
+          go build -o "$env:RUNNER_TEMP\plaky115.exe" ./cmd/plaky115
+          & "$env:RUNNER_TEMP\plaky115.exe" --help | Out-Null
+          [void][scriptblock]::Create((Get-Content scripts/install.ps1 -Raw))
+      - name: Smoke checksum-verified PowerShell installer
+        shell: pwsh
+        run: |
+          $fixture = Join-Path $env:RUNNER_TEMP "installer-fixture"
+          $release = Join-Path $fixture "v0.2.1"
+          $payload = Join-Path $env:RUNNER_TEMP "installer-payload"
+          $install = Join-Path $env:RUNNER_TEMP "install with spaces"
+          New-Item -ItemType Directory -Force -Path @($release, $payload, $install) | Out-Null
+          Set-Content -NoNewline -Path (Join-Path $payload "plaky115.exe") -Value "verified binary"
+          $archive = Join-Path $release "plaky115_Windows_x86_64.zip"
+          Compress-Archive -Path (Join-Path $payload "plaky115.exe") -DestinationPath $archive
+          $hash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+          Set-Content -Path (Join-Path $release "checksums.txt") -Value "$hash  plaky115_Windows_x86_64.zip"
+          $server = Start-Process python -ArgumentList "-m", "http.server", "8765", "--directory", $fixture -PassThru
+          try {
+            $env:PLAKY115_VERSION = "v0.2.1"
+            $env:PLAKY115_INSTALL_DIR = $install
+            $env:PLAKY115_INSTALL_TESTING = "1"
+            $env:PLAKY115_INSTALL_TEST_BASE_URL = "http://127.0.0.1:8765"
+            Start-Sleep -Seconds 2
+            & ./cli/scripts/install.ps1
+            if ((Get-Content (Join-Path $install "plaky115.exe") -Raw) -ne "verified binary") { throw "installed binary mismatch" }
+
+            Set-Content -NoNewline -Path (Join-Path $install "plaky115.exe") -Value "existing binary"
+            Set-Content -Path (Join-Path $release "checksums.txt") -Value "$('0' * 64)  plaky115_Windows_x86_64.zip"
+            try { & ./cli/scripts/install.ps1; $checksumRejected = $false } catch { $checksumRejected = $_.Exception.Message -match "checksum mismatch" }
+            if (-not $checksumRejected) { throw "checksum mismatch was not rejected" }
+            if ((Get-Content (Join-Path $install "plaky115.exe") -Raw) -ne "existing binary") { throw "checksum failure replaced existing binary" }
+
+            Remove-Item $archive -Force
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            $zip = [IO.Compression.ZipFile]::Open($archive, [IO.Compression.ZipArchiveMode]::Create)
+            try {
+              $entry = $zip.CreateEntry("../escape.exe")
+              $writer = [IO.StreamWriter]::new($entry.Open())
+              try { $writer.Write("escape") } finally { $writer.Dispose() }
+            } finally { $zip.Dispose() }
+            $hash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+            Set-Content -Path (Join-Path $release "checksums.txt") -Value "$hash  plaky115_Windows_x86_64.zip"
+            try { & ./cli/scripts/install.ps1; $traversalRejected = $false } catch { $traversalRejected = $_.Exception.Message -match "unsafe path" }
+            if (-not $traversalRejected) { throw "archive traversal was not rejected" }
+            if ((Get-Content (Join-Path $install "plaky115.exe") -Raw) -ne "existing binary") { throw "traversal failure replaced existing binary" }
+
+            Remove-Item $archive -Force
+            Compress-Archive -Path (Join-Path $payload "plaky115.exe") -DestinationPath $archive
+            $hash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+            Set-Content -Path (Join-Path $release "checksums.txt") -Value "$hash  plaky115_Windows_x86_64.zip"
+            $env:PLAKY115_INSTALL_TEST_FAIL_REPLACE = "1"
+            try { & ./cli/scripts/install.ps1; $rollbackExercised = $false } catch { $rollbackExercised = $_.Exception.Message -match "simulated atomic replacement failure" }
+            if (-not $rollbackExercised) { throw "replacement failure was not exercised" }
+            if ((Get-Content (Join-Path $install "plaky115.exe") -Raw) -ne "existing binary") { throw "replacement failure did not restore existing binary" }
+          } finally { Stop-Process $server -Force }

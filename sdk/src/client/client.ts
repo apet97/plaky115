@@ -9,6 +9,13 @@ import type {
   PlakyApiResponse,
   PlakyRequestOverrides,
 } from "../runtime/types.js";
+import {
+  DEFAULT_MAX_RESPONSE_BYTES,
+  normalizeServerURL,
+  validateResponseLimit,
+  validateRetries,
+  validateTimeout,
+} from "../runtime/internal/validation.js";
 import { SpacesResource } from "./spaces.js";
 import { BoardsResource } from "./boards.js";
 import { ItemsResource } from "./items.js";
@@ -41,6 +48,7 @@ export type PlakyClientOptions = {
   serverURL?: string | undefined;
   timeoutMs?: number | undefined;
   maxRetries?: number | undefined;
+  maxResponseBytes?: number | undefined;
   headers?: HeaderProvider | undefined;
   fetch?: FetchLike | undefined;
   interceptors?: Interceptors | undefined;
@@ -59,6 +67,7 @@ type Resolved = {
   serverURL: string;
   timeoutMs: number;
   maxRetries: number;
+  maxResponseBytes: number;
   headers?: HeaderProvider | undefined;
   fetch?: FetchLike | undefined;
   interceptors?: Interceptors | undefined;
@@ -106,9 +115,11 @@ export class PlakyClient {
       serverURL: normalizeServerURL(opts.serverURL ?? DEFAULT_SERVER_URL),
       timeoutMs: opts.timeoutMs ?? 30_000,
       maxRetries: opts.maxRetries ?? 2,
+      maxResponseBytes: opts.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES,
     };
-    assertNonNegativeNumber(resolved.timeoutMs, "timeoutMs");
-    assertNonNegativeInteger(resolved.maxRetries, "maxRetries");
+    validateTimeout(resolved.timeoutMs);
+    validateRetries(resolved.maxRetries);
+    validateResponseLimit(resolved.maxResponseBytes);
     if (opts.headers !== undefined) resolved.headers = opts.headers;
     if (opts.fetch !== undefined) resolved.fetch = opts.fetch;
     if (opts.interceptors !== undefined) resolved.interceptors = opts.interceptors;
@@ -139,6 +150,7 @@ export class PlakyClient {
       serverURL: overrides.serverURL ?? this.options.serverURL,
       timeoutMs: overrides.timeoutMs ?? this.options.timeoutMs,
       maxRetries: overrides.maxRetries ?? this.options.maxRetries,
+      maxResponseBytes: overrides.maxResponseBytes ?? this.options.maxResponseBytes,
       ...(headers !== undefined ? { headers } : {}),
       ...(overrides.fetch !== undefined ? { fetch: overrides.fetch } : this.options.fetch !== undefined ? { fetch: this.options.fetch } : {}),
       ...(overrides.interceptors !== undefined ? { interceptors: overrides.interceptors } : this.options.interceptors !== undefined ? { interceptors: this.options.interceptors } : {}),
@@ -182,6 +194,7 @@ export class PlakyClient {
       serverURL: this.options.serverURL,
       timeoutMs: this.options.timeoutMs,
       maxRetries: this.options.maxRetries,
+      maxResponseBytes: this.options.maxResponseBytes,
       rateLimitSink: this.rateLimit,
     };
     const headers = mergeHeaderProviders(this.options.headers, extra?.headers);
@@ -195,56 +208,10 @@ export class PlakyClient {
   }
 }
 
-/**
- * Reject negative, `NaN`, or non-finite numeric options. Intentionally narrow:
- * legitimate values such as `maxRetries: 0` and large finite timeouts pass
- * through unchanged (no clamping). `Infinity` is rejected so a flapping GET
- * cannot retry without bound.
- */
-function assertNonNegativeNumber(value: number, name: string): void {
-  if (Number.isNaN(value) || value < 0 || !Number.isFinite(value)) {
-    throw new Error(`PlakyClient: ${name} must be a non-negative number`);
-  }
-}
-
-function assertNonNegativeInteger(value: number, name: string): void {
-  assertNonNegativeNumber(value, name);
-  if (!Number.isInteger(value)) {
-    throw new Error(`PlakyClient: ${name} must be a non-negative integer`);
-  }
-}
-
 function assertApiKey(apiKey: string): void {
   if (apiKey.trim() === "") {
     throw new Error("PlakyClient: apiKey is required");
   }
-}
-
-function normalizeServerURL(serverURL: string): string {
-  const invalidMessage = "PlakyClient: serverURL must be an absolute HTTP(S) URL with a host";
-  if (serverURL.trim() !== serverURL || !/^https?:\/\/[^/]/i.test(serverURL)) {
-    throw new Error(invalidMessage);
-  }
-
-  let url: URL;
-  try {
-    url = new URL(serverURL);
-  } catch {
-    throw new Error(invalidMessage);
-  }
-
-  if ((url.protocol !== "http:" && url.protocol !== "https:") || !url.host) {
-    throw new Error(invalidMessage);
-  }
-  if (url.username || url.password) {
-    throw new Error("PlakyClient: serverURL must not include credentials");
-  }
-  if (url.search || url.hash) {
-    throw new Error("PlakyClient: serverURL must not include a query or fragment");
-  }
-
-  url.pathname = url.pathname.replace(/\/+$/, "");
-  return url.toString().replace(/\/$/, "");
 }
 
 function mergeHeaderProviders(left: HeaderProvider | undefined, right: HeaderProvider | undefined): HeaderProvider | undefined {

@@ -1,10 +1,11 @@
 // AUTO-GENERATED. Source: openapi/plaky115-operation-metadata.json operationId=getWidget
 import { z } from "zod/v3";
 import { request } from "plaky115/runtime/http.js";
+import { int64Id } from "../../runtime/ids.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
-  widgetId: z.number().int().describe("Widget identifier."),
+  widgetId: int64Id.describe("Widget identifier."),
   status: z.enum(["OPEN","DONE"]).describe("Status filter.").optional(),
   limit: z.number().int().describe("Result limit.").optional(),
   labels: z.array(z.string()).describe("Labels to match.").optional(),

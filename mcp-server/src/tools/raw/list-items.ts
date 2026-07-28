@@ -1,13 +1,14 @@
 // AUTO-GENERATED. Source: openapi/plaky115-operation-metadata.json operationId=listItems
 import { z } from "zod/v3";
 import { request } from "plaky115/runtime/http.js";
+import { int64Id } from "../../runtime/ids.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
-  spaceId: z.number().int().describe("Represents unique space identifier across the system."),
-  boardId: z.number().int().describe("Represents unique board identifier across the system."),
-  boardViewId: z.number().int().describe("Represents unique board view identifier across the system.").optional(),
-  parentId: z.number().int().describe("Represents unique item identifier across the system.").optional(),
+  spaceId: int64Id.describe("Represents unique space identifier across the system."),
+  boardId: int64Id.describe("Represents unique board identifier across the system."),
+  boardViewId: int64Id.describe("Represents unique board view identifier across the system.").optional(),
+  parentId: int64Id.describe("Represents unique item identifier across the system.").optional(),
   subitemsBehaviour: z.enum(["INCLUDE","EXCLUDE","EMBED"]).describe("Indicates how subitems are treated in the response. By default subitems will be included. This flag is not applicable when **parentId** is set. **Options:** * **INCLUDE**: Includes subitems in the top level response. * **EXCLUDE**: Excludes subitems from the top level response. * **EMBED**: Excludes from top level and embeds into each parent with sorts and filters applied.").optional(),
   expand: z.array(z.enum(["space","board","group","createdBy","parent","subscriptions","fields"])).describe("Comma-separated list of relationships to expand into full objects instead of IDs.").optional(),
   page: z.number().int().describe("Page number.").optional(),

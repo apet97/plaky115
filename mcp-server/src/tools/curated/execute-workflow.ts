@@ -7,131 +7,34 @@ import {
   asSpaceId,
   asBoardId,
   asItemId,
+  resolveSpaceAndBoard,
+  resolveItemsInBoard,
+  resolveItemGroupInBoard,
+  resolveItemFileOnItem,
   type EntityRef,
   type ItemCreateBody,
 } from "plaky115";
 import type { McpToolContext, McpToolDefinition } from "../../runtime/types.js";
+import { createProgressReporter } from "../../runtime/progress.js";
+import { buildFileUploadFormData, estimateBase64DecodedBytes } from "../../runtime/upload.js";
 
-export const READ_WORKFLOW_IDS = ["workspace.map", "items.search", "comments.thread", "export.items"] as const;
-export const MUTATION_WORKFLOW_IDS = ["items.create", "items.updateFields", "comments.add"] as const;
-export const WORKFLOW_IDS = [...READ_WORKFLOW_IDS, ...MUTATION_WORKFLOW_IDS] as const;
+import {
+  MUTATION_WORKFLOW_IDS,
+  executeWorkflowInputSchema,
+  type EntityName,
+  type MutationWorkflowId,
+  type WorkflowId,
+} from "./workflow-schemas.js";
 
-export type ReadWorkflowId = (typeof READ_WORKFLOW_IDS)[number];
-export type MutationWorkflowId = (typeof MUTATION_WORKFLOW_IDS)[number];
-export type WorkflowId = (typeof WORKFLOW_IDS)[number];
-
-const entityRefSchema = z.union([z.number().int(), z.string().min(1)]).describe("Exact numeric ID or non-empty title reference.");
-
-function entityInput<T extends z.ZodRawShape>(required: readonly ("space" | "board" | "item")[], shape: T) {
-  return z.object({
-    space: entityRefSchema.describe("Space ID or title (compatibility spelling).").optional(),
-    spaceId: entityRefSchema.describe("Space ID or title.").optional(),
-    board: entityRefSchema.describe("Board ID or title (compatibility spelling).").optional(),
-    boardId: entityRefSchema.describe("Board ID or title.").optional(),
-    item: entityRefSchema.describe("Item ID (compatibility spelling).").optional(),
-    itemId: entityRefSchema.describe("Item ID.").optional(),
-    ...shape,
-  }).strict().superRefine((value, ctx) => {
-    for (const name of required) {
-      if (value[name] === undefined && value[`${name}Id`] === undefined) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `missing required input "${name}Id" (or "${name}")` });
-      }
-    }
-  });
-}
-
-const workspaceMapInputSchema = z.object({}).strict();
-const itemSearchInputSchema = entityInput(["space", "board"], {
-  query: z.string().describe("Item search query; empty matches every scanned item."),
-  limit: z.number().int().positive().describe("Maximum items to scan.").optional(),
-});
-const itemCreateBodySchema = z.object({
-  title: z.string().describe("Item title.").optional(),
-  fields: z.record(z.unknown()).describe("Item field values keyed by title or key.").optional(),
-  groupId: z.number().int().describe("Target item group ID.").optional(),
-  groupTitle: z.string().describe("Target item group title.").optional(),
-  parentId: z.number().int().describe("Parent item ID for a subitem.").optional(),
-}).strict();
-const itemCreateInputSchema = entityInput(["space", "board"], {
-  body: itemCreateBodySchema.describe("Exact ItemCreateRequest body."),
-});
-const itemUpdateFieldsInputSchema = entityInput(["space", "board"], {
-  updates: z.array(z.object({
-    itemId: entityRefSchema.describe("Item ID to update."),
-    body: z.record(z.unknown()).describe("Field update body keyed by field title or key."),
-  }).strict()).min(1).describe("One or more item field updates."),
-});
-const commentAddInputSchema = entityInput(["space", "board", "item"], {
-  text: z.string().min(1).describe("Non-empty comment text."),
-});
-const commentThreadInputSchema = entityInput(["space", "board", "item"], {
-  limit: z.number().int().nonnegative().describe("Maximum comments to return.").optional(),
-});
-const exportItemsInputSchema = entityInput(["space", "board"], {
-  format: z.enum(["jsonl", "csv"]).describe("Export format.").optional(),
-});
-
-const workspaceMapVariant = z.object({
-  workflowId: z.literal("workspace.map").describe("Map the workspace."),
-  input: workspaceMapInputSchema.describe("No workflow-specific fields.").optional(),
-}).strict();
-const itemSearchVariant = z.object({
-  workflowId: z.literal("items.search").describe("Search items."),
-  input: itemSearchInputSchema.describe("Exact item-search input."),
-}).strict();
-const commentThreadVariant = z.object({
-  workflowId: z.literal("comments.thread").describe("Read an item comment thread."),
-  input: commentThreadInputSchema.describe("Exact comment-thread input."),
-}).strict();
-const exportItemsVariant = z.object({
-  workflowId: z.literal("export.items").describe("Export board items."),
-  input: exportItemsInputSchema.describe("Exact export input."),
-}).strict();
-const itemCreateVariant = z.object({
-  workflowId: z.literal("items.create").describe("Create an item."),
-  input: itemCreateInputSchema.describe("Exact item-create input."),
-  dryRun: z.boolean().describe("Preview unless explicitly false.").optional(),
-}).strict();
-const itemUpdateFieldsVariant = z.object({
-  workflowId: z.literal("items.updateFields").describe("Update fields on multiple items."),
-  input: itemUpdateFieldsInputSchema.describe("Exact bulk-update input."),
-  dryRun: z.boolean().describe("Preview unless explicitly false.").optional(),
-}).strict();
-const commentAddVariant = z.object({
-  workflowId: z.literal("comments.add").describe("Add an item comment."),
-  input: commentAddInputSchema.describe("Exact comment-add input."),
-  dryRun: z.boolean().describe("Preview unless explicitly false.").optional(),
-}).strict();
-
-const itemCreatePlanVariant = itemCreateVariant.omit({ dryRun: true });
-const itemUpdateFieldsPlanVariant = itemUpdateFieldsVariant.omit({ dryRun: true });
-const commentAddPlanVariant = commentAddVariant.omit({ dryRun: true });
-
-export const readWorkflowInputSchema = z.discriminatedUnion("workflowId", [
-  workspaceMapVariant,
-  itemSearchVariant,
-  commentThreadVariant,
-  exportItemsVariant,
-]);
-export const mutationWorkflowInputSchema = z.discriminatedUnion("workflowId", [
-  itemCreateVariant,
-  itemUpdateFieldsVariant,
-  commentAddVariant,
-]);
-export const mutationPlanInputSchema = z.discriminatedUnion("workflowId", [
-  itemCreatePlanVariant,
-  itemUpdateFieldsPlanVariant,
-  commentAddPlanVariant,
-]);
-export const executeWorkflowInputSchema = z.discriminatedUnion("workflowId", [
-  workspaceMapVariant,
-  itemSearchVariant,
-  commentThreadVariant,
-  exportItemsVariant,
-  itemCreateVariant,
-  itemUpdateFieldsVariant,
-  commentAddVariant,
-]);
+export {
+  MUTATION_WORKFLOW_IDS,
+  READ_WORKFLOW_IDS,
+  WORKFLOW_IDS,
+  executeWorkflowInputSchema,
+  mutationPlanInputSchema,
+  mutationWorkflowInputSchema,
+  readWorkflowInputSchema,
+} from "./workflow-schemas.js";
 
 export const executeWorkflowTool: McpToolDefinition = {
   name: "plaky_execute_workflow",
@@ -158,47 +61,99 @@ export async function executeWorkflow(
   const workflowId = input.workflowId;
   const args = (input.input ?? {}) as Record<string, unknown>;
   const dryRun = "dryRun" in input ? input.dryRun : undefined;
+  const resolvedArgs = isMutationWorkflow(workflowId)
+    ? await resolveMutationInput(workflowId, args, ctx)
+    : args;
   if (isMutationWorkflow(workflowId) && dryRun !== false) {
-    return ctx.respond({ workflowId, dryRun: true, input: args });
+    return ctx.respond({ workflowId, dryRun: true, input: mutationPlanReceiptInput(workflowId, resolvedArgs) });
   }
 
   switch (workflowId) {
     case "workspace.map":
       return ctx.respond(await workspaceMap(ctx.client), { compactKind: "raw" });
     case "items.search": {
+      const limit = (args["limit"] as number | undefined) ?? 200;
+      const progress = createProgressReporter(ctx.progress, limit, "items scanned");
       const result = await searchItemsDetailed(ctx.client, {
         space: readRef(args, "space") as EntityRef,
         board: readRef(args, "board") as EntityRef,
         query: args["query"] as string,
-        ...(args["limit"] !== undefined ? { limit: args["limit"] as number } : {}),
+        limit,
+        signal: ctx.signal,
+        onProgress: (scanned) => progress(scanned),
       });
       return ctx.respond(result);
     }
     case "items.create":
       return ctx.respond(await ctx.client.items.create({
-        spaceId: asSpaceId(readRef(args, "space")),
-        boardId: asBoardId(readRef(args, "board")),
-        body: args["body"] as ItemCreateBody,
-      }), { compactKind: "item" });
+        spaceId: asSpaceId(readRef(resolvedArgs, "space")),
+        boardId: asBoardId(readRef(resolvedArgs, "board")),
+        body: resolvedArgs["body"] as ItemCreateBody,
+      }, { signal: ctx.signal }), { compactKind: "item" });
     case "items.updateFields":
+      {
+      const updates = resolvedArgs["updates"] as Array<{ itemId: string | number; body: Record<string, unknown> }>;
+      const progress = createProgressReporter(ctx.progress, updates.length, "items updated");
       return ctx.respond(await bulkUpdateItems(ctx.client, {
-        space: readRef(args, "space") as EntityRef,
-        board: readRef(args, "board") as EntityRef,
-        updates: args["updates"] as Array<{ itemId: string | number; body: Record<string, unknown> }>,
+        space: readRef(resolvedArgs, "space") as EntityRef,
+        board: readRef(resolvedArgs, "board") as EntityRef,
+        updates,
         dryRun: false,
+        throwOnError: true,
+        signal: ctx.signal,
+        onProgress: (completed) => progress(completed),
       }));
+      }
     case "comments.add":
       return ctx.respond(await ctx.client.comments.create({
-        spaceId: asSpaceId(readRef(args, "space")),
-        boardId: asBoardId(readRef(args, "board")),
-        itemId: asItemId(readRef(args, "item")),
-        body: { text: args["text"] as string },
-      }), { compactKind: "comment" });
+        spaceId: asSpaceId(readRef(resolvedArgs, "space")),
+        boardId: asBoardId(readRef(resolvedArgs, "board")),
+        itemId: asItemId(readRef(resolvedArgs, "item")),
+        body: { text: resolvedArgs["text"] as string },
+      }, { signal: ctx.signal }), { compactKind: "comment" });
+    case "itemGroups.create": {
+      const result = await ctx.client.itemGroups.create({
+        spaceId: asSpaceId(readRef(resolvedArgs, "space")), boardId: asBoardId(readRef(resolvedArgs, "board")),
+        body: resolvedArgs["body"] as { title: string; color?: string; ranking?: string },
+      }, { signal: ctx.signal });
+      return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result, "itemGroupId"));
+    }
+    case "itemGroups.update": {
+      const result = await ctx.client.itemGroups.update({
+        spaceId: asSpaceId(readRef(resolvedArgs, "space")), boardId: asBoardId(readRef(resolvedArgs, "board")),
+        itemGroupId: readRef(resolvedArgs, "itemGroup"),
+        body: resolvedArgs["body"] as { title: string; ranking: string; color?: string },
+      }, { signal: ctx.signal });
+      return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result));
+    }
+    case "itemFiles.upload": {
+      const form = buildFileUploadFormData({
+        fileBase64: resolvedArgs["fileBase64"] as string,
+        fileName: resolvedArgs["fileName"] as string,
+        ...(resolvedArgs["contentType"] !== undefined ? { contentType: resolvedArgs["contentType"] as string } : {}),
+      });
+      const file = form.get("file");
+      if (!(file instanceof Blob)) throw new Error("validated upload did not produce a file");
+      const result = await ctx.client.itemFiles.upload({
+        spaceId: asSpaceId(readRef(resolvedArgs, "space")), boardId: asBoardId(readRef(resolvedArgs, "board")),
+        itemId: asItemId(readRef(resolvedArgs, "item")), file, fileName: resolvedArgs["fileName"] as string,
+      }, { signal: ctx.signal });
+      return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result, "itemFileId"));
+    }
+    case "itemFiles.update": {
+      const result = await ctx.client.itemFiles.update({
+        spaceId: asSpaceId(readRef(resolvedArgs, "space")), boardId: asBoardId(readRef(resolvedArgs, "board")),
+        itemId: asItemId(readRef(resolvedArgs, "item")), itemFileId: readRef(resolvedArgs, "itemFile"),
+        body: resolvedArgs["body"] as { name: string; description?: string },
+      }, { signal: ctx.signal });
+      return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result));
+    }
     case "comments.thread": {
+      const resolved = await resolveEntityPath(args, true, ctx);
       const result = await ctx.client.comments.listAll({
-        spaceId: asSpaceId(readRef(args, "space")),
-        boardId: asBoardId(readRef(args, "board")),
-        itemId: asItemId(readRef(args, "item")),
+        spaceId: asSpaceId(readRef(resolved, "space")),
+        boardId: asBoardId(readRef(resolved, "board")),
+        itemId: asItemId(readRef(resolved, "item")),
         ...(args["limit"] !== undefined ? { limit: args["limit"] as number } : {}),
       });
       return ctx.respond({ data: result, hasMore: false }, { compactKind: "comment" });
@@ -215,7 +170,103 @@ export async function executeWorkflow(
   }
 }
 
-function readRef(args: Record<string, unknown>, name: "space" | "board" | "item"): string | number {
+export async function resolveMutationInput(
+  workflowId: MutationWorkflowId,
+  args: Record<string, unknown>,
+  ctx: McpToolContext,
+): Promise<Record<string, unknown>> {
+  if (workflowId === "items.updateFields") {
+    const resolved = await resolveEntityPath(args, false, ctx);
+    const updates = args["updates"] as Array<{ itemId: EntityRef; body: Record<string, unknown> }>;
+    const items = await resolveItemsInBoard(ctx.client, {
+      spaceId: readRef(resolved, "space"),
+      boardId: readRef(resolved, "board"),
+      items: updates.map((update) => update.itemId),
+    });
+    return {
+      ...resolved,
+      updates: updates.map((update, index) => ({ ...update, itemId: exactId(items[index], "item") })),
+    };
+  }
+  if (workflowId === "itemGroups.update") {
+    const resolved = await resolveEntityPath(args, false, ctx);
+    const itemGroup = await resolveItemGroupInBoard(ctx.client, {
+      spaceId: readRef(resolved, "space"), boardId: readRef(resolved, "board"), itemGroup: readRef(args, "itemGroup"),
+    });
+    return { ...resolved, itemGroupId: exactId(itemGroup, "item group") };
+  }
+  if (workflowId === "itemFiles.update") {
+    const resolved = await resolveEntityPath(args, true, ctx);
+    const itemFile = await resolveItemFileOnItem(ctx.client, {
+      spaceId: readRef(resolved, "space"), boardId: readRef(resolved, "board"), itemId: readRef(resolved, "item"),
+      itemFile: readRef(args, "itemFile"),
+    });
+    return { ...resolved, itemFileId: exactId(itemFile, "item file") };
+  }
+  return resolveEntityPath(args, workflowId === "comments.add" || workflowId.startsWith("itemFiles."), ctx);
+}
+
+export function mutationPlanReceiptInput(workflowId: MutationWorkflowId, args: Record<string, unknown>): Record<string, unknown> {
+  if (workflowId !== "itemFiles.upload") return args;
+  const { fileBase64, ...safe } = args;
+  return { ...safe, decodedBytes: estimateBase64DecodedBytes(fileBase64 as string) };
+}
+
+async function resolveEntityPath(
+  args: Record<string, unknown>,
+  includeItem: boolean,
+  ctx: McpToolContext,
+): Promise<Record<string, unknown>> {
+  const { space, board } = await resolveSpaceAndBoard(ctx.client, {
+    space: readRef(args, "space") as EntityRef,
+    board: readRef(args, "board") as EntityRef,
+  });
+  const resolved: Record<string, unknown> = {
+    ...withoutAliases(args),
+    spaceId: exactId(space, "space"),
+    boardId: exactId(board, "board"),
+  };
+  if (includeItem) {
+    const [item] = await resolveItemsInBoard(ctx.client, {
+      spaceId: exactId(space, "space"),
+      boardId: exactId(board, "board"),
+      items: [readRef(args, "item") as EntityRef],
+    });
+    resolved["itemId"] = exactId(item, "item");
+  }
+  return resolved;
+}
+
+function withoutAliases(args: Record<string, unknown>): Record<string, unknown> {
+  const {
+    space: _space, board: _board, item: _item, itemGroup: _itemGroup, itemFile: _itemFile,
+    spaceId: _spaceId, boardId: _boardId, itemId: _itemId, itemGroupId: _itemGroupId, itemFileId: _itemFileId,
+    ...rest
+  } = args;
+  return rest;
+}
+
+function exactId(value: { id?: string | number | undefined } | undefined, label: string): string {
+  if (value?.id === undefined) throw new Error(`${label} resolver returned no ID`);
+  return String(value.id);
+}
+
+function mutationReceipt(
+  workflowId: MutationWorkflowId,
+  resolved: Record<string, unknown>,
+  result: { id?: string | number | undefined },
+  createdId?: "itemGroupId" | "itemFileId",
+): Record<string, unknown> {
+  const targetIds = Object.fromEntries(
+    ["spaceId", "boardId", "itemId", "itemGroupId", "itemFileId"]
+      .filter((key) => resolved[key] !== undefined)
+      .map((key) => [key, resolved[key]]),
+  );
+  if (createdId && result.id !== undefined) targetIds[createdId] = String(result.id);
+  return { workflowId, status: "completed", targetIds, result };
+}
+
+function readRef(args: Record<string, unknown>, name: EntityName): string | number {
   return (args[name] ?? args[`${name}Id`]) as string | number;
 }
 

@@ -1,12 +1,13 @@
 // AUTO-GENERATED. Source: openapi/plaky115-operation-metadata.json operationId=getItem
 import { z } from "zod/v3";
 import { request } from "plaky115/runtime/http.js";
+import { int64Id } from "../../runtime/ids.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
-  spaceId: z.number().int().describe("Represents unique space identifier across the system."),
-  boardId: z.number().int().describe("Represents unique board identifier across the system."),
-  itemId: z.number().int().describe("Represents unique item identifier across the system."),
+  spaceId: int64Id.describe("Represents unique space identifier across the system."),
+  boardId: int64Id.describe("Represents unique board identifier across the system."),
+  itemId: int64Id.describe("Represents unique item identifier across the system."),
   expand: z.array(z.enum(["space","board","group","createdBy","parent","subscriptions","fields"])).describe("Comma-separated list of relationships to expand into full objects instead of IDs.").optional(),
 });
 const output = z.object({}).passthrough();

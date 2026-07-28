@@ -425,18 +425,25 @@ func rawCommandCases() []rawCase {
 			wantPath:    "/v1/public/spaces/1/boards/2/items/3/comments/5",
 		},
 
-		// ---- path-segment escaping ----
+		// ---- path identifier validation and non-ID escaping ----
 		{
-			name:       "get-space escapes slash and space",
-			args:       []string{"get-space", "--space-id", "a/b c"},
+			name:       "get-space preserves maximum signed int64 ID",
+			args:       []string{"get-space", "--space-id", "9223372036854775807"},
 			wantMethod: http.MethodGet,
-			wantPath:   "/v1/public/spaces/a%2Fb%20c",
+			wantPath:   "/v1/public/spaces/9223372036854775807",
 		},
 		{
-			name:       "get-item escapes every path segment",
-			args:       []string{"get-item", "--space-id", "s p", "--board-id", "b/d", "--item-id", "i?q"},
-			wantMethod: http.MethodGet,
-			wantPath:   "/v1/public/spaces/s%20p/boards/b%2Fd/items/i%3Fq",
+			name:       "get-space rejects a noncanonical ID",
+			args:       []string{"get-space", "--space-id", "01"},
+			wantErr:    "invalid non-negative int64 ID",
+			wantNoCall: true,
+		},
+		{
+			name:       "update-item-field escapes its non-ID field key",
+			args:       []string{"update-item-field", "--space-id", "1", "--board-id", "2", "--item-id", "3", "--item-field-key", "status/key", "--body", `{}`},
+			wantMethod: http.MethodPatch,
+			wantPath:   "/v1/public/spaces/1/boards/2/items/3/fields/status%2Fkey",
+			wantBody:   map[string]any{},
 		},
 
 		// ---- required-input gates: API must not be reached ----
