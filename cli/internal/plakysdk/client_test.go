@@ -55,6 +55,22 @@ func TestClientDoPreservesLargeJSONNumber(t *testing.T) {
 	}
 }
 
+func TestGeneratedOperationsRejectInvalidIDsBeforeNetwork(t *testing.T) {
+	requests := 0
+	client := testClient(t, roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		requests++
+		return jsonResponse(http.StatusOK, `{}`), nil
+	}))
+	for _, id := range []string{"-1", "01", "9223372036854775808"} {
+		if _, err := client.GetSpace(context.Background(), GetSpaceOptions{SpaceId: id}); err == nil {
+			t.Fatalf("GetSpace(%q) succeeded", id)
+		}
+	}
+	if requests != 0 {
+		t.Fatalf("invalid IDs made %d requests", requests)
+	}
+}
+
 func TestClientDoConvertsOnlySafeJSONIntegers(t *testing.T) {
 	const payload = `{"safe":9007199254740991,"positiveBoundary":9007199254740992,"negativeBoundary":-9007199254740992}`
 	client := serverClient(t, http.StatusOK, payload, "")

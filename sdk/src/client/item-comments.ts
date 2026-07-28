@@ -1,5 +1,5 @@
 import type { PlakyClient } from "./client.js";
-import { pathSegment } from "./path.js";
+import { idPathSegment } from "./path.js";
 import { paginate, type PaginatedIterator } from "../runtime/pagination.js";
 import { resolveExplicitIdempotencyKey } from "../runtime/idempotency.js";
 import type { PlakyRequestOverrides } from "../runtime/types.js";
@@ -42,7 +42,7 @@ export class ItemCommentsResource {
     const res = await this.client.request<PagedResult<CommentShape> | CommentShape[]>(
       {
         method: "GET",
-        path: `/v1/public/spaces/${pathSegment(spaceId)}/boards/${pathSegment(boardId)}/items/${pathSegment(itemId)}/comments`,
+        path: `/v1/public/spaces/${idPathSegment(spaceId)}/boards/${idPathSegment(boardId)}/items/${idPathSegment(itemId)}/comments`,
         query,
         operationId: "listItemComments",
       },
@@ -75,7 +75,7 @@ export class ItemCommentsResource {
     return this.client.request<CommentShape>(
       {
         method: "POST",
-        path: `/v1/public/spaces/${pathSegment(params.spaceId)}/boards/${pathSegment(params.boardId)}/items/${pathSegment(params.itemId)}/comments`,
+        path: `/v1/public/spaces/${idPathSegment(params.spaceId)}/boards/${idPathSegment(params.boardId)}/items/${idPathSegment(params.itemId)}/comments`,
         body: params.body,
         operationId: "createItemComment",
       },
@@ -99,7 +99,7 @@ export class ItemCommentsResource {
     return this.client.request<CommentShape>(
       {
         method: "PUT",
-        path: `/v1/public/spaces/${pathSegment(params.spaceId)}/boards/${pathSegment(params.boardId)}/items/${pathSegment(params.itemId)}/comments/${pathSegment(params.itemCommentId)}`,
+        path: `/v1/public/spaces/${idPathSegment(params.spaceId)}/boards/${idPathSegment(params.boardId)}/items/${idPathSegment(params.itemId)}/comments/${idPathSegment(params.itemCommentId)}`,
         body: params.body,
         operationId: "updateItemComment",
       },
@@ -119,7 +119,7 @@ export class ItemCommentsResource {
     await this.client.request<void>(
       {
         method: "DELETE",
-        path: `/v1/public/spaces/${pathSegment(params.spaceId)}/boards/${pathSegment(params.boardId)}/items/${pathSegment(params.itemId)}/comments/${pathSegment(params.itemCommentId)}`,
+        path: `/v1/public/spaces/${idPathSegment(params.spaceId)}/boards/${idPathSegment(params.boardId)}/items/${idPathSegment(params.itemId)}/comments/${idPathSegment(params.itemCommentId)}`,
         operationId: "deleteItemComment",
         responseType: "void",
       },

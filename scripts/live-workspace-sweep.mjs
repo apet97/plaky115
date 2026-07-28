@@ -30,7 +30,7 @@ import {
 import { redact, serializeLiveFailure, serializeLiveSummary } from "./live/safe-output.mjs";
 import {
   assertBareFileList, assertVoidResult, createFixtureFormData, createTextFixture,
-  preflightLiveSweep, summarizeDownloadLink,
+  normalizePlakyBaseURL, preflightLiveSweep, summarizeDownloadLink,
 } from "./live/contracts.mjs";
 
 export {
@@ -38,12 +38,12 @@ export {
   createMutationAttemptLedger, createRunMarker, createShutdownCoordinator, executeWithCleanup,
   isOwnedArtifact, serializeLiveFailure, serializeLiveSummary, trackArtifact, verifyDeleteOutcome, waitForAbsent,
   assertBareFileList, assertVoidResult, createFixtureFormData, createTextFixture,
-  preflightLiveSweep, summarizeDownloadLink,
+  normalizePlakyBaseURL, preflightLiveSweep, summarizeDownloadLink,
 };
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const apiKey = process.env["PLAKY115_API_KEY"] ?? process.env["PLAKY115_API_KEY_AUTH"];
-const baseURL = process.env["PLAKY115_BASE_URL"] ?? "https://api.plaky.com";
+const baseURL = normalizePlakyBaseURL(process.env["PLAKY115_BASE_URL"] ?? "https://api.plaky.com");
 const spaceId = String(process.env["PLAKY115_SMOKE_SPACE_ID"] ?? "");
 const boardId = String(process.env["PLAKY115_SMOKE_BOARD_ID"] ?? "");
 const wantSDK = process.env["PLAKY115_LIVE_SDK"] !== "0";
@@ -143,7 +143,7 @@ async function api(method, path, body, options = {}) {
   const headers = { "X-API-Key": apiKey, Accept: "application/json" };
   const multipart = body instanceof FormData;
   if (body !== undefined && !multipart) headers["Content-Type"] = "application/json";
-  const init = { method, headers };
+  const init = { method, headers, redirect: "error" };
   if (body !== undefined) init.body = multipart ? body : JSON.stringify(body);
   const resp = await fetch(url, init);
   const text = await resp.text();
@@ -178,6 +178,7 @@ async function itemGroupIsAbsent(itemGroupId) {
   const path = `/v1/public/spaces/${spaceId}/boards/${boardId}/item-groups/${itemGroupId}`;
   const response = await fetch(`${baseURL.replace(/\/$/, "")}${path}`, {
     headers: { "X-API-Key": apiKey, Accept: "application/json" },
+    redirect: "error",
   });
   await response.arrayBuffer();
   if (response.status === 404) return true;

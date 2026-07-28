@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/textproto"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -378,6 +379,14 @@ func operationError(req Request, action string, err error) error {
 
 func (c *Client) ServerURL() string { return c.opts.ServerURL }
 func (c *Client) APIKey() string    { return c.opts.APIKey }
+
+func CanonicalInt64ID(value string) (string, error) {
+	parsed, err := strconv.ParseUint(value, 10, 63)
+	if err != nil || strconv.FormatUint(parsed, 10) != value {
+		return "", fmt.Errorf("invalid non-negative int64 ID %q", value)
+	}
+	return value, nil
+}
 func (c *Client) Timeout() time.Duration {
 	return c.opts.Timeout
 }

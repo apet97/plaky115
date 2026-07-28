@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/apet97/plaky115-cli/internal/plakydx"
+	"github.com/apet97/plaky115-cli/internal/plakysdk"
 	"github.com/spf13/cobra"
 )
 
@@ -61,8 +62,14 @@ func mustID(v any) (string, error) {
 		}
 		return strconv.FormatInt(int64(t), 10), nil
 	case int:
+		if t < 0 {
+			return "", fmt.Errorf("invalid numeric id %v", t)
+		}
 		return strconv.FormatInt(int64(t), 10), nil
 	case int64:
+		if t < 0 {
+			return "", fmt.Errorf("invalid numeric id %v", t)
+		}
 		return strconv.FormatInt(t, 10), nil
 	default:
 		return "", fmt.Errorf("unexpected id type %T", v)
@@ -70,11 +77,7 @@ func mustID(v any) (string, error) {
 }
 
 func canonicalInt64(value string) (string, error) {
-	parsed, err := strconv.ParseInt(value, 10, 64)
-	if err != nil || strconv.FormatInt(parsed, 10) != value {
-		return "", fmt.Errorf("invalid int64 id %q", value)
-	}
-	return value, nil
+	return plakysdk.CanonicalInt64ID(value)
 }
 
 func drainPaged(pageSize int, fetch func(page int, pageSize int) (any, error)) ([]map[string]any, error) {

@@ -3,12 +3,16 @@ export function createProgressReporter(
   total: number,
   message: string,
   maxUpdates = 20,
-): (progress: number) => void {
+): (progress: number) => Promise<void> {
   const step = Math.max(1, Math.ceil(total / maxUpdates));
   let last = 0;
-  return (progress) => {
+  return async (progress) => {
     if (progress < total && progress - last < step) return;
     last = progress;
-    void send(progress, total, message).catch(() => {});
+    try {
+      await send(progress, total, message);
+    } catch {
+      // Progress is best-effort and must not turn a completed tool into a failure.
+    }
   };
 }

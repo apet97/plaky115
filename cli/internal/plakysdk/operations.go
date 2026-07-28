@@ -44,6 +44,9 @@ type ListSpacesOptions struct {
 
 // GetSpace executes the getSpace operation: GET /v1/public/spaces/{spaceId}
 func (c *Client) GetSpace(ctx context.Context, opts GetSpaceOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll("/v1/public/spaces/{spaceId}", "{spaceId}", url.PathEscape(opts.SpaceId))
 	query := url.Values{}
 	if len(opts.Expand) > 0 {
@@ -65,6 +68,9 @@ type GetSpaceOptions struct {
 
 // ListBoards executes the listBoards operation: GET /v1/public/spaces/{spaceId}/boards
 func (c *Client) ListBoards(ctx context.Context, opts ListBoardsOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards", "{spaceId}", url.PathEscape(opts.SpaceId))
 	query := url.Values{}
 	if opts.Page != 0 {
@@ -90,6 +96,12 @@ type ListBoardsOptions struct {
 
 // GetBoard executes the getBoard operation: GET /v1/public/spaces/{spaceId}/boards/{boardId}
 func (c *Client) GetBoard(ctx context.Context, opts GetBoardOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId))
 	req := Request{Method: "GET", Path: path}
 	var out any
@@ -106,6 +118,12 @@ type GetBoardOptions struct {
 
 // ListItemGroups executes the listItemGroups operation: GET /v1/public/spaces/{spaceId}/boards/{boardId}/item-groups
 func (c *Client) ListItemGroups(ctx context.Context, opts ListItemGroupsOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId))
 	query := url.Values{}
 	if opts.Page != 0 {
@@ -132,6 +150,12 @@ type ListItemGroupsOptions struct {
 
 // CreateItemGroup executes the createItemGroup operation: POST /v1/public/spaces/{spaceId}/boards/{boardId}/item-groups
 func (c *Client) CreateItemGroup(ctx context.Context, opts CreateItemGroupOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId))
 	req := Request{Method: "POST", Path: path}
 	jsonBody := opts.JSONBody
@@ -159,6 +183,15 @@ type CreateItemGroupOptions struct {
 
 // DeleteItemGroup executes the deleteItemGroup operation: DELETE /v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}
 func (c *Client) DeleteItemGroup(ctx context.Context, opts DeleteItemGroupOptions) error {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemGroupId); err != nil {
+		return err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemGroupId}", url.PathEscape(opts.ItemGroupId))
 	req := Request{Method: "DELETE", Path: path}
 	return c.Do(ctx, req, nil)
@@ -172,6 +205,15 @@ type DeleteItemGroupOptions struct {
 
 // GetItemGroup executes the getItemGroup operation: GET /v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}
 func (c *Client) GetItemGroup(ctx context.Context, opts GetItemGroupOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemGroupId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemGroupId}", url.PathEscape(opts.ItemGroupId))
 	req := Request{Method: "GET", Path: path}
 	var out any
@@ -189,6 +231,15 @@ type GetItemGroupOptions struct {
 
 // UpdateItemGroup executes the updateItemGroup operation: PUT /v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}
 func (c *Client) UpdateItemGroup(ctx context.Context, opts UpdateItemGroupOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemGroupId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemGroupId}", url.PathEscape(opts.ItemGroupId))
 	req := Request{Method: "PUT", Path: path}
 	jsonBody := opts.JSONBody
@@ -217,6 +268,15 @@ type UpdateItemGroupOptions struct {
 
 // ArchiveItemGroup executes the archiveItemGroup operation: PUT /v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}/archive
 func (c *Client) ArchiveItemGroup(ctx context.Context, opts ArchiveItemGroupOptions) error {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemGroupId); err != nil {
+		return err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups/{itemGroupId}/archive", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemGroupId}", url.PathEscape(opts.ItemGroupId))
 	req := Request{Method: "PUT", Path: path}
 	return c.Do(ctx, req, nil)
@@ -230,6 +290,12 @@ type ArchiveItemGroupOptions struct {
 
 // ListItems executes the listItems operation: GET /v1/public/spaces/{spaceId}/boards/{boardId}/items
 func (c *Client) ListItems(ctx context.Context, opts ListItemsOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId))
 	query := url.Values{}
 	if opts.BoardViewId != 0 {
@@ -272,6 +338,12 @@ type ListItemsOptions struct {
 
 // CreateItem executes the createItem operation: POST /v1/public/spaces/{spaceId}/boards/{boardId}/items
 func (c *Client) CreateItem(ctx context.Context, opts CreateItemOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId))
 	req := Request{Method: "POST", Path: path}
 	jsonBody := opts.JSONBody
@@ -299,6 +371,15 @@ type CreateItemOptions struct {
 
 // DeleteItem executes the deleteItem operation: DELETE /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}
 func (c *Client) DeleteItem(ctx context.Context, opts DeleteItemOptions) error {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemId); err != nil {
+		return err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId))
 	req := Request{Method: "DELETE", Path: path}
 	return c.Do(ctx, req, nil)
@@ -312,6 +393,15 @@ type DeleteItemOptions struct {
 
 // GetItem executes the getItem operation: GET /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}
 func (c *Client) GetItem(ctx context.Context, opts GetItemOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId))
 	query := url.Values{}
 	if len(opts.Expand) > 0 {
@@ -335,6 +425,15 @@ type GetItemOptions struct {
 
 // ListItemComments executes the listItemComments operation: GET /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments
 func (c *Client) ListItemComments(ctx context.Context, opts ListItemCommentsOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId))
 	req := Request{Method: "GET", Path: path}
 	var out any
@@ -352,6 +451,15 @@ type ListItemCommentsOptions struct {
 
 // CreateItemComment executes the createItemComment operation: POST /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments
 func (c *Client) CreateItemComment(ctx context.Context, opts CreateItemCommentOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId))
 	req := Request{Method: "POST", Path: path}
 	jsonBody := opts.JSONBody
@@ -380,6 +488,18 @@ type CreateItemCommentOptions struct {
 
 // DeleteItemComment executes the deleteItemComment operation: DELETE /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}
 func (c *Client) DeleteItemComment(ctx context.Context, opts DeleteItemCommentOptions) error {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemId); err != nil {
+		return err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemCommentId); err != nil {
+		return err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId)), "{itemCommentId}", url.PathEscape(opts.ItemCommentId))
 	req := Request{Method: "DELETE", Path: path}
 	return c.Do(ctx, req, nil)
@@ -394,6 +514,18 @@ type DeleteItemCommentOptions struct {
 
 // UpdateItemComment executes the updateItemComment operation: PUT /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}
 func (c *Client) UpdateItemComment(ctx context.Context, opts UpdateItemCommentOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemCommentId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId)), "{itemCommentId}", url.PathEscape(opts.ItemCommentId))
 	req := Request{Method: "PUT", Path: path}
 	jsonBody := opts.JSONBody
@@ -423,6 +555,18 @@ type UpdateItemCommentOptions struct {
 
 // ReplaceCommentReactions executes the replaceCommentReactions operation: PUT /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}/reactions
 func (c *Client) ReplaceCommentReactions(ctx context.Context, opts ReplaceCommentReactionsOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemCommentId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}/reactions", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId)), "{itemCommentId}", url.PathEscape(opts.ItemCommentId))
 	req := Request{Method: "PUT", Path: path}
 	jsonBody := opts.JSONBody
@@ -452,6 +596,15 @@ type ReplaceCommentReactionsOptions struct {
 
 // UpdateItemFields executes the updateItemFields operation: PATCH /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields
 func (c *Client) UpdateItemFields(ctx context.Context, opts UpdateItemFieldsOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId))
 	req := Request{Method: "PATCH", Path: path}
 	jsonBody := opts.JSONBody
@@ -480,6 +633,15 @@ type UpdateItemFieldsOptions struct {
 
 // UpdateItemField executes the updateItemField operation: PATCH /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields/{itemFieldKey}
 func (c *Client) UpdateItemField(ctx context.Context, opts UpdateItemFieldOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields/{itemFieldKey}", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId)), "{itemFieldKey}", url.PathEscape(opts.ItemFieldKey))
 	req := Request{Method: "PATCH", Path: path}
 	jsonBody := opts.JSONBody
@@ -509,6 +671,15 @@ type UpdateItemFieldOptions struct {
 
 // ListItemFiles executes the listItemFiles operation: GET /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files
 func (c *Client) ListItemFiles(ctx context.Context, opts ListItemFilesOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId))
 	req := Request{Method: "GET", Path: path}
 	var out any
@@ -526,6 +697,15 @@ type ListItemFilesOptions struct {
 
 // UploadItemFile executes the uploadItemFile operation: POST /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files
 func (c *Client) UploadItemFile(ctx context.Context, opts UploadItemFileOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId))
 	req := Request{Method: "POST", Path: path}
 	req.Multipart = opts.Multipart
@@ -547,6 +727,18 @@ type UploadItemFileOptions struct {
 
 // DeleteItemFile executes the deleteItemFile operation: DELETE /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}
 func (c *Client) DeleteItemFile(ctx context.Context, opts DeleteItemFileOptions) error {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemId); err != nil {
+		return err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemFileId); err != nil {
+		return err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId)), "{itemFileId}", url.PathEscape(opts.ItemFileId))
 	req := Request{Method: "DELETE", Path: path}
 	return c.Do(ctx, req, nil)
@@ -561,6 +753,18 @@ type DeleteItemFileOptions struct {
 
 // GetItemFile executes the getItemFile operation: GET /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}
 func (c *Client) GetItemFile(ctx context.Context, opts GetItemFileOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemFileId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId)), "{itemFileId}", url.PathEscape(opts.ItemFileId))
 	req := Request{Method: "GET", Path: path}
 	var out any
@@ -579,6 +783,18 @@ type GetItemFileOptions struct {
 
 // UpdateItemFile executes the updateItemFile operation: PUT /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}
 func (c *Client) UpdateItemFile(ctx context.Context, opts UpdateItemFileOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemFileId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId)), "{itemFileId}", url.PathEscape(opts.ItemFileId))
 	req := Request{Method: "PUT", Path: path}
 	jsonBody := opts.JSONBody
@@ -608,6 +824,18 @@ type UpdateItemFileOptions struct {
 
 // GetItemFileDownload executes the getItemFileDownload operation: GET /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}/download
 func (c *Client) GetItemFileDownload(ctx context.Context, opts GetItemFileDownloadOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemFileId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}/download", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId)), "{itemFileId}", url.PathEscape(opts.ItemFileId))
 	req := Request{Method: "GET", Path: path}
 	var out any
@@ -626,6 +854,15 @@ type GetItemFileDownloadOptions struct {
 
 // ListSubitems executes the listSubitems operation: GET /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/sub-items
 func (c *Client) ListSubitems(ctx context.Context, opts ListSubitemsOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
+		return nil, err
+	}
+	if _, err := CanonicalInt64ID(opts.ItemId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/sub-items", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId))
 	query := url.Values{}
 	if len(opts.Expand) > 0 {
@@ -681,6 +918,9 @@ type ListTeamsOptions struct {
 
 // GetTeam executes the getTeam operation: GET /v1/public/teams/{teamId}
 func (c *Client) GetTeam(ctx context.Context, opts GetTeamOptions) (any, error) {
+	if _, err := CanonicalInt64ID(opts.TeamId); err != nil {
+		return nil, err
+	}
 	path := strings.ReplaceAll("/v1/public/teams/{teamId}", "{teamId}", url.PathEscape(opts.TeamId))
 	req := Request{Method: "GET", Path: path}
 	var out any

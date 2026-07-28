@@ -7,6 +7,7 @@ import {
   assertVoidResult,
   createFixtureFormData,
   createTextFixture,
+  normalizePlakyBaseURL,
   summarizeDownloadLink,
 } from "./live-workspace-sweep.mjs";
 import { redact } from "./live/safe-output.mjs";
@@ -162,6 +163,14 @@ test("live sweep helpers enforce multipart, void, array, and sensitive-output co
   );
   assert.throws(() => summarizeDownloadLink({ url: "", expiresInSeconds: 60 }), /non-empty HTTPS URL/);
   assert.throws(() => summarizeDownloadLink({ url: "https://example.invalid", expiresInSeconds: "60" }), /finite numeric expiry/);
+});
+
+test("live sweep base URL accepts only credential-free HTTPS Plaky API hosts", () => {
+  assert.equal(normalizePlakyBaseURL("https://account.api.plaky.com/"), "https://account.api.plaky.com");
+  for (const value of ["http://api.plaky.com", "https://example.com", "https://user:pass@api.plaky.com", "https://api.plaky.com?token=x", "not-a-url"]) {
+    assert.throws(() => normalizePlakyBaseURL(value), /PLAKY115_BASE_URL/);
+  }
+  assert.match(liveSweep, /redirect: "error"/);
 });
 
 test("live sweep never records download URLs or in-memory file contents", () => {

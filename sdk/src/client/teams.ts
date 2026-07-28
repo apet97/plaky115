@@ -1,5 +1,5 @@
 import type { PlakyClient } from "./client.js";
-import { pathSegment } from "./path.js";
+import { idPathSegment } from "./path.js";
 import { paginate, type PaginatedIterator } from "../runtime/pagination.js";
 import type { PlakyRequestOverrides } from "../runtime/types.js";
 import type { TeamId } from "../runtime/ids.js";
@@ -40,7 +40,7 @@ export class TeamsResource {
     return this.client.request<TeamShape>(
       {
         method: "GET",
-        path: `/v1/public/teams/${pathSegment(teamId)}`,
+        path: `/v1/public/teams/${idPathSegment(teamId)}`,
         operationId: "getTeam",
       },
       options,

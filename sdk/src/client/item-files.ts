@@ -1,5 +1,5 @@
 import type { PlakyClient } from "./client.js";
-import { pathSegment } from "./path.js";
+import { idPathSegment } from "./path.js";
 import { resolveExplicitIdempotencyKey } from "../runtime/idempotency.js";
 import type { PlakyRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId, ItemId, ItemFileId } from "../runtime/ids.js";
@@ -119,9 +119,9 @@ export class ItemFilesResource {
 }
 
 function itemFilesPath(params: ItemFileListParams): string {
-  return `/v1/public/spaces/${pathSegment(params.spaceId)}/boards/${pathSegment(params.boardId)}/items/${pathSegment(params.itemId)}/files`;
+  return `/v1/public/spaces/${idPathSegment(params.spaceId)}/boards/${idPathSegment(params.boardId)}/items/${idPathSegment(params.itemId)}/files`;
 }
 
 function itemFilePath(params: ItemFileGetParams): string {
-  return `${itemFilesPath(params)}/${pathSegment(params.itemFileId)}`;
+  return `${itemFilesPath(params)}/${idPathSegment(params.itemFileId)}`;
 }

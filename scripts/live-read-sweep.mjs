@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { pathToFileURL } from "node:url";
+import { normalizePlakyBaseURL, summarizeDownloadLink } from "./live/contracts.mjs";
 
 const maxBytes = 16 * 1024 * 1024;
 
@@ -39,9 +40,7 @@ export async function runSurface(surface, operations, call, emit = console.log) 
     }
     try {
       const { data, status } = await call(operation);
-      if (operation.signed && (typeof data?.url !== "string" || (data.expiresInSeconds !== undefined && typeof data.expiresInSeconds !== "number"))) {
-        throw new Error("signed download metadata shape is invalid");
-      }
+      if (operation.signed) summarizeDownloadLink(data);
       const record = { surface, operationId: operation.operationId, status: "PASS", httpStatus: status, ...safeCounts(data) };
       records.push(record); emit(JSON.stringify(record));
     } catch (error) {
@@ -49,6 +48,16 @@ export async function runSurface(surface, operations, call, emit = console.log) 
       const record = { surface, operationId: operation.operationId, status: "FAIL", ...(httpStatus ? { httpStatus } : {}) };
       records.push(record); emit(JSON.stringify(record));
     }
+  }
+  return records;
+}
+
+export function validateSurfaceCoverage(records) {
+  if (records.length !== 17) throw new Error("read sweep must account for all 17 documented GET operations");
+  if (records.some((record) => record.status === "FAIL")) throw new Error("read sweep contains failed operations");
+  const skipped = records.filter((record) => record.status === "SKIP_PREREQUISITE").map((record) => record.operationId).sort();
+  if (skipped.length !== 0 && JSON.stringify(skipped) !== JSON.stringify(["getItemFile", "getItemFileDownload"])) {
+    throw new Error("read sweep may skip only getItemFile and getItemFileDownload together");
   }
   return records;
 }
@@ -88,7 +97,7 @@ async function main() {
   const { PlakyClient } = await import("../sdk/esm/index.js");
   const apiKey = process.env.PLAKY115_API_KEY ?? process.env.PLAKY115_API_KEY_AUTH;
   if (typeof apiKey !== "string" || apiKey.trim().length < 8) throw new Error("a Plaky API key is required through the environment");
-  const serverURL = normalizeServerURL(process.env.PLAKY115_BASE_URL ?? "https://api.plaky.com");
+  const serverURL = normalizePlakyBaseURL(process.env.PLAKY115_BASE_URL ?? "https://api.plaky.com");
   const apiCall = async ({ method, path }) => {
     const response = await fetch(new URL(path, `${serverURL}/`), { method, headers: { "X-API-Key": apiKey, Accept: "application/json" }, redirect: "error" });
     const data = await boundedJson(response);
@@ -104,22 +113,35 @@ async function main() {
   };
   const api = await runSurface("api", operations, apiCall);
   const sdk = await runSurface("sdk", operations, sdkCall);
-  if ([...api, ...sdk].some((record) => record.status === "FAIL")) process.exitCode = 1;
-}
-
-function normalizeServerURL(value) {
-  const url = new URL(value);
-  if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash || !/(^|\.)api\.plaky\.com$/.test(url.hostname)) {
-    throw new Error("PLAKY115_BASE_URL must be an HTTPS Plaky API host without credentials, query, or fragment");
-  }
-  return url.toString().replace(/\/$/, "");
+  validateSurfaceCoverage(api);
+  validateSurfaceCoverage(sdk);
 }
 
 async function boundedJson(response) {
   const length = Number(response.headers.get("content-length"));
   if (Number.isFinite(length) && length > maxBytes) throw new Error("response exceeds read-sweep limit");
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  if (bytes.byteLength > maxBytes) throw new Error("response exceeds read-sweep limit");
+  const reader = response.body?.getReader();
+  if (!reader) return undefined;
+  const chunks = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maxBytes) throw new Error("response exceeds read-sweep limit");
+      chunks.push(value);
+    }
+  } catch (error) {
+    await reader.cancel().catch(() => {});
+    throw error;
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
   if (bytes.byteLength === 0) return undefined;
   return JSON.parse(new TextDecoder().decode(bytes));
 }

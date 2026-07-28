@@ -19,6 +19,10 @@ test("normalized descriptor is frozen and shared facts are exact", () => {
 
 test("descriptor rejects placeholder drift and contradictory duplicate parameters", () => {
   assert.throws(() => describeOperation(operation({ parameters: [] })), /placeholders and parameters disagree/);
+  assert.throws(() => describeOperation(operation({ parameters: [
+    ...operation().parameters,
+    { name: "ghostId", in: "path", required: true, schema: { type: "integer", format: "int64" } },
+  ] })), /placeholders and parameters disagree/);
   const query = { name: "page", in: "query", required: false, schema: { type: "integer" } };
   assert.throws(() => describeOperation(operation({
     parameters: [operation().parameters[0], query],

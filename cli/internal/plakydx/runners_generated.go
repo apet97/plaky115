@@ -37,7 +37,7 @@ func RunListSpaces(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) 
 
 // RunGetSpace reads raw flags and executes getSpace.
 func RunGetSpace(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func RunGetSpace(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) er
 
 // RunListBoards reads raw flags and executes listBoards.
 func RunListBoards(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
@@ -84,11 +84,11 @@ func RunListBoards(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) 
 
 // RunGetBoard reads raw flags and executes getBoard.
 func RunGetBoard(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
@@ -105,11 +105,11 @@ func RunGetBoard(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) er
 
 // RunListItemGroups reads raw flags and executes listItemGroups.
 func RunListItemGroups(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
@@ -136,11 +136,11 @@ func RunListItemGroups(ctx context.Context, cmd *cobra.Command, c *plakysdk.Clie
 
 // RunCreateItemGroup reads raw flags and executes createItemGroup.
 func RunCreateItemGroup(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
@@ -170,15 +170,15 @@ func RunDeleteItemGroup(ctx context.Context, cmd *cobra.Command, c *plakysdk.Cli
 	if err := confirmationFlag(cmd); err != nil {
 		return err
 	}
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
-	itemGroupId, err := requiredStringFlag(cmd, "item-group-id")
+	itemGroupId, err := requiredInt64IDFlag(cmd, "item-group-id")
 	if err != nil {
 		return err
 	}
@@ -195,15 +195,15 @@ func RunDeleteItemGroup(ctx context.Context, cmd *cobra.Command, c *plakysdk.Cli
 
 // RunGetItemGroup reads raw flags and executes getItemGroup.
 func RunGetItemGroup(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
-	itemGroupId, err := requiredStringFlag(cmd, "item-group-id")
+	itemGroupId, err := requiredInt64IDFlag(cmd, "item-group-id")
 	if err != nil {
 		return err
 	}
@@ -221,15 +221,15 @@ func RunGetItemGroup(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client
 
 // RunUpdateItemGroup reads raw flags and executes updateItemGroup.
 func RunUpdateItemGroup(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
-	itemGroupId, err := requiredStringFlag(cmd, "item-group-id")
+	itemGroupId, err := requiredInt64IDFlag(cmd, "item-group-id")
 	if err != nil {
 		return err
 	}
@@ -260,15 +260,15 @@ func RunArchiveItemGroup(ctx context.Context, cmd *cobra.Command, c *plakysdk.Cl
 	if err := confirmationFlag(cmd); err != nil {
 		return err
 	}
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
-	itemGroupId, err := requiredStringFlag(cmd, "item-group-id")
+	itemGroupId, err := requiredInt64IDFlag(cmd, "item-group-id")
 	if err != nil {
 		return err
 	}
@@ -285,11 +285,11 @@ func RunArchiveItemGroup(ctx context.Context, cmd *cobra.Command, c *plakysdk.Cl
 
 // RunListItems reads raw flags and executes listItems.
 func RunListItems(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
@@ -336,11 +336,11 @@ func RunListItems(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) e
 
 // RunCreateItem reads raw flags and executes createItem.
 func RunCreateItem(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
@@ -370,15 +370,15 @@ func RunDeleteItem(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) 
 	if err := confirmationFlag(cmd); err != nil {
 		return err
 	}
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
-	itemId, err := requiredStringFlag(cmd, "item-id")
+	itemId, err := requiredInt64IDFlag(cmd, "item-id")
 	if err != nil {
 		return err
 	}
@@ -395,15 +395,15 @@ func RunDeleteItem(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) 
 
 // RunGetItem reads raw flags and executes getItem.
 func RunGetItem(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
-	itemId, err := requiredStringFlag(cmd, "item-id")
+	itemId, err := requiredInt64IDFlag(cmd, "item-id")
 	if err != nil {
 		return err
 	}
@@ -426,15 +426,15 @@ func RunGetItem(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) err
 
 // RunListItemComments reads raw flags and executes listItemComments.
 func RunListItemComments(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
-	itemId, err := requiredStringFlag(cmd, "item-id")
+	itemId, err := requiredInt64IDFlag(cmd, "item-id")
 	if err != nil {
 		return err
 	}
@@ -452,15 +452,15 @@ func RunListItemComments(ctx context.Context, cmd *cobra.Command, c *plakysdk.Cl
 
 // RunCreateItemComment reads raw flags and executes createItemComment.
 func RunCreateItemComment(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
-	itemId, err := requiredStringFlag(cmd, "item-id")
+	itemId, err := requiredInt64IDFlag(cmd, "item-id")
 	if err != nil {
 		return err
 	}
@@ -491,19 +491,19 @@ func RunDeleteItemComment(ctx context.Context, cmd *cobra.Command, c *plakysdk.C
 	if err := confirmationFlag(cmd); err != nil {
 		return err
 	}
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
-	itemId, err := requiredStringFlag(cmd, "item-id")
+	itemId, err := requiredInt64IDFlag(cmd, "item-id")
 	if err != nil {
 		return err
 	}
-	itemCommentId, err := requiredStringFlag(cmd, "item-comment-id")
+	itemCommentId, err := requiredInt64IDFlag(cmd, "item-comment-id")
 	if err != nil {
 		return err
 	}
@@ -521,19 +521,19 @@ func RunDeleteItemComment(ctx context.Context, cmd *cobra.Command, c *plakysdk.C
 
 // RunUpdateItemComment reads raw flags and executes updateItemComment.
 func RunUpdateItemComment(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
-	itemId, err := requiredStringFlag(cmd, "item-id")
+	itemId, err := requiredInt64IDFlag(cmd, "item-id")
 	if err != nil {
 		return err
 	}
-	itemCommentId, err := requiredStringFlag(cmd, "item-comment-id")
+	itemCommentId, err := requiredInt64IDFlag(cmd, "item-comment-id")
 	if err != nil {
 		return err
 	}
@@ -562,19 +562,19 @@ func RunUpdateItemComment(ctx context.Context, cmd *cobra.Command, c *plakysdk.C
 
 // RunReplaceCommentReactions reads raw flags and executes replaceCommentReactions.
 func RunReplaceCommentReactions(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
-	itemId, err := requiredStringFlag(cmd, "item-id")
+	itemId, err := requiredInt64IDFlag(cmd, "item-id")
 	if err != nil {
 		return err
 	}
-	itemCommentId, err := requiredStringFlag(cmd, "item-comment-id")
+	itemCommentId, err := requiredInt64IDFlag(cmd, "item-comment-id")
 	if err != nil {
 		return err
 	}
@@ -603,15 +603,15 @@ func RunReplaceCommentReactions(ctx context.Context, cmd *cobra.Command, c *plak
 
 // RunUpdateItemFields reads raw flags and executes updateItemFields.
 func RunUpdateItemFields(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
-	itemId, err := requiredStringFlag(cmd, "item-id")
+	itemId, err := requiredInt64IDFlag(cmd, "item-id")
 	if err != nil {
 		return err
 	}
@@ -639,15 +639,15 @@ func RunUpdateItemFields(ctx context.Context, cmd *cobra.Command, c *plakysdk.Cl
 
 // RunUpdateItemField reads raw flags and executes updateItemField.
 func RunUpdateItemField(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
-	itemId, err := requiredStringFlag(cmd, "item-id")
+	itemId, err := requiredInt64IDFlag(cmd, "item-id")
 	if err != nil {
 		return err
 	}
@@ -680,15 +680,15 @@ func RunUpdateItemField(ctx context.Context, cmd *cobra.Command, c *plakysdk.Cli
 
 // RunListItemFiles reads raw flags and executes listItemFiles.
 func RunListItemFiles(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
-	itemId, err := requiredStringFlag(cmd, "item-id")
+	itemId, err := requiredInt64IDFlag(cmd, "item-id")
 	if err != nil {
 		return err
 	}
@@ -706,15 +706,15 @@ func RunListItemFiles(ctx context.Context, cmd *cobra.Command, c *plakysdk.Clien
 
 // RunUploadItemFile reads raw flags and executes uploadItemFile.
 func RunUploadItemFile(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
-	itemId, err := requiredStringFlag(cmd, "item-id")
+	itemId, err := requiredInt64IDFlag(cmd, "item-id")
 	if err != nil {
 		return err
 	}
@@ -750,19 +750,19 @@ func RunDeleteItemFile(ctx context.Context, cmd *cobra.Command, c *plakysdk.Clie
 	if err := confirmationFlag(cmd); err != nil {
 		return err
 	}
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
-	itemId, err := requiredStringFlag(cmd, "item-id")
+	itemId, err := requiredInt64IDFlag(cmd, "item-id")
 	if err != nil {
 		return err
 	}
-	itemFileId, err := requiredStringFlag(cmd, "item-file-id")
+	itemFileId, err := requiredInt64IDFlag(cmd, "item-file-id")
 	if err != nil {
 		return err
 	}
@@ -780,19 +780,19 @@ func RunDeleteItemFile(ctx context.Context, cmd *cobra.Command, c *plakysdk.Clie
 
 // RunGetItemFile reads raw flags and executes getItemFile.
 func RunGetItemFile(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
-	itemId, err := requiredStringFlag(cmd, "item-id")
+	itemId, err := requiredInt64IDFlag(cmd, "item-id")
 	if err != nil {
 		return err
 	}
-	itemFileId, err := requiredStringFlag(cmd, "item-file-id")
+	itemFileId, err := requiredInt64IDFlag(cmd, "item-file-id")
 	if err != nil {
 		return err
 	}
@@ -811,19 +811,19 @@ func RunGetItemFile(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client)
 
 // RunUpdateItemFile reads raw flags and executes updateItemFile.
 func RunUpdateItemFile(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
-	itemId, err := requiredStringFlag(cmd, "item-id")
+	itemId, err := requiredInt64IDFlag(cmd, "item-id")
 	if err != nil {
 		return err
 	}
-	itemFileId, err := requiredStringFlag(cmd, "item-file-id")
+	itemFileId, err := requiredInt64IDFlag(cmd, "item-file-id")
 	if err != nil {
 		return err
 	}
@@ -852,19 +852,19 @@ func RunUpdateItemFile(ctx context.Context, cmd *cobra.Command, c *plakysdk.Clie
 
 // RunGetItemFileDownload reads raw flags and executes getItemFileDownload.
 func RunGetItemFileDownload(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
-	itemId, err := requiredStringFlag(cmd, "item-id")
+	itemId, err := requiredInt64IDFlag(cmd, "item-id")
 	if err != nil {
 		return err
 	}
-	itemFileId, err := requiredStringFlag(cmd, "item-file-id")
+	itemFileId, err := requiredInt64IDFlag(cmd, "item-file-id")
 	if err != nil {
 		return err
 	}
@@ -883,15 +883,15 @@ func RunGetItemFileDownload(ctx context.Context, cmd *cobra.Command, c *plakysdk
 
 // RunListSubitems reads raw flags and executes listSubitems.
 func RunListSubitems(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	spaceId, err := requiredStringFlag(cmd, "space-id")
+	spaceId, err := requiredInt64IDFlag(cmd, "space-id")
 	if err != nil {
 		return err
 	}
-	boardId, err := requiredStringFlag(cmd, "board-id")
+	boardId, err := requiredInt64IDFlag(cmd, "board-id")
 	if err != nil {
 		return err
 	}
-	itemId, err := requiredStringFlag(cmd, "item-id")
+	itemId, err := requiredInt64IDFlag(cmd, "item-id")
 	if err != nil {
 		return err
 	}
@@ -945,7 +945,7 @@ func RunListTeams(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) e
 
 // RunGetTeam reads raw flags and executes getTeam.
 func RunGetTeam(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	teamId, err := requiredStringFlag(cmd, "team-id")
+	teamId, err := requiredInt64IDFlag(cmd, "team-id")
 	if err != nil {
 		return err
 	}

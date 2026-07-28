@@ -1,5 +1,5 @@
 import type { PlakyClient } from "./client.js";
-import { pathSegment } from "./path.js";
+import { idPathSegment } from "./path.js";
 import { paginate, type PaginatedIterator } from "../runtime/pagination.js";
 import type { PlakyRequestOverrides } from "../runtime/types.js";
 import type { SpaceId } from "../runtime/ids.js";
@@ -68,7 +68,7 @@ export class SpacesResource {
     return this.client.request<SpaceShape>(
       {
         method: "GET",
-        path: `/v1/public/spaces/${pathSegment(spaceId)}`,
+        path: `/v1/public/spaces/${idPathSegment(spaceId)}`,
         query,
         operationId: "getSpace",
       },

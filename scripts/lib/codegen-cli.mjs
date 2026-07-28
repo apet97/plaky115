@@ -101,6 +101,11 @@ export function buildGoOperations(ops) {
     lines.push(`// ${fn} executes the ${op.operationId} operation: ${op.method} ${op.path}`);
     const returnType = descriptor.isVoid ? "error" : "(any, error)";
     lines.push(`func (c *Client) ${fn}(ctx context.Context, opts ${fn}Options) ${returnType} {`);
+    for (const parameter of pathParameters.filter(isInt64)) {
+      lines.push(`\tif _, err := CanonicalInt64ID(opts.${cap(parameter.name)}); err != nil {`);
+      lines.push(descriptor.isVoid ? `\t\treturn err` : `\t\treturn nil, err`);
+      lines.push(`\t}`);
+    }
     lines.push(`\tpath := ${formatGoPath(op.path, pathParameters.map(({ name }) => name))}`);
     if (hasQuery) {
       lines.push(`\tquery := url.Values{}`);
@@ -284,7 +289,7 @@ function runnerFlagRead(parameter, required) {
   const variable = localName(parameter.name);
   const flag = JSON.stringify(flagFor(parameter.name));
   let helper;
-  if (required) helper = "requiredStringFlag";
+  if (required) helper = isInt64(parameter) ? "requiredInt64IDFlag" : "requiredStringFlag";
   else {
     switch (parameter.schema.type) {
       case "string": helper = "optionalStringFlag"; break;
@@ -301,6 +306,10 @@ function runnerFlagRead(parameter, required) {
     `\t\treturn err`,
     `\t}`,
   ];
+}
+
+function isInt64(parameter) {
+  return parameter.schema.type === "integer" && parameter.schema.format === "int64";
 }
 
 function localName(name) {

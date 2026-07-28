@@ -67,3 +67,16 @@ export function summarizeDownloadLink(value) {
   }
   return { urlPresent: true, expiresInSeconds: value.expiresInSeconds };
 }
+
+export function normalizePlakyBaseURL(value) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("PLAKY115_BASE_URL must be an HTTPS Plaky API host without credentials, query, or fragment");
+  }
+  if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash || !/(^|\.)api\.plaky\.com$/.test(url.hostname)) {
+    throw new Error("PLAKY115_BASE_URL must be an HTTPS Plaky API host without credentials, query, or fragment");
+  }
+  return url.toString().replace(/\/$/, "");
+}

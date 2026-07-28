@@ -31,7 +31,7 @@ export type SearchItemsParams = {
   query: string;
   limit?: number;
   signal?: AbortSignal;
-  onProgress?: (scanned: number, limit: number) => void;
+  onProgress?: (scanned: number, limit: number) => void | Promise<void>;
 };
 
 export type SearchItemsDetailedResult = {
@@ -65,7 +65,7 @@ export async function searchItemsDetailed(client: PlakyClient, params: SearchIte
       scanned++;
       if (itemMatchesSearch(item, needle)) data.push(item);
     }
-    params.onProgress?.(scanned, limit);
+    await params.onProgress?.(scanned, limit);
 
     if (response.hasMore !== true) {
       return { data, scanned, matched: data.length, truncated: false };
@@ -109,8 +109,9 @@ export type BulkUpdateParams = {
   board: EntityRef;
   updates: Array<{ itemId: number | string; body: Record<string, unknown> }>;
   dryRun?: boolean;
+  throwOnError?: boolean;
   signal?: AbortSignal;
-  onProgress?: (completed: number, total: number) => void;
+  onProgress?: (completed: number, total: number) => void | Promise<void>;
 };
 
 export async function bulkUpdateItems(client: PlakyClient, params: BulkUpdateParams): Promise<Array<{ itemId: number | string; status: "dry-run" | "updated" | "error"; detail?: unknown }>> {
@@ -120,7 +121,7 @@ export async function bulkUpdateItems(client: PlakyClient, params: BulkUpdatePar
     if (params.signal?.aborted) throw params.signal.reason ?? new DOMException("Aborted", "AbortError");
     if (params.dryRun === true) {
       out.push({ itemId: update.itemId, status: "dry-run" as const });
-      params.onProgress?.(index + 1, params.updates.length);
+      await params.onProgress?.(index + 1, params.updates.length);
       continue;
     }
     try {
@@ -132,9 +133,10 @@ export async function bulkUpdateItems(client: PlakyClient, params: BulkUpdatePar
       });
       out.push({ itemId: update.itemId, status: "updated" as const });
     } catch (err) {
+      if (params.throwOnError === true) throw err;
       out.push({ itemId: update.itemId, status: "error" as const, detail: (err as Error).message });
     }
-    params.onProgress?.(index + 1, params.updates.length);
+    await params.onProgress?.(index + 1, params.updates.length);
   }
   return out;
 }

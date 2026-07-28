@@ -222,7 +222,7 @@ func TestRawCommandUsesPersistentFlagClient(t *testing.T) {
 	}
 }
 
-func TestRawCommandEscapesPathParams(t *testing.T) {
+func TestRawCommandRejectsInvalidIDBeforeRequest(t *testing.T) {
 	t.Setenv("PLAKY115_API_KEY", "")
 	t.Setenv("PLAKY115_API_KEY_AUTH", "")
 
@@ -240,13 +240,11 @@ func TestRawCommandEscapesPathParams(t *testing.T) {
 		"raw", "get-space",
 		"--space-id", "space/with slash",
 	)
-	if err != nil {
-		t.Fatalf("raw get-space returned error: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "invalid non-negative int64 ID") {
+		t.Fatalf("raw get-space error = %v", err)
 	}
-
-	want := "/v1/public/spaces/space%2Fwith%20slash"
-	if gotPath != want {
-		t.Fatalf("raw path params must be URL-escaped, got %q want %q", gotPath, want)
+	if gotPath != "" {
+		t.Fatalf("invalid ID reached API path %q", gotPath)
 	}
 }
 

@@ -22,7 +22,10 @@ export function describeOperation(operation) {
     ...(operation.pagination?.inputs ?? []),
   ], operation.operationId);
   const placeholders = pathParams(operation.path);
-  if (new Set(placeholders).size !== placeholders.length || placeholders.some((name) => !pathParameters.some((parameter) => parameter.name === name))) {
+  const pathParameterNames = pathParameters.map((parameter) => parameter.name);
+  if (new Set(placeholders).size !== placeholders.length
+    || placeholders.length !== pathParameterNames.length
+    || placeholders.some((name) => !pathParameterNames.includes(name))) {
     throw new Error(`${operation.operationId}: path placeholders and parameters disagree`);
   }
   if (operation.request?.kind === "multipart") validateMultipart(operation);

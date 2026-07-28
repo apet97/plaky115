@@ -13,7 +13,7 @@ export async function parseResponse<T>(response: Response, responseType: Respons
   const text = new TextDecoder().decode(bytes);
   if (responseType === "text") return text as T;
 
-  return text ? (JSON.parse(text) as T) : (undefined as T);
+  return text ? (parseJSONPreservingInt64(text) as T) : (undefined as T);
 }
 
 export async function parseErrorBody(response: Response, limit = DEFAULT_MAX_RESPONSE_BYTES): Promise<unknown> {
@@ -21,10 +21,39 @@ export async function parseErrorBody(response: Response, limit = DEFAULT_MAX_RES
   if (!text) return undefined;
 
   try {
-    return JSON.parse(text);
+    return parseJSONPreservingInt64(text);
   } catch {
     return text;
   }
+}
+
+export function parseJSONPreservingInt64(text: string): unknown {
+  let rewritten = "";
+  let index = 0;
+  while (index < text.length) {
+    if (text[index] === '"') {
+      const start = index++;
+      while (index < text.length) {
+        if (text[index] === "\\") {
+          index += 2;
+        } else if (text[index++] === '"') {
+          break;
+        }
+      }
+      rewritten += text.slice(start, index);
+      continue;
+    }
+    const token = text.slice(index).match(/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/)?.[0];
+    if (token) {
+      const exactInteger = !/[.eE]/.test(token);
+      const unsafe = exactInteger && (BigInt(token) > BigInt(Number.MAX_SAFE_INTEGER) || BigInt(token) < BigInt(Number.MIN_SAFE_INTEGER));
+      rewritten += unsafe ? JSON.stringify(token) : token;
+      index += token.length;
+      continue;
+    }
+    rewritten += text[index++];
+  }
+  return JSON.parse(rewritten);
 }
 
 async function readBounded(response: Response, limit: number): Promise<Uint8Array> {

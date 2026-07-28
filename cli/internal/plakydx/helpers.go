@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/apet97/plaky115-cli/internal/plakysdk"
 	"github.com/spf13/cobra"
 )
 
@@ -36,6 +37,17 @@ func requiredStringFlag(cmd *cobra.Command, name string) (string, error) {
 	return value, nil
 }
 
+func requiredInt64IDFlag(cmd *cobra.Command, name string) (string, error) {
+	value, err := requiredStringFlag(cmd, name)
+	if err != nil {
+		return "", err
+	}
+	if _, err := plakysdk.CanonicalInt64ID(value); err != nil {
+		return "", fmt.Errorf("--%s: %w", name, err)
+	}
+	return value, nil
+}
+
 func optionalStringFlag(cmd *cobra.Command, name string) (string, error) {
 	return cmd.Flags().GetString(name)
 }
@@ -49,7 +61,11 @@ func optionalIntFlag(cmd *cobra.Command, name string) (int, error) {
 }
 
 func optionalInt64Flag(cmd *cobra.Command, name string) (int64, error) {
-	return cmd.Flags().GetInt64(name)
+	value, err := cmd.Flags().GetInt64(name)
+	if err == nil && value < 0 {
+		return 0, fmt.Errorf("--%s must be non-negative", name)
+	}
+	return value, err
 }
 
 func optionalFloat64Flag(cmd *cobra.Command, name string) (*float64, error) {

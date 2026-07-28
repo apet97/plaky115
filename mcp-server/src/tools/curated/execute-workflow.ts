@@ -99,6 +99,7 @@ export async function executeWorkflow(
         board: readRef(resolvedArgs, "board") as EntityRef,
         updates,
         dryRun: false,
+        throwOnError: true,
         signal: ctx.signal,
         onProgress: (completed) => progress(completed),
       }));

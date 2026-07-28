@@ -1,5 +1,5 @@
 import type { PlakyClient } from "./client.js";
-import { pathSegment } from "./path.js";
+import { idPathSegment } from "./path.js";
 import { paginate, type PaginatedIterator } from "../runtime/pagination.js";
 import type { PlakyRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId } from "../runtime/ids.js";
@@ -22,7 +22,7 @@ export class BoardsResource {
     return this.client.request<PagedResult<BoardShape>>(
       {
         method: "GET",
-        path: `/v1/public/spaces/${pathSegment(spaceId)}/boards`,
+        path: `/v1/public/spaces/${idPathSegment(spaceId)}/boards`,
         query,
         operationId: "listBoards",
       },
@@ -42,7 +42,7 @@ export class BoardsResource {
     return this.client.request<BoardShape>(
       {
         method: "GET",
-        path: `/v1/public/spaces/${pathSegment(params.spaceId)}/boards/${pathSegment(params.boardId)}`,
+        path: `/v1/public/spaces/${idPathSegment(params.spaceId)}/boards/${idPathSegment(params.boardId)}`,
         operationId: "getBoard",
       },
       options,
