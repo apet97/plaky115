@@ -172,7 +172,17 @@ export type {
   LinkFieldInput,
 } from "./fields/builders.js";
 
-export { resolveSpace, resolveBoard, resolveSpaceAndBoard, resolveUser, resolveTeam, resolveItem } from "./resolvers/index.js";
+export {
+  resolveSpace,
+  resolveBoard,
+  resolveSpaceAndBoard,
+  resolveUser,
+  resolveTeam,
+  resolveItem,
+  resolveItemsInBoard,
+  resolveItemGroupInBoard,
+  resolveItemFileOnItem,
+} from "./resolvers/index.js";
 export type { EntityRef } from "./resolvers/index.js";
 
 export { workspaceMap, searchItems, searchItemsDetailed, bulkUpdateItems, exportItems } from "./workflows/index.js";

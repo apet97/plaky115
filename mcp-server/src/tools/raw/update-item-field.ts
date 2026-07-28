@@ -1,12 +1,13 @@
 // AUTO-GENERATED. Source: openapi/plaky115-operation-metadata.json operationId=updateItemField
 import { z } from "zod/v3";
 import { request } from "plaky115/runtime/http.js";
+import { int64Id } from "../../runtime/ids.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
-  spaceId: z.number().int().describe("Represents unique space identifier across the system."),
-  boardId: z.number().int().describe("Represents unique board identifier across the system."),
-  itemId: z.number().int().describe("Represents unique item identifier across the system."),
+  spaceId: int64Id.describe("Represents unique space identifier across the system."),
+  boardId: int64Id.describe("Represents unique board identifier across the system."),
+  itemId: int64Id.describe("Represents unique item identifier across the system."),
   itemFieldKey: z.string().describe("Represents key of the field."),
   body: z.record(z.unknown()).describe("JSON request body for Update one item field."),
 });

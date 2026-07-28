@@ -79,7 +79,16 @@ func jsonBodyFlag(cmd *cobra.Command, required bool) (any, error) {
 		}
 		return nil, nil
 	}
-	return ParseBody(cmd, raw)
+	value, err := ParseBody(cmd, raw)
+	if err != nil {
+		return nil, err
+	}
+	if required {
+		if _, ok := value.(map[string]any); !ok {
+			return nil, fmt.Errorf("--body must be a JSON object")
+		}
+	}
+	return value, nil
 }
 
 // ParseBody resolves a raw --body value into JSON: "@-" reads stdin, "@file"

@@ -5,6 +5,21 @@ files, screenshots, or logs.
 
 ## Automated Sweep
 
+The GET-only sweep is safe for read authorization and never constructs a write:
+
+```bash
+npm --prefix sdk run build
+npm run live:read
+```
+
+It covers all 17 documented GET operations on direct API and SDK surfaces.
+`getItemFile` and `getItemFileDownload` report `SKIP_PREREQUISITE` when no file
+exists; the sweep never creates one. Signed URLs are checked only in memory and
+never emitted. Inject the API key through the environment without placing its
+value in shell history. The undocumented `/workspaces/<id>` route is never used.
+
+The mutation-capable sweep requires separate sacrificial authorization:
+
 The full opt-in sweep covers raw API operations, SDK wrapper workflows, CLI
 commands, MCP boot checks, and real MCP curated/generated tool execution:
 

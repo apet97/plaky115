@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { describeOperation } from "./codegen-common.mjs";
 
 export function buildCobraCommand(op) {
   const descriptor = describeOperation(op);
@@ -37,7 +38,6 @@ export function buildCobraCommand(op) {
     const required = op.request.required ? " (required)" : "";
     lines.push(`\tcmd.Flags().String("body", "", "Request body JSON, @file.json, or @- for stdin${required}")`);
   } else if (descriptor.requestKind === "multipart") {
-    validateMultipartRequest(op);
     lines.push(`\tcmd.Flags().String("file", "", "File to upload; use - for stdin (required)")`);
     lines.push(`\tcmd.Flags().String("filename", "", "Multipart filename; required with --file - and otherwise defaults to the path basename")`);
     lines.push(`\tcmd.Flags().String("content-type", "", "Optional file media type, such as application/pdf")`);
@@ -241,20 +241,6 @@ function formatGoPath(path, params) {
   return expr;
 }
 
-function describeOperation(op) {
-  const parameters = op.parameters ?? [];
-  return {
-    pathParameters: parameters.filter((parameter) => parameter.in === "path"),
-    queryParameters: uniqueParameters([
-      ...parameters.filter((parameter) => parameter.in === "query"),
-      ...(op.pagination?.inputs ?? []),
-    ]),
-    requestKind: op.request.kind,
-    isVoid: op.success.kind === "void",
-    acceptsIdempotencyKey: op.mutation === true && op.request.kind !== "none",
-  };
-}
-
 function goQueryLines(parameter) {
   const field = `opts.${cap(parameter.name)}`;
   const name = JSON.stringify(parameter.name);
@@ -334,15 +320,6 @@ function cap(s) { return s[0].toUpperCase() + s.slice(1); }
 function flagFor(p) { return p.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase(); }
 function goSlug(operationId) { return operationId.replace(/([A-Z])/g, "-$1").toLowerCase().replace(/^-/, ""); }
 
-function uniqueParameters(parameters) {
-  const seen = new Set();
-  return parameters.filter(({ name }) => {
-    if (seen.has(name)) return false;
-    seen.add(name);
-    return true;
-  });
-}
-
 function cobraFlagLine(parameter) {
   const name = JSON.stringify(flagFor(parameter.name));
   const description = JSON.stringify(flagDescription(parameter));
@@ -372,16 +349,6 @@ function flagDescription(parameter) {
 
 function collapseWhitespace(value) {
   return value.replace(/\s+/g, " ").trim();
-}
-
-function validateMultipartRequest(op) {
-  const parts = op.request.parts;
-  const valid = parts.length === 1
-    && parts[0].name === "file"
-    && parts[0].required === true
-    && parts[0].type === "string"
-    && parts[0].format === "binary";
-  if (!valid) throw new Error(`${op.operationId}: expected a single required binary multipart part named file`);
 }
 
 function formatGo(source) {

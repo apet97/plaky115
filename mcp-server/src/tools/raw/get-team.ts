@@ -1,10 +1,11 @@
 // AUTO-GENERATED. Source: openapi/plaky115-operation-metadata.json operationId=getTeam
 import { z } from "zod/v3";
 import { request } from "plaky115/runtime/http.js";
+import { int64Id } from "../../runtime/ids.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
-  teamId: z.number().int().describe("Represents unique team identifier across the system."),
+  teamId: int64Id.describe("Represents unique team identifier across the system."),
 });
 const output = z.object({}).passthrough();
 

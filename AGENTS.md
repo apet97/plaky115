@@ -25,7 +25,7 @@ public contracts unless a breaking change is explicitly requested:
 
 - Node.js `>=22.12`; CI tests `22.12.0`, `24`, and `26`.
 - Bun `1.2.17` from `mcp-server/node_modules/.bin/bun`.
-- Go `1.26.x`, Ruby `3.3`, and GoReleaser.
+- Go `1.26.5`, Ruby `3.3`, and GoReleaser `2.15.2`.
 
 ```bash
 npm --prefix sdk ci
@@ -37,10 +37,14 @@ npm --prefix mcp-server ci
 
 - Never hand-edit files with an `AUTO-GENERATED` header.
 - Change generators or metadata, then run `npm run generate:all`.
+- `scripts/lib/codegen-common.mjs` owns the normalized operation descriptor;
+  Go and Zod formatting stays in the target generator.
 - `scripts/postgen-dx.mjs` owns package metadata and SDK runtime exports.
 - SDK transport is public at `sdk/src/runtime/http.ts`; helpers under
   `sdk/src/runtime/internal/` remain private package paths.
 - Raw CLI writes require `--body`; raw deletes require `--confirm`.
+- CLI credentials prefer `PLAKY115_API_KEY` or `--api-key-stdin`; do not add a
+  new argv/config-file credential path.
 - MCP upload accepts base64 plus filename/media type, never a local path.
 - Every spec query parameter must be threaded or explicitly classified by the
   metadata tests. Array serialization follows OpenAPI `explode` metadata.
@@ -89,6 +93,8 @@ Release-grade gate:
 
 ```bash
 npm run verify
+npm run audit:production
+npm run govulncheck
 (cd sdk && npm pack --dry-run --json)
 (cd mcp-server && npm pack --dry-run --json)
 npm run package:consumer-smoke
@@ -96,6 +102,13 @@ npm run secret:scan
 ```
 
 ## Live proof
+
+GET-only proof needs a securely injected, rotated key but no mutation approval:
+
+```bash
+npm --prefix sdk run build
+npm run live:read
+```
 
 Run only with explicit permission for sacrificial data:
 
@@ -126,13 +139,17 @@ Before pushing `main` or a release tag:
    `npm-release`, and allowed action `npm publish`.
 
 The tag workflows publish npm with OIDC/provenance and build CLI archives with
-GoReleaser. Never use a long-lived publish token, reuse a failed tag, move a
-public tag, or claim release success before registry and GitHub artifact checks.
+GoReleaser. They are tag-only: workflow ref, checkout HEAD, peeled tag commit,
+and `GITHUB_SHA` must match. Never use a long-lived publish token, reuse or move
+a tag, or claim success before registry, attestation, and asset checks.
 
 ## Compatibility notes
 
 - Only `GET` requests retry; writes remain single-attempt with or without an
   explicit idempotency key.
+- Remote transport is HTTPS-only; literal loopback HTTP is test/development
+  only. Credential-bearing requests do not follow redirects. Buffered bodies
+  default to 16 MiB and cannot exceed 64 MiB.
 - `CommentShape` exposes API `content?: string` and compatibility `text?: string`.
 - `listUsers` filters and `listItems` filters must stay in parity across SDK,
   CLI raw, and MCP raw.

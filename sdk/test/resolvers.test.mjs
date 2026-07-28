@@ -6,6 +6,7 @@ const SPACES = [
   { id: 1, title: "Ops" },
   { id: 2, title: "Engineering" },
   { id: 3, title: "Operations Backup" },
+  { id: "9007199254740992", title: "Large exact ID" },
 ];
 
 const BOARDS_BY_SPACE = {
@@ -123,4 +124,18 @@ test("resolveSpace by unknown numeric id throws not-found with the id in the mes
     resolveSpace(c, 999),
     (err) => err instanceof PlakyNotFoundError && /id=999/.test(err.message),
   );
+});
+
+test("resolver preserves above-safe-integer decimal IDs and rejects unsafe numbers", async () => {
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
+  assert.equal((await resolveSpace(c, "9007199254740992")).title, "Large exact ID");
+  spaceListCalls = 0;
+  await assert.rejects(resolveSpace(c, 9007199254740992), /decimal strings/);
+  assert.equal(spaceListCalls, 0);
+});
+
+test("resolver rejects non-canonical and out-of-range decimal IDs", async () => {
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
+  await assert.rejects(resolveSpace(c, "01"), /canonical/);
+  await assert.rejects(resolveSpace(c, "9223372036854775808"), /int64/);
 });

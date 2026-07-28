@@ -25,6 +25,7 @@ test("CLI release workflow lives at the monorepo root with bounded permissions",
   assert.deepEqual(trigger.push.tags, ["v*"]);
   assert.deepEqual(workflow.permissions, { contents: "read" });
   assert.deepEqual(workflow.jobs.release.permissions, { contents: "write" });
+  assert.equal(workflow.jobs.release.environment, "cli-release");
   for (const [name, job] of Object.entries(workflow.jobs)) {
     if (name !== "release") assert.notEqual(job.permissions?.contents, "write", `${name} may not write contents`);
   }
@@ -35,18 +36,23 @@ test("CLI release workflow resolves the nested Go module and dist directory cons
   const steps = workflow.jobs.release.steps;
   const setupGo = findAction(steps, "actions/setup-go");
   assert.ok(setupGo, "missing actions/setup-go");
-  assert.equal(setupGo.with["go-version-file"], "cli/go.mod");
+  assert.equal(setupGo.with["go-version"], "1.26.5");
   assert.equal(setupGo.with["cache-dependency-path"], "cli/go.sum");
 
-  const release = findAction(steps, "goreleaser/goreleaser-action");
+  const release = steps.find((step) => String(step.uses ?? "").startsWith("goreleaser/goreleaser-action@") && step.with?.args);
   assert.ok(release, "release must use the same GoReleaser action v7 major as CI");
   assert.equal(release.with.workdir, "cli");
   assert.equal(release.with.args, "release --clean");
-  assert.match(release.with.version, /v2/);
+  assert.equal(release.with.version, "v2.15.2");
 
   const upload = steps.find((step) => String(step.uses).startsWith("actions/upload-artifact@"));
   assert.ok(upload, "missing artifact upload step");
   assert.match(upload.with.path, /^cli\/dist\//m);
+  const source = readFileSync(workflowPath, "utf8");
+  for (const gate of ["npm run audit:production", "npm run govulncheck", "npm run verify", "goreleaser check"]) {
+    assert.match(source, new RegExp(gate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+  assert.doesNotMatch(source, /~>\s*v2|version:\s*["']?latest/);
 });
 
 function findAction(steps, repository) {
@@ -69,8 +75,8 @@ test("GoReleaser and both installers target the monorepo with matching archive n
   assert.match(config, /\{\{ \.ProjectName \}\}_/);
   assert.match(shell, /REPO="apet97\/plaky115"/);
   assert.match(powershell, /\$Repo = "apet97\/plaky115"/);
-  assert.match(shell, /raw\.githubusercontent\.com\/apet97\/plaky115\/main\/cli\/scripts\/install\.sh/);
-  assert.match(powershell, /raw\.githubusercontent\.com\/apet97\/plaky115\/main\/cli\/scripts\/install\.ps1/);
+  assert.doesNotMatch(shell, /raw\.githubusercontent\.com.*\|\s*bash/);
+  assert.doesNotMatch(powershell, /raw\.githubusercontent\.com.*\|\s*iex/i);
   assert.match(shell, /\$\{BINARY_NAME\}_\$\{os\}_\$\{arch\}\.tar\.gz/);
   assert.match(powershell, /plaky115_Windows_\$arch\.zip/);
   assert.equal(

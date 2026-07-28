@@ -185,8 +185,15 @@ test("constructor rejects malformed or unsafe server URLs", () => {
     "https://user:pass@example.test/api",
     "https://example.test/api?token=value",
     "https://example.test/api#fragment",
+    "http://example.test/api",
   ]) {
     assert.throws(() => new PlakyClient({ apiKey: "test-api-key", serverURL }), /serverURL/);
+  }
+});
+
+test("constructor permits literal loopback HTTP only", () => {
+  for (const serverURL of ["http://localhost:3000", "http://127.0.0.42:3000", "http://[::1]:3000"]) {
+    assert.doesNotThrow(() => new PlakyClient({ apiKey: "test-api-key", serverURL }));
   }
 });
 

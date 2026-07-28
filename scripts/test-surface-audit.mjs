@@ -22,7 +22,7 @@ test("surface report classifies each surface", async () => {
 
   // CLI raw + curated
   assert.match(report.cli.generatedCommands.status, /^(fresh|stale|missing|legacy)$/);
-  assert.match(report.cli.curatedCommands.status, /^(fresh|missing)$/);
+  assert.equal(report.cli.curatedCommands.status, "fresh");
 
   // MCP raw + curated
   assert.match(report.mcp.generatedTools.status, /^(fresh|stale|missing|legacy)$/);

@@ -11,6 +11,7 @@ import (
 	"io"
 	"mime"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/textproto"
 	"net/url"
@@ -18,14 +19,19 @@ import (
 	"time"
 )
 
-const DefaultServerURL = "https://api.plaky.com"
+const (
+	DefaultServerURL        = "https://api.plaky.com"
+	DefaultMaxResponseBytes = int64(16 * 1024 * 1024)
+	MaxResponseBytes        = int64(64 * 1024 * 1024)
+)
 
 type ClientOptions struct {
-	APIKey     string
-	ServerURL  string
-	Timeout    time.Duration
-	UserAgent  string
-	HTTPClient *http.Client
+	APIKey           string
+	ServerURL        string
+	Timeout          time.Duration
+	UserAgent        string
+	HTTPClient       *http.Client
+	MaxResponseBytes int64
 }
 
 type Client struct {
@@ -51,6 +57,12 @@ func New(opts ClientOptions) (*Client, error) {
 	if (baseURL.Scheme != "http" && baseURL.Scheme != "https") || baseURL.Host == "" || !baseURL.IsAbs() {
 		return nil, fmt.Errorf("plakysdk: ServerURL must be an absolute http or https URL")
 	}
+	if baseURL.Scheme == "http" && !isLoopbackHost(baseURL.Hostname()) {
+		return nil, fmt.Errorf("plakysdk: ServerURL must use https except for a literal loopback host")
+	}
+	if baseURL.User != nil {
+		return nil, fmt.Errorf("plakysdk: ServerURL must not include credentials")
+	}
 	if baseURL.RawQuery != "" || baseURL.ForceQuery || baseURL.Fragment != "" {
 		return nil, fmt.Errorf("plakysdk: ServerURL must not include a query or fragment")
 	}
@@ -63,11 +75,19 @@ func New(opts ClientOptions) (*Client, error) {
 	if opts.UserAgent == "" {
 		opts.UserAgent = "plaky115-cli"
 	}
+	if opts.MaxResponseBytes == 0 {
+		opts.MaxResponseBytes = DefaultMaxResponseBytes
+	}
+	if opts.MaxResponseBytes < 0 || opts.MaxResponseBytes > MaxResponseBytes {
+		return nil, fmt.Errorf("plakysdk: MaxResponseBytes must be between 1 and %d", MaxResponseBytes)
+	}
 	hc := opts.HTTPClient
 	if hc == nil {
 		hc = &http.Client{Timeout: opts.Timeout}
 	}
-	return &Client{opts: opts, http: hc, baseURL: baseURL}, nil
+	clone := *hc
+	clone.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	return &Client{opts: opts, http: &clone, baseURL: baseURL}, nil
 }
 
 type Request struct {
@@ -133,11 +153,11 @@ func (c *Client) Do(ctx context.Context, req Request, out any) error {
 		return operationError(req, "send request", sendErr)
 	}
 	defer resp.Body.Close()
-	raw, err := readResponseBody(resp.Body)
+	raw, err := readResponseBody(resp.Body, resp.ContentLength, c.opts.MaxResponseBytes)
 	if err != nil {
 		return operationError(req, "read response body", err)
 	}
-	if resp.StatusCode >= 400 {
+	if resp.StatusCode >= 300 {
 		return decodeError(resp.StatusCode, raw, resp.Header.Get("X-Request-ID"))
 	}
 	if len(raw) == 0 || out == nil {
@@ -262,8 +282,34 @@ func (reader *contextReader) Read(buffer []byte) (int, error) {
 	}
 }
 
-func readResponseBody(body io.Reader) ([]byte, error) {
-	return io.ReadAll(body)
+type ResponseTooLargeError struct {
+	Limit int64
+}
+
+func (e *ResponseTooLargeError) Error() string {
+	return fmt.Sprintf("plakysdk: response exceeds the %d-byte buffer limit", e.Limit)
+}
+
+func readResponseBody(body io.Reader, contentLength, limit int64) ([]byte, error) {
+	if contentLength > limit {
+		return nil, &ResponseTooLargeError{Limit: limit}
+	}
+	raw, err := io.ReadAll(io.LimitReader(body, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(raw)) > limit {
+		return nil, &ResponseTooLargeError{Limit: limit}
+	}
+	return raw, nil
+}
+
+func isLoopbackHost(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 func decodeResponse(raw []byte, out any) error {
@@ -307,7 +353,7 @@ func normalizeSafeJSONNumberValue(value any) any {
 			}
 			return typed
 		}
-		if parsed, err := typed.Int64(); err == nil && parsed >= -(1<<53) && parsed <= 1<<53 {
+		if parsed, err := typed.Int64(); err == nil && parsed > -(1<<53) && parsed < 1<<53 {
 			return float64(parsed)
 		}
 		return typed

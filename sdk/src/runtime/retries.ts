@@ -33,6 +33,8 @@ export async function withRetries<T>(
   opts: RetryOptions = { maxRetries: 2 },
 ): Promise<T> {
   const base = opts.baseDelayMs ?? 250;
+  assertRetryValue(opts.maxRetries, "maxRetries", true);
+  assertRetryValue(base, "baseDelayMs", false);
   const isRetryable = opts.isRetryable ?? defaultRetryable;
   for (let attempt = 0; ; attempt++) {
     try {
@@ -46,6 +48,12 @@ export async function withRetries<T>(
       const wait = retryAfter !== undefined && retryAfter > 0 ? Math.min(retryAfter, 60_000) : base * 2 ** attempt;
       await new Promise((r) => setTimeout(r, wait + Math.random() * 100));
     }
+  }
+}
+
+function assertRetryValue(value: number, name: string, integer: boolean): void {
+  if (!Number.isFinite(value) || value < 0 || (integer && !Number.isInteger(value))) {
+    throw new Error(`${name} must be a finite non-negative${integer ? " integer" : " number"}`);
   }
 }
 

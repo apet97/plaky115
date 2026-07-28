@@ -1,230 +1,78 @@
 #!/usr/bin/env bash
-#
-# plaky115 CLI Installation Script
-# This script downloads and installs the latest version of the plaky115 CLI
-# for Linux and macOS systems.
-#
-# Usage:
-#   curl -fsSL https://raw.githubusercontent.com/apet97/plaky115/main/cli/scripts/install.sh | bash
-#   or
-#   wget -qO- https://raw.githubusercontent.com/apet97/plaky115/main/cli/scripts/install.sh | bash
-#
-# Options:
-#   PLAKY115_INSTALL_DIR - Installation directory (default: /usr/local/bin)
-#   PLAKY115_VERSION     - Specific version to install (default: latest)
-#
+set -euo pipefail
 
-set -e
-
-# Configuration
 REPO="apet97/plaky115"
-DEFAULT_INSTALL_DIR="/usr/local/bin"
-USER_INSTALL_DIR="$HOME/.local/bin"
-VERSION="${PLAKY115_VERSION:-latest}"
 BINARY_NAME="plaky115"
+VERSION="${PLAKY115_VERSION:-latest}"
+INSTALL_DIR="${PLAKY115_INSTALL_DIR:-}"
+TEST_BASE_URL="${PLAKY115_INSTALL_TEST_BASE_URL:-}"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
-
-# Helper functions
-log_info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
-}
-
-log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-# Detect operating system
-detect_os() {
-    local os
-    local uname_output="$(uname -s)"
-    case "$uname_output" in
-        Linux*)     os="Linux" ;;
-        Darwin*)    os="Darwin" ;;
-        CYGWIN*|MINGW*|MSYS*)    os="Windows" ;;
-        *)
-            log_error "Unsupported operating system: $uname_output"
-            exit 1
-            ;;
-    esac
-    echo "$os"
-}
-
-# Detect architecture
-detect_arch() {
-    local arch
-    case "$(uname -m)" in
-        x86_64|amd64)   arch="x86_64" ;;
-        aarch64|arm64)  arch="arm64" ;;
-        *)
-            log_error "Unsupported architecture: $(uname -m)"
-            exit 1
-            ;;
-    esac
-    echo "$arch"
-}
-
-# Get latest version from GitHub
-get_latest_version() {
-    local latest_url="https://api.github.com/repos/${REPO}/releases/latest"
-    local version
-
-    if command -v curl >/dev/null 2>&1; then
-        version=$(curl -fsSL "$latest_url" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-    elif command -v wget >/dev/null 2>&1; then
-        version=$(wget -qO- "$latest_url" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-    else
-        log_error "curl or wget is required to download the CLI"
-        exit 1
-    fi
-
-    echo "$version"
-}
-
-# Determine installation directory
-get_install_dir() {
-    # If user specified a directory, use it
-    if [ -n "${PLAKY115_INSTALL_DIR}" ]; then
-        echo "${PLAKY115_INSTALL_DIR}"
-        return
-    fi
-
-    # Try to use /usr/local/bin if we have write access
-    if [ -w "$DEFAULT_INSTALL_DIR" ] || [ -w "$(dirname "$DEFAULT_INSTALL_DIR")" ]; then
-        echo "$DEFAULT_INSTALL_DIR"
-        return
-    fi
-
-    # Fall back to user directory
-    log_info "No write access to $DEFAULT_INSTALL_DIR, using $USER_INSTALL_DIR instead" >&2
-    echo "$USER_INSTALL_DIR"
-}
-
-# Download and install
-install_cli() {
-    local INSTALL_DIR=$(get_install_dir)
-    local os=$(detect_os)
-    local arch=$(detect_arch)
-
-    log_info "Detected OS: $os"
-    log_info "Detected Architecture: $arch"
-    log_info "Installation directory: $INSTALL_DIR"
-
-    # Get version
-    if [ "$VERSION" = "latest" ]; then
-        VERSION=$(get_latest_version)
-        log_info "Latest version: $VERSION"
-    fi
-
-    # Construct download URL based on OS
-    local archive_name
-    local archive_format
-    if [ "$os" = "Windows" ]; then
-        archive_name="${BINARY_NAME}_${os}_${arch}.zip"
-        archive_format="zip"
-    else
-        archive_name="${BINARY_NAME}_${os}_${arch}.tar.gz"
-        archive_format="tar.gz"
-    fi
-
-    local download_url="https://github.com/${REPO}/releases/download/${VERSION}/${archive_name}"
-
-    log_info "Downloading from: $download_url"
-
-    # Create temporary directory
-    local tmp_dir=$(mktemp -d)
-    trap "rm -rf $tmp_dir" EXIT
-
-    # Download archive
-    if command -v curl >/dev/null 2>&1; then
-        if ! curl -fsSL "$download_url" -o "$tmp_dir/$archive_name"; then
-            log_error "Failed to download from $download_url"
-            exit 1
-        fi
-    elif command -v wget >/dev/null 2>&1; then
-        if ! wget -q "$download_url" -O "$tmp_dir/$archive_name"; then
-            log_error "Failed to download from $download_url"
-            exit 1
-        fi
-    fi
-
-    log_info "Download complete"
-
-    # Extract archive based on format
-    log_info "Extracting archive..."
-    if [ "$archive_format" = "zip" ]; then
-        if command -v unzip >/dev/null 2>&1; then
-            unzip -q "$tmp_dir/$archive_name" -d "$tmp_dir"
-        else
-            log_error "unzip is required to extract the archive. Please install unzip and try again."
-            exit 1
-        fi
-    else
-        tar -xzf "$tmp_dir/$archive_name" -C "$tmp_dir"
-    fi
-
-    # Create install directory if it doesn't exist
-    if [ ! -d "$INSTALL_DIR" ]; then
-        log_info "Creating installation directory: $INSTALL_DIR"
-        mkdir -p "$INSTALL_DIR" || {
-            log_error "Failed to create $INSTALL_DIR. Try running with sudo or set PLAKY115_INSTALL_DIR to a writable location."
-            exit 1
-        }
-    fi
-
-    # Install binary (Windows binaries have .exe extension)
-    local source_binary="$tmp_dir/$BINARY_NAME"
-    local target_binary="$INSTALL_DIR/$BINARY_NAME"
-
-    if [ "$os" = "Windows" ]; then
-        source_binary="$tmp_dir/${BINARY_NAME}.exe"
-        target_binary="$INSTALL_DIR/${BINARY_NAME}.exe"
-    fi
-
-    log_info "Installing to $target_binary..."
-    if ! mv "$source_binary" "$target_binary"; then
-        log_error "Failed to install to $INSTALL_DIR. Try running with sudo or set PLAKY115_INSTALL_DIR to a writable location."
-        exit 1
-    fi
-
-    # Make executable (not needed on Windows, but doesn't hurt)
-    chmod +x "$target_binary" 2>/dev/null || true
-
-    log_info "plaky115 ${VERSION} has been installed to $target_binary"
-
-    # Verify installation
-    local cmd_to_check="$BINARY_NAME"
-    if [ "$os" = "Windows" ]; then
-        cmd_to_check="${BINARY_NAME}.exe"
-    fi
-
-    if command -v "$cmd_to_check" >/dev/null 2>&1; then
-        log_info "Installation successful! Run '$BINARY_NAME --help' to get started."
-    else
-        log_warn "Installation complete, but $BINARY_NAME is not in your PATH."
-        if [ "$os" = "Windows" ]; then
-            log_warn "Add $INSTALL_DIR to your PATH environment variable."
-        else
-            log_warn "Add $INSTALL_DIR to your PATH by adding this to your ~/.bashrc or ~/.zshrc:"
-            log_warn "  export PATH=\"\$PATH:$INSTALL_DIR\""
-            log_warn ""
-            log_warn "Then run: source ~/.bashrc  # or source ~/.zshrc"
-        fi
+fail() { printf 'plaky115 installer: %s\n' "$*" >&2; exit 1; }
+download() {
+    if command -v curl >/dev/null 2>&1; then curl -fsSL "$1" -o "$2"
+    elif command -v wget >/dev/null 2>&1; then wget -qO "$2" "$1"
+    else fail "curl or wget is required"
     fi
 }
 
-# Main execution
-main() {
-    log_info "Installing plaky115 CLI..."
-    install_cli
-}
+case "$(uname -s)" in Linux) os=Linux ;; Darwin) os=Darwin ;; *) fail "unsupported operating system" ;; esac
+case "$(uname -m)" in x86_64|amd64) arch=x86_64 ;; aarch64|arm64) arch=arm64 ;; *) fail "unsupported architecture" ;; esac
 
-main
+if [ "$VERSION" = latest ]; then
+    latest_file="$(mktemp)"
+    trap 'rm -f "$latest_file"' EXIT HUP INT TERM
+    download "https://api.github.com/repos/${REPO}/releases/latest" "$latest_file"
+    VERSION="$(sed -nE 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' "$latest_file" | head -n 1)"
+fi
+if ! [[ "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+    fail "version must be an exact v<semver> tag"
+fi
+
+if [ -n "$TEST_BASE_URL" ]; then
+    [ "${PLAKY115_INSTALL_TESTING:-}" = 1 ] || fail "test base URL is disabled"
+    release_base="${TEST_BASE_URL%/}/${VERSION}"
+else
+    release_base="https://github.com/${REPO}/releases/download/${VERSION}"
+fi
+archive_name="${BINARY_NAME}_${os}_${arch}.tar.gz"
+
+tmp_dir="$(mktemp -d)"
+candidate=""
+cleanup() { rm -rf "$tmp_dir"; [ -z "$candidate" ] || rm -f "$candidate"; }
+trap cleanup EXIT HUP INT TERM
+download "${release_base}/${archive_name}" "$tmp_dir/$archive_name" || fail "archive download failed"
+download "${release_base}/checksums.txt" "$tmp_dir/checksums.txt" || fail "checksum download failed"
+
+matches="$(awk -v name="$archive_name" '$2 == name || $2 == "*" name { print $1 }' "$tmp_dir/checksums.txt")"
+count="$(printf '%s\n' "$matches" | awk 'NF { n++ } END { print n+0 }')"
+[ "$count" -eq 1 ] || fail "checksums.txt must contain exactly one entry for $archive_name"
+expected="$(printf '%s\n' "$matches" | head -n 1)"
+case "$expected" in *[!0-9A-Fa-f]*|'') fail "invalid SHA-256 checksum" ;; esac
+[ "${#expected}" -eq 64 ] || fail "invalid SHA-256 checksum"
+if command -v sha256sum >/dev/null 2>&1; then
+    (cd "$tmp_dir" && printf '%s  %s\n' "$expected" "$archive_name" | sha256sum -c - >/dev/null) || fail "checksum mismatch"
+elif command -v shasum >/dev/null 2>&1; then
+    actual="$(shasum -a 256 "$tmp_dir/$archive_name" | awk '{print $1}')"
+    [ "$actual" = "$expected" ] || fail "checksum mismatch"
+else
+    fail "sha256sum or shasum is required"
+fi
+
+entries="$(tar -tzf "$tmp_dir/$archive_name")" || fail "invalid archive"
+printf '%s\n' "$entries" | while IFS= read -r entry; do
+    case "$entry" in /*|..|../*|*/../*) fail "archive contains an unsafe path" ;; esac
+done
+binary_count="$(printf '%s\n' "$entries" | awk -v name="$BINARY_NAME" '$0 == name { n++ } END { print n+0 }')"
+[ "$binary_count" -eq 1 ] || fail "archive must contain exactly one $BINARY_NAME binary"
+tar -xzf "$tmp_dir/$archive_name" -C "$tmp_dir" -- "$BINARY_NAME" || fail "binary extraction failed"
+[ -f "$tmp_dir/$BINARY_NAME" ] && [ ! -L "$tmp_dir/$BINARY_NAME" ] || fail "archive binary is not a regular file"
+
+if [ -z "$INSTALL_DIR" ]; then
+    if [ -w /usr/local/bin ]; then INSTALL_DIR=/usr/local/bin; else INSTALL_DIR="$HOME/.local/bin"; fi
+fi
+mkdir -p "$INSTALL_DIR" || fail "cannot create install directory"
+candidate="$INSTALL_DIR/.${BINARY_NAME}.new.$$"
+install -m 0755 "$tmp_dir/$BINARY_NAME" "$candidate" || fail "cannot stage binary"
+mv -f "$candidate" "$INSTALL_DIR/$BINARY_NAME" || fail "cannot replace binary"
+candidate=""
+printf 'plaky115 %s installed to %s\n' "$VERSION" "$INSTALL_DIR/$BINARY_NAME"

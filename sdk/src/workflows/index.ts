@@ -30,6 +30,8 @@ export type SearchItemsParams = {
   board: EntityRef;
   query: string;
   limit?: number;
+  signal?: AbortSignal;
+  onProgress?: (scanned: number, limit: number) => void;
 };
 
 export type SearchItemsDetailedResult = {
@@ -57,12 +59,13 @@ export async function searchItemsDetailed(client: PlakyClient, params: SearchIte
       boardId: asBoardId(board.id!),
       page,
       pageSize: Math.min(100, limit - scanned),
-    });
+    }, params.signal ? { signal: params.signal } : undefined);
     const items = (response.data ?? []) as ItemShape[];
     for (const item of items.slice(0, limit - scanned)) {
       scanned++;
       if (itemMatchesSearch(item, needle)) data.push(item);
     }
+    params.onProgress?.(scanned, limit);
 
     if (response.hasMore !== true) {
       return { data, scanned, matched: data.length, truncated: false };
@@ -106,14 +109,18 @@ export type BulkUpdateParams = {
   board: EntityRef;
   updates: Array<{ itemId: number | string; body: Record<string, unknown> }>;
   dryRun?: boolean;
+  signal?: AbortSignal;
+  onProgress?: (completed: number, total: number) => void;
 };
 
 export async function bulkUpdateItems(client: PlakyClient, params: BulkUpdateParams): Promise<Array<{ itemId: number | string; status: "dry-run" | "updated" | "error"; detail?: unknown }>> {
   const { space, board } = await resolveSpaceAndBoard(client, { space: params.space, board: params.board });
   const out = [];
-  for (const update of params.updates) {
+  for (const [index, update] of params.updates.entries()) {
+    if (params.signal?.aborted) throw params.signal.reason ?? new DOMException("Aborted", "AbortError");
     if (params.dryRun === true) {
       out.push({ itemId: update.itemId, status: "dry-run" as const });
+      params.onProgress?.(index + 1, params.updates.length);
       continue;
     }
     try {
@@ -127,6 +134,7 @@ export async function bulkUpdateItems(client: PlakyClient, params: BulkUpdatePar
     } catch (err) {
       out.push({ itemId: update.itemId, status: "error" as const, detail: (err as Error).message });
     }
+    params.onProgress?.(index + 1, params.updates.length);
   }
   return out;
 }

@@ -1,5 +1,5 @@
 import { z } from "zod/v3";
-import { searchItems, asSpaceId, type EntityRef } from "plaky115";
+import { searchItems, asSpaceId, resolveSpace, type EntityRef } from "plaky115";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 export const findTool: McpToolDefinition = {
@@ -34,7 +34,8 @@ export const findTool: McpToolDefinition = {
     }
     if (args.type === "board") {
       if (args.spaceId === undefined) throw new Error("plaky_find: spaceId required when type=board");
-      const boards = await ctx.client.boards.listAll({ spaceId: asSpaceId(args.spaceId as string | number) });
+      const space = await resolveSpace(ctx.client, args.spaceId);
+      const boards = await ctx.client.boards.listAll({ spaceId: asSpaceId(space.id!) });
       const needle = args.query.toLowerCase();
       const matched = boards.filter((b) => String(b.title ?? "").toLowerCase().includes(needle));
       return ctx.respond({ data: matched, hasMore: false }, { compactKind: "board", includeRaw: args.includeRaw === true });

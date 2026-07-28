@@ -2,7 +2,7 @@ openapi: 3.1.0
 overlay: 1.0.0
 info:
   title: Plaky115 DX Metadata
-  version: 0.2.0
+  version: 1.0.0
 actions:
   - target: $.info
     update:

@@ -1,13 +1,14 @@
 // AUTO-GENERATED. Source: openapi/plaky115-operation-metadata.json operationId=replaceCommentReactions
 import { z } from "zod/v3";
 import { request } from "plaky115/runtime/http.js";
+import { int64Id } from "../../runtime/ids.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
-  spaceId: z.number().int().describe("Represents unique space identifier across the system."),
-  boardId: z.number().int().describe("Represents unique board identifier across the system."),
-  itemId: z.number().int().describe("Represents unique item identifier across the system."),
-  itemCommentId: z.number().int().describe("Represents unique item comment identifier across the system."),
+  spaceId: int64Id.describe("Represents unique space identifier across the system."),
+  boardId: int64Id.describe("Represents unique board identifier across the system."),
+  itemId: int64Id.describe("Represents unique item identifier across the system."),
+  itemCommentId: int64Id.describe("Represents unique item comment identifier across the system."),
   body: z.record(z.unknown()).describe("JSON request body for Replace comment reactions."),
 });
 const output = z.object({}).passthrough();

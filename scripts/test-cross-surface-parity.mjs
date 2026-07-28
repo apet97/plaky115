@@ -113,7 +113,6 @@ function describeOperation(op) {
     ...parameters.filter((parameter) => parameter.in === "query"),
     ...(op.pagination?.inputs ?? []),
   ]);
-  const paginationNames = new Set((op.pagination?.inputs ?? []).map(({ name }) => name));
   const expectsExpand = queryParameters.some(({ name }) => name === "expand");
   const requestKind = op.request.kind;
   const successKind = op.success.kind;
@@ -125,13 +124,11 @@ function describeOperation(op) {
 
   const expectedQueryPairs = [];
   const mcpInput = {};
-  const legacyMcpInput = {};
   const sdkQuery = {};
   const cliCmd = camelToKebab(op.operationId);
   const cliFlags = [];
   for (const { name } of pathParameters) {
     mcpInput[name] = ID[name];
-    legacyMcpInput[name] = ID[name];
     cliFlags.push(`--${camelToKebab(name)}`, String(ID[name]));
   }
   for (const parameter of queryParameters) {
@@ -139,7 +136,6 @@ function describeOperation(op) {
     if (value === undefined) continue;
     sdkQuery[parameter.name] = value;
     mcpInput[parameter.name] = value;
-    legacyMcpInput[parameter.name] = legacyMcpValue(parameter, value, paginationNames.has(parameter.name));
     if (Array.isArray(value)) {
       if (parameter.explode === false) {
         const joined = value.join(",");
@@ -161,13 +157,11 @@ function describeOperation(op) {
   const jsonBody = requestKind === "json" ? (BODIES[op.operationId] ?? { fixture: op.operationId }) : undefined;
   if (requestKind === "json") {
     mcpInput.body = jsonBody;
-    legacyMcpInput.body = jsonBody;
     cliFlags.push("--body", JSON.stringify(jsonBody));
   } else if (requestKind === "multipart") {
     mcpInput.fileBase64 = Buffer.from("parity").toString("base64");
     mcpInput.fileName = "parity.txt";
     mcpInput.contentType = "text/plain";
-    Object.assign(legacyMcpInput, mcpInput);
     cliFlags.push("--file", "__PARITY_UPLOAD__", "--filename", "parity.txt", "--content-type", "text/plain");
   }
   if (op.confirmation === "destructive") cliFlags.push("--confirm");
@@ -185,7 +179,6 @@ function describeOperation(op) {
     jsonBody,
     sdkQuery,
     mcpInput,
-    legacyMcpInput,
     cliCmd,
     cliFlags,
   };
@@ -216,13 +209,6 @@ function queryValue(operationId, parameter) {
     case "array": return [parameter.schema.items?.enum?.[0] ?? "fixture"];
     default: return undefined;
   }
-}
-
-function legacyMcpValue(parameter, value, paginationInput) {
-  if (paginationInput) return value;
-  if (parameter.schema.type === "integer" || parameter.schema.type === "number") return String(value);
-  if (parameter.schema.type === "array" && parameter.explode === false) return value.join(",");
-  return value;
 }
 
 // Parse a captured request URL (full or path-relative) into method-agnostic
@@ -349,7 +335,7 @@ before(async () => {
   const sdkMod = await import(pathToFileURL(join(root, "sdk/esm/index.js")).href);
   sdkClient = new sdkMod.PlakyClient({
     apiKey: "test-api-key",
-    serverURL: "http://sdk.parity.local",
+    serverURL: "http://127.0.0.1",
     maxRetries: 0,
     fetch: recordingFetch(sdkStore),
   });
@@ -360,7 +346,7 @@ before(async () => {
   const mcpMod = await import(pathToFileURL(join(root, "mcp-server/esm/server/index.js")).href);
   ({ server: mcpServer } = mcpMod.buildServer({
     apiKey: "test-api-key",
-    serverURL: "http://mcp.parity.local",
+    serverURL: "http://127.0.0.1",
     mode: "all",
     scopes: ["read", "write", "destructive"],
   }));
@@ -451,10 +437,7 @@ async function captureSdk(op) {
 
 async function captureMcp(op) {
   const before = mcpStore.length;
-  let response = await mcpClient.callTool({ name: op.mcpName, arguments: op.mcpInput });
-  if (response.isError && JSON.stringify(op.legacyMcpInput) !== JSON.stringify(op.mcpInput)) {
-    response = await mcpClient.callTool({ name: op.mcpName, arguments: op.legacyMcpInput });
-  }
+  const response = await mcpClient.callTool({ name: op.mcpName, arguments: op.mcpInput });
   assert.notEqual(response.isError, true, `MCP ${op.mcpName} returned an error: ${JSON.stringify(response.structuredContent ?? response.content)}`);
   assert.equal(mcpStore.length, before + 1, `MCP ${op.mcpName} should make exactly one request`);
   return dissect(mcpStore[mcpStore.length - 1]);

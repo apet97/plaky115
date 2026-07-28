@@ -24,26 +24,35 @@ func executeRoot(t *testing.T, args ...string) (string, error) {
 
 func executeRootWithInput(t *testing.T, input *bytes.Buffer, args ...string) (string, error) {
 	t.Helper()
+	stdout, stderr, err := executeRootStreams(t, input, args...)
+	if stdout != "" {
+		return stdout, err
+	}
+	return stderr, err
+}
+
+func executeRootStreams(t *testing.T, input *bytes.Buffer, args ...string) (string, string, error) {
+	t.Helper()
 	cmd, err := NewRootCommand()
 	if err != nil {
 		t.Fatalf("NewRootCommand() error = %v", err)
 	}
-	var out bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetErr(&out)
+	var stdout, stderr bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
 	if input != nil {
 		cmd.SetIn(input)
 	}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
-	return out.String(), err
+	return stdout.String(), stderr.String(), err
 }
 
 func TestDoctorUsesPersistentFlagsAtExecutionTime(t *testing.T) {
 	t.Setenv("PLAKY115_API_KEY", "")
 	t.Setenv("PLAKY115_API_KEY_AUTH", "")
 
-	out, err := executeRoot(t, "--api-key", "from-flag", "--server-url", "https://plaky.test", "doctor")
+	out, warning, err := executeRootStreams(t, nil, "--api-key", "from-flag", "--server-url", "https://plaky.test", "doctor")
 	if err != nil {
 		t.Fatalf("doctor returned error: %v", err)
 	}
@@ -53,6 +62,38 @@ func TestDoctorUsesPersistentFlagsAtExecutionTime(t *testing.T) {
 	}
 	if !strings.Contains(out, "apiKeyConfigured : yes") {
 		t.Fatalf("doctor did not use --api-key, output:\n%s", out)
+	}
+	if !strings.Contains(warning, "warning: --api-key exposes credentials through argv") {
+		t.Fatalf("deprecated --api-key warning missing, stderr:\n%s", warning)
+	}
+}
+
+func TestDoctorReadsAPIKeyFromStdinWithoutEchoingIt(t *testing.T) {
+	t.Setenv("PLAKY115_API_KEY", "")
+	t.Setenv("PLAKY115_API_KEY_AUTH", "")
+	out, err := executeRootWithInput(t, bytes.NewBufferString("stdin-secret\n"), "--api-key-stdin", "doctor")
+	if err != nil {
+		t.Fatalf("doctor returned error: %v", err)
+	}
+	if !strings.Contains(out, "apiKeyConfigured : yes") || strings.Contains(out, "stdin-secret") {
+		t.Fatalf("stdin credential handling output = %q", out)
+	}
+}
+
+func TestAPIKeyStdinRejectsMissingExtraAndConflictingInput(t *testing.T) {
+	for _, tc := range []struct {
+		name, input string
+		args        []string
+	}{
+		{name: "empty", input: "", args: []string{"--api-key-stdin", "doctor"}},
+		{name: "extra", input: "one\ntwo\n", args: []string{"--api-key-stdin", "doctor"}},
+		{name: "conflict", input: "one\n", args: []string{"--api-key", "legacy", "--api-key-stdin", "doctor"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := executeRootWithInput(t, bytes.NewBufferString(tc.input), tc.args...); err == nil {
+				t.Fatal("expected credential input error")
+			}
+		})
 	}
 }
 
@@ -74,8 +115,8 @@ func TestItemsExportCSV(t *testing.T) {
 		{name: "raw", mode: "raw", want: "items.raw.csv"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("PLAKY115_API_KEY", "from-env")
 			args := []string{
-				"--api-key", "from-flag",
 				"--server-url", server.URL,
 				"items-export",
 				"--space-id", "1",

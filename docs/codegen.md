@@ -3,8 +3,10 @@
 The toolkit uses in-repo deterministic generators. The TypeScript SDK generates
 schema types only; the SDK runtime and resource API are hand-written.
 
-All generators read `openapi/plaky115-operation-metadata.json`, which is
-Ruby-generated from the accepted contract plus overlay. Metadata records typed
+TypeScript schema generation reads `openapi/plaky115-dx.openapi.yaml` directly.
+CLI, MCP, and docs-index generators read
+`openapi/plaky115-operation-metadata.json`, which is Ruby-generated from the
+accepted contract plus overlay. Metadata records typed
 path/query parameters, explicit request and success shapes, confirmation,
 compaction, scopes, and sensitive-output handling. Generators must consume those
 fields instead of inferring wire behavior from methods or path text. Running
@@ -87,7 +89,9 @@ const response = await client.requestWithResponse({
 4. Run `npm run metadata:generate` and `npm run metadata:test`.
 5. Run `npm run generate:all`.
 6. Add or update the hand-written SDK resource method in `sdk/src/client/<resource>.ts`.
-7. Add a curated CLI command in `cli/internal/cli/dx.go` if it should be user-facing.
+7. Add a curated CLI command in the matching resource file under
+   `cli/internal/cli/`; keep only cross-resource helpers in
+   `curated_helpers.go`.
 8. Add a curated MCP workflow in `mcp-server/src/tools/curated/` if it is agent-useful.
 9. Add focused SDK, MCP, and CLI tests for the changed surface.
 
@@ -105,5 +109,5 @@ The hand-written layer is in separate files:
 - `sdk/src/runtime/`
 - `mcp-server/src/server/`
 - `mcp-server/src/tools/curated/`
-- `cli/internal/cli/dx.go`
+- `cli/internal/cli/` except `raw/`
 - `cli/internal/plakydx/` except `runners_generated.go`

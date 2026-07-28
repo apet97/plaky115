@@ -2,6 +2,17 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { withRetries, PlakyRateLimitError, PlakyServerError } from "../esm/index.js";
 
+test("withRetries rejects invalid retry settings", async () => {
+  for (const opts of [
+    { maxRetries: Number.POSITIVE_INFINITY },
+    { maxRetries: -1 },
+    { maxRetries: 1.5 },
+    { maxRetries: 1, baseDelayMs: Number.NaN },
+  ]) {
+    await assert.rejects(withRetries(async () => "unused", opts));
+  }
+});
+
 function rateLimitError(retryAfterMs) {
   return new PlakyRateLimitError("rate", {
     status: 429,

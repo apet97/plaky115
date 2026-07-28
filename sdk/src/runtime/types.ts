@@ -31,6 +31,8 @@ export type PlakyRequestOverrides = {
   timeoutMs?: number | undefined;
   /** Override the client's retry count for this call. */
   maxRetries?: number | undefined;
+  /** Maximum buffered response or error body size. Streaming bypasses this limit. */
+  maxResponseBytes?: number | undefined;
   /** Additional headers to merge for this call. */
   headers?: HeaderProvider | undefined;
   /** Idempotency key to attach (writes only); reuse across retries to dedupe. */

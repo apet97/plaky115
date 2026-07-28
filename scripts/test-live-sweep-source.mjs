@@ -9,8 +9,11 @@ import {
   createTextFixture,
   summarizeDownloadLink,
 } from "./live-workspace-sweep.mjs";
+import { redact } from "./live/safe-output.mjs";
 
-const liveSweep = readFileSync(fileURLToPath(new URL("live-workspace-sweep.mjs", import.meta.url)), "utf8");
+const liveSweep = ["live-workspace-sweep.mjs", "live/cleanup.mjs", "live/contracts.mjs", "live/mutation-budget.mjs", "live/safe-output.mjs"]
+  .map((path) => readFileSync(fileURLToPath(new URL(path, import.meta.url)), "utf8"))
+  .join("\n");
 const liveWorkflow = readFileSync(fileURLToPath(new URL("../.github/workflows/live.yml", import.meta.url)), "utf8");
 const corpus = JSON.parse(
   readFileSync(fileURLToPath(new URL("../test/fixtures/security/plaky-api-key-cases.json", import.meta.url)), "utf8"),
@@ -60,9 +63,6 @@ test("live sweep validates sensitive MCP output in memory and never records its 
 });
 
 test("live sweep redaction follows the shared split-literal corpus", () => {
-  const source = liveSweep.match(/function redact\(s\) \{\n([\s\S]*?)\n\}/)?.[1];
-  assert.ok(source, "redact helper source not found");
-  const redact = new Function("s", source);
   for (const entry of corpus.cases) {
     assert.equal(redact(entry.inputParts.join("")), entry.expectedParts.join(""), entry.name);
   }

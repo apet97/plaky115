@@ -46,9 +46,16 @@ mcp --mode all --scope read --scope write --scope destructive
 Workflow arguments use strict, workflow-specific schemas. The read tool covers
 `workspace.map`, `items.search`, `comments.thread`, and `export.items` under the
 default read scope. The mutation tool covers `items.create`,
-`items.updateFields`, and `comments.add`; it stays in dry-run mode unless
-`dryRun: false` is supplied. `plaky_plan_mutation` accepts only those three
-mutation workflow IDs.
+`items.updateFields`, `comments.add`, `itemGroups.create`,
+`itemGroups.update`, `itemFiles.upload`, and `itemFiles.update`. Every mutation
+workflow resolves exact targets and stays in dry-run mode unless `dryRun: false`
+is supplied. Upload plans report decoded byte count without echoing file
+content. Archive and delete remain separate raw destructive tools.
+
+When the client supplies a progress token, bounded item scans and bulk updates
+emit throttled progress notifications. Cancellation aborts in-flight reads and
+prevents later writes from being scheduled; completed writes are never retried.
+Without a progress token, no notification is sent.
 
 Curated responses are compact by default. Pass `includeRaw: true` when a client
 needs the original Plaky API payload.

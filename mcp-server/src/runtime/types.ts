@@ -35,8 +35,9 @@ export type McpToolErrorEnvelope = {
 export type McpToolContext = {
   client: PlakyClient;
   requestOptions: PlakyRequestOptions;
+  signal: AbortSignal;
   respond(value: unknown, opts?: McpRespondOptions): McpToolResponse;
-  progress(message: string, percent?: number): void;
+  progress(progress: number, total: number, message: string): Promise<void>;
 };
 
 export type McpToolAnnotations = {

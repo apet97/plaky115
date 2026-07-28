@@ -23,7 +23,7 @@ contract and separate user-facing runtimes.
    src/runtime/*               *.go (generated)              *.ts (generated)
    (hand-written)                   |                            |
                                     v                            v
-                              cli/internal/cli/dx.go        mcp-server/src/tools/curated/
+                              cli/internal/cli/*.go         mcp-server/src/tools/curated/
                               cli/internal/plakydx/         (curated workflows)
                               (curated workflows)
 ```

@@ -5,7 +5,7 @@ import { executeWorkflow, mutationWorkflowInputSchema } from "./execute-workflow
 export const executeMutationWorkflowTool: McpToolDefinition = {
   name: "plaky_execute_mutation_workflow",
   title: "Execute a Plaky mutation workflow",
-  description: "Run items.create, items.updateFields, or comments.add with exact validation. Defaults to dryRun=true unless explicitly false.",
+  description: "Run item, comment, Item Group, or item-file create/update workflows with exact validation. Defaults to dryRun=true unless explicitly false.",
   scopes: ["read", "write"],
   annotations: {
     readOnlyHint: false,

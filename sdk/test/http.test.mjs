@@ -8,6 +8,7 @@ import {
   PlakyConnectionError,
   PlakyDecodeError,
   PlakyPermissionError,
+  PlakyResponseTooLargeError,
   PlakyNotFoundError,
   PlakyRateLimitError,
   PlakyServerError,
@@ -15,6 +16,106 @@ import {
   PlakyUnprocessableEntityError,
   PlakyAuthError,
 } from "../esm/runtime/errors.js";
+
+test("raw transport rejects remote HTTP and invalid overrides before fetch", async () => {
+  let calls = 0;
+  const fetch = async () => { calls++; return new Response("{}"); };
+  for (const options of [
+    { serverURL: "http://example.test", timeoutMs: 1 },
+    { serverURL: "https://example.test", timeoutMs: Number.POSITIVE_INFINITY },
+    { serverURL: "https://example.test", maxRetries: 1.5 },
+  ]) {
+    await assert.rejects(
+      request({ method: "GET", path: "/v1/public/spaces" }, { apiKey: "test-api-key", fetch, ...options }),
+    );
+  }
+  assert.equal(calls, 0);
+});
+
+test("transport forces manual redirects and prevents interceptor origin changes", async () => {
+  let captured;
+  const fetch = async (_url, init) => {
+    captured = init;
+    return new Response("", { status: 302, headers: { location: "https://other.test/" } });
+  };
+  await assert.rejects(
+    request(
+      { method: "GET", path: "/v1/public/spaces" },
+      {
+        apiKey: "test-api-key",
+        serverURL: "https://example.test",
+        fetch,
+        interceptors: { request: async ({ init }) => ({ url: "https://example.test/redirect", init: { ...init, redirect: "follow" } }) },
+      },
+    ),
+    (error) => error instanceof PlakyApiError && error.status === 302,
+  );
+  assert.equal(captured.redirect, "manual");
+
+  await assert.rejects(
+    request(
+      { method: "GET", path: "/v1/public/spaces" },
+      {
+        apiKey: "test-api-key",
+        serverURL: "https://example.test",
+        fetch,
+        interceptors: { request: async ({ init }) => ({ url: "https://other.test/", init }) },
+      },
+    ),
+    /trusted server origin/,
+  );
+});
+
+test("buffered success and error responses enforce the configured byte limit", async () => {
+  for (const status of [200, 400]) {
+    await assert.rejects(
+      request(
+        { method: "GET", path: "/v1/public/spaces" },
+        {
+          apiKey: "test-api-key",
+          serverURL: "https://example.test",
+          maxResponseBytes: 4,
+          fetch: async () => new Response("12345", { status }),
+        },
+      ),
+      (error) => error instanceof PlakyResponseTooLargeError && error.limit === 4,
+    );
+  }
+});
+
+test("oversized streamed responses cancel the body reader", async () => {
+  let cancelled = false;
+  const body = new ReadableStream({
+    start(controller) { controller.enqueue(new Uint8Array(5)); },
+    cancel() { cancelled = true; },
+  });
+  await assert.rejects(
+    request(
+      { method: "GET", path: "/v1/public/spaces" },
+      {
+        apiKey: "test-api-key",
+        serverURL: "https://example.test",
+        maxResponseBytes: 4,
+        fetch: async () => new Response(body),
+      },
+    ),
+    PlakyResponseTooLargeError,
+  );
+  assert.equal(cancelled, true);
+});
+
+test("streaming responses bypass the buffer limit", async () => {
+  const stream = await request(
+    { method: "GET", path: "/v1/public/spaces", responseType: "stream" },
+    {
+      apiKey: "test-api-key",
+      serverURL: "https://example.test",
+      maxResponseBytes: 1,
+      fetch: async () => new Response("larger than one byte"),
+    },
+  );
+  assert.ok(stream instanceof ReadableStream);
+});
 
 test("request builds url, sends auth header, parses JSON", async () => {
   let captured;

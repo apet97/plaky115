@@ -1,11 +1,14 @@
-// Placeholder progress hook. Real progress notifications come from the
-// MCP server's transport layer; this module provides a stable surface for
-// curated tools to call without depending on the transport directly.
-
-export type ProgressFn = (message: string, percent?: number) => void;
-
-export function noopProgress(): ProgressFn {
-  return () => {
-    /* no-op */
+export function createProgressReporter(
+  send: (progress: number, total: number, message: string) => Promise<void>,
+  total: number,
+  message: string,
+  maxUpdates = 20,
+): (progress: number) => void {
+  const step = Math.max(1, Math.ceil(total / maxUpdates));
+  let last = 0;
+  return (progress) => {
+    if (progress < total && progress - last < step) return;
+    last = progress;
+    void send(progress, total, message).catch(() => {});
   };
 }

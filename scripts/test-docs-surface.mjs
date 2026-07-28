@@ -100,7 +100,7 @@ test("public repository docs exclude internal ledgers", () => {
   assert.equal(result.stdout.trim(), "");
 });
 
-test("v0.2 docs describe the exact new public surfaces and safe defaults", () => {
+test("stable docs describe the exact public surfaces and safe defaults", () => {
   const rootReadme = read("README.md");
   const sdkReadme = read("sdk/README.md");
   const cliReadme = read("cli/README.md");

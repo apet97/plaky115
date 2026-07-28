@@ -1,22 +1,20 @@
-import { slug } from "./codegen-common.mjs";
+import { describeOperation, slug } from "./codegen-common.mjs";
 
 export function buildRawToolModule(op) {
-  const pathParameters = op.parameters.filter((parameter) => parameter.in === "path");
-  const queryParameters = uniqueParameters([
-    ...op.parameters.filter((parameter) => parameter.in === "query"),
-    ...(op.pagination?.inputs ?? []),
-  ]);
-  const hasJsonBody = op.request.kind === "json";
-  const hasMultipartBody = op.request.kind === "multipart";
-  if (hasMultipartBody) validateMultipartRequest(op);
+  const descriptor = describeOperation(op);
+  const { pathParameters, queryParameters } = descriptor;
+  const hasJsonBody = descriptor.requestKind === "json";
+  const hasMultipartBody = descriptor.requestKind === "multipart";
   const hasQuery = queryParameters.length > 0;
-  const isVoid = op.success.kind === "void";
-  const isArray = op.success.kind === "json-array";
+  const isVoid = descriptor.isVoid;
+  const isArray = descriptor.isArray;
   const camelOp = op.operationId;
+  const needsInt64Id = [...pathParameters, ...queryParameters].some((parameter) => usesInt64(parameter.schema));
   const lines = [];
   lines.push(`// AUTO-GENERATED. Source: openapi/plaky115-operation-metadata.json operationId=${camelOp}`);
   lines.push(`import { z } from "zod/v3";`);
   lines.push(`import { request } from "plaky115/runtime/http.js";`);
+  if (needsInt64Id) lines.push(`import { int64Id } from "../../runtime/ids.js";`);
   if (hasMultipartBody) lines.push(`import { buildFileUploadFormData } from "../../runtime/upload.js";`);
   lines.push(`import type { McpToolDefinition } from "../../runtime/types.js";`);
   lines.push(``);
@@ -108,27 +106,6 @@ function formatTsPath(path, parameters) {
   return `\`${escaped}\``;
 }
 
-function uniqueParameters(parameters) {
-  const seen = new Set();
-  return parameters.filter(({ name }) => {
-    if (seen.has(name)) return false;
-    seen.add(name);
-    return true;
-  });
-}
-
-function validateMultipartRequest(op) {
-  const parts = op.request.parts;
-  const valid = parts.length === 1
-    && parts[0].name === "file"
-    && parts[0].required === true
-    && parts[0].type === "string"
-    && parts[0].format === "binary";
-  if (!valid) {
-    throw new Error(`${op.operationId}: expected a single required binary multipart part named file`);
-  }
-}
-
 function zodParameter(parameter) {
   let schema = zodSchema(parameter.schema);
   const description = parameter.description ?? `${parameter.name} ${parameter.in} parameter for this Plaky operation.`;
@@ -144,12 +121,17 @@ function zodSchema(schema) {
   }
   switch (schema.type) {
     case "string": return "z.string()";
-    case "integer": return "z.number().int()";
+    case "integer": return schema.format === "int64" ? "int64Id" : "z.number().int()";
     case "number": return "z.number()";
     case "boolean": return "z.boolean()";
     case "array": return `z.array(${zodSchema(schema.items)})`;
     default: throw new Error(`unsupported parameter schema type: ${schema.type}`);
   }
+}
+
+function usesInt64(schema) {
+  return schema?.type === "integer" && schema.format === "int64"
+    || schema?.type === "array" && usesInt64(schema.items);
 }
 
 function propertyKey(name) {

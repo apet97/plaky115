@@ -10,6 +10,10 @@ esm/runtime/docs-index.d.ts
 esm/runtime/docs-index.d.ts.map
 esm/runtime/docs-index.js
 esm/runtime/docs-index.js.map
+esm/runtime/ids.d.ts
+esm/runtime/ids.d.ts.map
+esm/runtime/ids.js
+esm/runtime/ids.js.map
 esm/runtime/progress.d.ts
 esm/runtime/progress.d.ts.map
 esm/runtime/progress.js
@@ -70,6 +74,10 @@ esm/tools/curated/search-docs.d.ts
 esm/tools/curated/search-docs.d.ts.map
 esm/tools/curated/search-docs.js
 esm/tools/curated/search-docs.js.map
+esm/tools/curated/workflow-schemas.d.ts
+esm/tools/curated/workflow-schemas.d.ts.map
+esm/tools/curated/workflow-schemas.js
+esm/tools/curated/workflow-schemas.js.map
 esm/tools/curated/workspace-context.d.ts
 esm/tools/curated/workspace-context.d.ts.map
 esm/tools/curated/workspace-context.js

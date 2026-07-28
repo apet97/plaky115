@@ -30,6 +30,17 @@ caller-supplied `params.idempotencyKey` takes precedence over the per-request
 `newIdempotencyKey()` remains available for applications that want to create and
 manage a stable request identifier explicitly.
 
+## Transport boundaries
+
+Remote base URLs require HTTPS; only literal loopback hosts may use HTTP for
+local development. Base URLs cannot contain credentials, a query, or a
+fragment. Requests use manual/no redirect handling while carrying the API key,
+and SDK request interceptors cannot change the configured origin.
+
+Buffered success and error bodies default to 16 MiB and reject limits above the
+64 MiB hard ceiling. Streaming responses remain explicit and unbuffered.
+Timeouts, retry counts, and response limits are validated before network I/O.
+
 ## Pagination
 
 The API is strictly page-based. Confirmed live:
@@ -59,7 +70,7 @@ configurable:
 
 - SDK: `MAX_PAGES` in `sdk/src/runtime/pagination.ts` throws a `RangeError` when
   exceeded.
-- CLI: `maxPaginationPages` in `cli/internal/cli/dx.go` aborts with an error
+- CLI: `maxPaginationPages` in `cli/internal/cli/curated_helpers.go` aborts with an error
   when exceeded.
 
 ### Bounded item search

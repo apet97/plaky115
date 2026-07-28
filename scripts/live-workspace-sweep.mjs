@@ -20,6 +20,26 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  attemptMutationOnce, createArtifactLedger, createMutationAttemptLedger, createRunMarker, trackArtifact,
+} from "./live/mutation-budget.mjs";
+import {
+  cleanupOwnedArtifacts, collectPages, createCleanupCoordinator, createShutdownCoordinator,
+  executeWithCleanup, isOwnedArtifact, verifyDeleteOutcome, waitForAbsent,
+} from "./live/cleanup.mjs";
+import { redact, serializeLiveFailure, serializeLiveSummary } from "./live/safe-output.mjs";
+import {
+  assertBareFileList, assertVoidResult, createFixtureFormData, createTextFixture,
+  preflightLiveSweep, summarizeDownloadLink,
+} from "./live/contracts.mjs";
+
+export {
+  attemptMutationOnce, cleanupOwnedArtifacts, collectPages, createArtifactLedger, createCleanupCoordinator,
+  createMutationAttemptLedger, createRunMarker, createShutdownCoordinator, executeWithCleanup,
+  isOwnedArtifact, serializeLiveFailure, serializeLiveSummary, trackArtifact, verifyDeleteOutcome, waitForAbsent,
+  assertBareFileList, assertVoidResult, createFixtureFormData, createTextFixture,
+  preflightLiveSweep, summarizeDownloadLink,
+};
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const apiKey = process.env["PLAKY115_API_KEY"] ?? process.env["PLAKY115_API_KEY_AUTH"];
@@ -97,302 +117,8 @@ function smokeText(prefix) {
   return `${runMarker}${prefix}`;
 }
 
-export function createRunMarker(uuid) {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uuid)) {
-    throw new TypeError("run identity must be a UUID");
-  }
-  return `smoke:plaky115:${uuid}:`;
-}
-
-export function createArtifactLedger(marker) {
-  return { marker, groups: [], items: [], comments: [], files: [] };
-}
-
-export function createMutationAttemptLedger() {
-  return Object.fromEntries(["comments", "files", "items", "groups"].map((family) => [family, new Set()]));
-}
-
-export async function attemptMutationOnce(attempted, family, id, mutate) {
-  const familyAttempts = attempted[family];
-  if (!(familyAttempts instanceof Set)) throw new TypeError(`unknown artifact family: ${family}`);
-  const artifactId = String(id ?? "unknown");
-  if (familyAttempts.has(artifactId)) throw new Error(`${family} ${artifactId} mutation was already attempted`);
-  familyAttempts.add(artifactId);
-  return mutate();
-}
-
-export function createCleanupCoordinator(cleanupFn) {
-  let cleanupPromise;
-  return () => {
-    cleanupPromise ??= Promise.resolve().then(cleanupFn);
-    return cleanupPromise;
-  };
-}
-
-export function createShutdownCoordinator({ cleanup, exit, onError = () => {} }) {
-  let shutdownPromise;
-  return (code) => {
-    shutdownPromise ??= (async () => {
-      let exitCode = code;
-      try {
-        await cleanup();
-      } catch (error) {
-        exitCode = 1;
-        onError(error);
-      }
-      exit(exitCode);
-    })();
-    return shutdownPromise;
-  };
-}
-
-export async function executeWithCleanup(operation, cleanup) {
-  let operationError;
-  try {
-    await operation();
-  } catch (error) {
-    operationError = error;
-  }
-  let cleanupError;
-  try {
-    await cleanup();
-  } catch (error) {
-    cleanupError = error;
-  }
-  if (operationError && cleanupError) throw new AggregateError([operationError, cleanupError], "live operation and cleanup failed");
-  if (operationError) throw operationError;
-  if (cleanupError) throw cleanupError;
-}
-
-export async function preflightLiveSweep({
-  apiKey: key,
-  spaceId: targetSpaceId,
-  boardId: targetBoardId,
-  allowArchive: archiveAcknowledged,
-  wantSDK: sdkEnabled,
-  wantCLI: cliEnabled,
-  wantMCP: mcpEnabled,
-  checks,
-}) {
-  if (typeof key !== "string" || key.length === 0) throw new Error("Plaky API key is required");
-  if (typeof targetSpaceId !== "string" || targetSpaceId.length === 0) throw new Error("sacrificial space ID is required");
-  if (typeof targetBoardId !== "string" || targetBoardId.length === 0) throw new Error("sacrificial board ID is required");
-  if (!/^\d+$/.test(targetSpaceId) || !/^\d+$/.test(targetBoardId)) throw new Error("space ID and board ID must be numeric");
-  if (!archiveAcknowledged) throw new Error("PLAKY115_SMOKE_ALLOW_ARCHIVE=1 acknowledgement is required");
-
-  const builds = {};
-  if (sdkEnabled || mcpEnabled) {
-    builds.sdkBuilt = await checks.sdk();
-    if (!builds.sdkBuilt) throw new Error("SDK build is missing");
-  }
-  if (cliEnabled) {
-    builds.cliBin = await checks.cli();
-    if (!builds.cliBin) throw new Error("CLI build failed");
-  }
-  if (mcpEnabled) {
-    builds.mcpBin = await checks.mcp();
-    if (!builds.mcpBin) throw new Error("MCP server build is missing");
-  }
-  return builds;
-}
-
-export function trackArtifact(targetLedger, family, artifact) {
-  if (!Object.hasOwn(targetLedger, family) || !Array.isArray(targetLedger[family])) {
-    throw new TypeError(`unknown artifact family: ${family}`);
-  }
-  targetLedger[family].push({ ...artifact });
-}
-
-export function isOwnedArtifact(artifact, marker) {
-  if (!artifact || typeof artifact !== "object") return false;
-  return [artifact.title, artifact.name, artifact.description, artifact.content, artifact.text]
-    .some((value) => typeof value === "string" && value.startsWith(marker));
-}
-
-export async function collectPages(fetchPage) {
-  const records = [];
-  for (let page = 1; ; page++) {
-    const response = await fetchPage(page);
-    records.push(...(Array.isArray(response?.data) ? response.data : []));
-    if (response?.hasMore !== true) return records;
-  }
-}
-
-export function createTextFixture(marker, surface) {
-  if (typeof marker !== "string" || marker.length === 0) throw new TypeError("fixture marker is required");
-  if (typeof surface !== "string" || surface.length === 0) throw new TypeError("fixture surface is required");
-  return {
-    fileName: `${marker}fixture-${surface}.txt`,
-    contentType: "text/plain",
-    bytes: new TextEncoder().encode(`live fixture for ${surface}`),
-  };
-}
-
-export function createFixtureFormData(fixture) {
-  const form = new FormData();
-  form.append("file", new Blob([fixture.bytes], { type: fixture.contentType }), fixture.fileName);
-  return form;
-}
-
-export function assertBareFileList(value, label) {
-  if (!Array.isArray(value)) throw new Error(`${label} must return a bare array`);
-  return value;
-}
-
-export function assertVoidResult(value, label) {
-  if (value !== undefined) throw new Error(`${label} must return a void response`);
-  return value;
-}
-
-export function summarizeDownloadLink(value) {
-  if (!value || typeof value !== "object" || typeof value.url !== "string" || value.url.length === 0) {
-    throw new Error("Download link must contain a non-empty HTTPS URL.");
-  }
-  const parsedURL = new URL(value.url);
-  if (parsedURL.protocol !== "https:") throw new Error("Download link must contain a non-empty HTTPS URL.");
-  if (typeof value.expiresInSeconds !== "number" || !Number.isFinite(value.expiresInSeconds)) {
-    throw new Error("Download link must contain a finite numeric expiry.");
-  }
-  return { urlPresent: true, expiresInSeconds: value.expiresInSeconds };
-}
-
-export async function verifyDeleteOutcome(remove, isAbsent) {
-  try {
-    return await remove();
-  } catch (error) {
-    if (error?.status !== 400 || !(await isAbsent())) throw error;
-    return undefined;
-  }
-}
-
-export async function waitForAbsent(isAbsent, { attempts = 20, delayMs = 100 } = {}) {
-  for (let attempt = 1; attempt <= attempts; attempt++) {
-    if (await isAbsent()) return true;
-    if (attempt < attempts && delayMs > 0) {
-      await new Promise((resolveDelay) => setTimeout(resolveDelay, delayMs));
-    }
-  }
-  return false;
-}
-
-export async function cleanupOwnedArtifacts({ ledger: targetLedger, adapters, attempted = createMutationAttemptLedger() }) {
-  const order = ["comments", "files", "items", "groups"];
-  const failures = [];
-  const discovered = { comments: 0, files: 0, items: 0, groups: 0 };
-  const leftovers = { comments: 0, files: 0, items: 0, groups: 0 };
-  async function attempt(family, artifact, stage) {
-    const artifactId = String(artifact.id ?? "unknown");
-    if (attempted[family].has(artifactId)) return;
-    attempted[family].add(artifactId);
-    try {
-      await adapters[family].remove(artifact);
-      const index = targetLedger[family].findIndex((entry) => String(entry.id) === String(artifact.id));
-      if (index >= 0) targetLedger[family].splice(index, 1);
-    } catch (error) {
-      if (isCleanupNotFound(error)) {
-        const index = targetLedger[family].findIndex((entry) => String(entry.id) === String(artifact.id));
-        if (index >= 0) targetLedger[family].splice(index, 1);
-        return;
-      }
-      failures.push(new Error(`${stage} ${family} ${String(artifact.id ?? "unknown")} failed`, { cause: error }));
-    }
-  }
-
-  for (const family of order) {
-    for (const artifact of [...targetLedger[family]].reverse()) await attempt(family, artifact, "known cleanup");
-  }
-
-  for (const family of order) {
-    let records = [];
-    try {
-      records = await adapters[family].list();
-    } catch (error) {
-      failures.push(new Error(`discovery scan ${family} failed`, { cause: error }));
-      continue;
-    }
-    for (const artifact of records.filter((entry) => isOwnedArtifact(entry, targetLedger.marker))) {
-      discovered[family]++;
-      await attempt(family, artifact, "discovered cleanup");
-    }
-  }
-
-  for (const family of order) {
-    try {
-      const records = await adapters[family].list();
-      const owned = records.filter((entry) => isOwnedArtifact(entry, targetLedger.marker));
-      leftovers[family] = owned.length;
-      if (owned.length > 0) failures.push(new Error(`final rescan found ${owned.length} ${family}`));
-    } catch (error) {
-      failures.push(new Error(`final rescan ${family} failed`, { cause: error }));
-    }
-  }
-
-  if (failures.length > 0) throw new AggregateError(failures, "live sweep cleanup failed");
-  return { discovered, leftovers };
-}
-
-export function isCleanupNotFound(error) {
-  for (let current = error; current && typeof current === "object"; current = current.cause) {
-    if (current.status === 404 || current.statusCode === 404) return true;
-  }
-  return false;
-}
-
-function redact(s) {
-  return String(s).replace(/plk_[A-Za-z0-9_-]+/g, "[REDACTED_PLAKY_API_KEY]");
-}
-
 function record(area, name, detail = {}) {
   summary.push({ area, name, detail });
-}
-
-function sanitizeSummaryDetail(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  const out = {};
-  for (const [key, entry] of Object.entries(value)) {
-    if (key === "status") continue;
-    if (typeof entry === "number" && Number.isFinite(entry)) out[key] = entry;
-    else if (typeof entry === "boolean") out[key] = entry;
-    else if (entry && typeof entry === "object" && !Array.isArray(entry)) {
-      const nested = sanitizeSummaryDetail(entry);
-      if (Object.keys(nested).length > 0) out[key] = nested;
-    }
-  }
-  return out;
-}
-
-export function serializeLiveSummary(entries, trackedArtifactCount) {
-  return JSON.stringify({
-    status: "ok",
-    operations: entries.map((entry) => ({
-      surface: String(entry.area),
-      operation: String(entry.name),
-      status: "ok",
-      ...sanitizeSummaryDetail(entry.detail),
-    })),
-    trackedArtifactCount: Number.isFinite(trackedArtifactCount) ? trackedArtifactCount : 0,
-  });
-}
-
-export function serializeLiveFailure(error) {
-  const output = { status: "failed" };
-  const pending = [error];
-  const seen = new Set();
-  while (pending.length > 0) {
-    const current = pending.shift();
-    if (!current || typeof current !== "object" || seen.has(current)) continue;
-    seen.add(current);
-    if (output.httpStatus === undefined && Number.isFinite(current.status)) output.httpStatus = current.status;
-    const artifactId = typeof current.artifactId === "number"
-      ? current.artifactId
-      : typeof current.artifactId === "string" && /^\d+$/.test(current.artifactId)
-        ? Number(current.artifactId)
-        : undefined;
-    if (output.artifactId === undefined && Number.isSafeInteger(artifactId)) output.artifactId = artifactId;
-    if (current.cause) pending.push(current.cause);
-    if (Array.isArray(current.errors)) pending.push(...current.errors);
-  }
-  return JSON.stringify(output);
 }
 
 function trackCreatedComment(itemId, commentId, surface, operation, content) {

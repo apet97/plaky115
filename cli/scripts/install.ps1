@@ -1,151 +1,79 @@
-#
-# plaky115 CLI Installation Script for Windows
-# This script downloads and installs the latest version of the plaky115 CLI
-#
-# Usage:
-#   iwr -useb https://raw.githubusercontent.com/apet97/plaky115/main/cli/scripts/install.ps1 | iex
-#   or
-#   Invoke-WebRequest -Uri https://raw.githubusercontent.com/apet97/plaky115/main/cli/scripts/install.ps1 -UseBasicParsing | Invoke-Expression
-#
-# Options:
-#   $env:PLAKY115_INSTALL_DIR - Installation directory (default: $env:LOCALAPPDATA\Programs\plaky115)
-#   $env:PLAKY115_VERSION     - Specific version to install (default: latest)
-#
-
 [CmdletBinding()]
 param()
 
 $ErrorActionPreference = 'Stop'
-
-# Configuration
 $Repo = "apet97/plaky115"
-$BinaryName = "plaky115.exe"
-$DefaultInstallDir = Join-Path $env:LOCALAPPDATA "Programs\plaky115"
-$InstallDir = if ($env:PLAKY115_INSTALL_DIR) { $env:PLAKY115_INSTALL_DIR } else { $DefaultInstallDir }
 $Version = if ($env:PLAKY115_VERSION) { $env:PLAKY115_VERSION } else { "latest" }
+$InstallDir = if ($env:PLAKY115_INSTALL_DIR) { $env:PLAKY115_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA "Programs\plaky115" }
 
-# Helper functions
-function Write-ColorOutput {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Message,
-        [string]$Color = "White"
-    )
-    Write-Host $Message -ForegroundColor $Color
+if ($Version -eq "latest") {
+    $Version = (Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest").tag_name
+}
+if ($Version -notmatch '^v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$') { throw "version must be an exact v<semver> tag" }
+$arch = switch ($env:PROCESSOR_ARCHITECTURE) { "AMD64" { "x86_64" } "ARM64" { "arm64" } default { throw "unsupported architecture" } }
+$archiveName = "plaky115_Windows_$arch.zip"
+
+if ($env:PLAKY115_INSTALL_TEST_BASE_URL) {
+    if ($env:PLAKY115_INSTALL_TESTING -ne "1") { throw "test base URL is disabled" }
+    $releaseBase = "$($env:PLAKY115_INSTALL_TEST_BASE_URL.TrimEnd('/'))/$Version"
+} else {
+    $releaseBase = "https://github.com/$Repo/releases/download/$Version"
 }
 
-function Get-LatestVersion {
-    try {
-        $response = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -UseBasicParsing
-        return $response.tag_name
-    }
-    catch {
-        Write-ColorOutput "Failed to get latest version: $_" -Color Red
-        exit 1
-    }
-}
-
-function Get-Architecture {
-    $arch = $env:PROCESSOR_ARCHITECTURE
-    switch ($arch) {
-        "AMD64" { return "x86_64" }
-        "ARM64" { return "arm64" }
-        default {
-            Write-ColorOutput "Unsupported architecture: $arch" -Color Red
-            exit 1
-        }
-    }
-}
-
-function Install-CLI {
-    Write-ColorOutput "Installing plaky115 CLI..." -Color Green
-
-    # Detect architecture
-    $arch = Get-Architecture
-    Write-ColorOutput "Detected Architecture: $arch" -Color Cyan
-
-    # Get version
-    if ($Version -eq "latest") {
-        $Version = Get-LatestVersion
-        Write-ColorOutput "Latest version: $Version" -Color Cyan
-    }
-
-    # Construct download URL
-    $archiveName = "plaky115_Windows_$arch.zip"
-    $downloadUrl = "https://github.com/$Repo/releases/download/$Version/$archiveName"
-
-    Write-ColorOutput "Downloading from: $downloadUrl" -Color Cyan
-
-    # Create temporary directory
-    $tempDir = Join-Path $env:TEMP "plaky115-install-$(New-Guid)"
-    New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
-
-    try {
-        # Download archive
-        $archivePath = Join-Path $tempDir $archiveName
-        try {
-            Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath -UseBasicParsing
-        }
-        catch {
-            Write-ColorOutput "Failed to download from $downloadUrl" -Color Red
-            Write-ColorOutput "Error: $_" -Color Red
-            exit 1
-        }
-
-        Write-ColorOutput "Download complete" -Color Green
-
-        # Extract archive
-        Write-ColorOutput "Extracting archive..." -Color Cyan
-        Expand-Archive -Path $archivePath -DestinationPath $tempDir -Force
-
-        # Create install directory if it doesn't exist
-        if (-not (Test-Path $InstallDir)) {
-            Write-ColorOutput "Creating installation directory: $InstallDir" -Color Cyan
-            New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
-        }
-
-        # Install binary
-        $binaryPath = Join-Path $InstallDir $BinaryName
-        Write-ColorOutput "Installing to $binaryPath..." -Color Cyan
-
-        # Remove existing binary if it exists
-        if (Test-Path $binaryPath) {
-            Remove-Item $binaryPath -Force
-        }
-
-        Copy-Item -Path (Join-Path $tempDir $BinaryName) -Destination $binaryPath -Force
-
-        Write-ColorOutput "plaky115 $Version has been installed to $binaryPath" -Color Green
-
-        # Add to PATH if not already there
-        $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-        if ($userPath -notlike "*$InstallDir*") {
-            Write-ColorOutput "Adding $InstallDir to your PATH..." -Color Cyan
-            [Environment]::SetEnvironmentVariable(
-                "Path",
-                "$userPath;$InstallDir",
-                "User"
-            )
-            $env:Path = "$env:Path;$InstallDir"
-            Write-ColorOutput "Added to PATH. You may need to restart your terminal for changes to take effect." -Color Yellow
-        }
-
-        Write-ColorOutput "Installation successful! Run 'plaky115 --help' to get started." -Color Green
-        Write-ColorOutput "Note: You may need to restart your terminal or run 'refreshenv' for the PATH changes to take effect." -Color Yellow
-    }
-    finally {
-        # Cleanup
-        if (Test-Path $tempDir) {
-            Remove-Item $tempDir -Recurse -Force
-        }
-    }
-}
-
-# Main execution
+$tempDir = Join-Path ([IO.Path]::GetTempPath()) "plaky115-install-$([guid]::NewGuid())"
+New-Item -ItemType Directory -Path $tempDir | Out-Null
+$staged = $null
+$backup = $null
 try {
-    Install-CLI
-}
-catch {
-    Write-ColorOutput "Installation failed: $_" -Color Red
-    exit 1
+    $archivePath = Join-Path $tempDir $archiveName
+    $checksumsPath = Join-Path $tempDir "checksums.txt"
+    Invoke-WebRequest -Uri "$releaseBase/$archiveName" -OutFile $archivePath
+    Invoke-WebRequest -Uri "$releaseBase/checksums.txt" -OutFile $checksumsPath
+
+    $matches = @(Get-Content $checksumsPath | ForEach-Object {
+        if ($_ -match '^([0-9A-Fa-f]{64})\s+\*?(.+)$' -and $Matches[2] -ceq $archiveName) { $Matches[1] }
+    })
+    if ($matches.Count -ne 1) { throw "checksums.txt must contain exactly one entry for $archiveName" }
+    $actual = (Get-FileHash -Algorithm SHA256 -Path $archivePath).Hash
+    if ($actual -ine $matches[0]) { throw "checksum mismatch" }
+
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $zip = [IO.Compression.ZipFile]::OpenRead($archivePath)
+    try {
+        $root = [IO.Path]::GetFullPath("$tempDir$([IO.Path]::DirectorySeparatorChar)")
+        foreach ($entry in $zip.Entries) {
+            $destination = [IO.Path]::GetFullPath((Join-Path $tempDir $entry.FullName))
+            if (-not $destination.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) { throw "archive contains an unsafe path" }
+        }
+        $binaries = @($zip.Entries | Where-Object { $_.FullName -ceq "plaky115.exe" -and $_.Name -ceq "plaky115.exe" })
+        if ($binaries.Count -ne 1) { throw "archive must contain exactly one plaky115.exe binary" }
+        $extracted = Join-Path $tempDir "plaky115.exe"
+        [IO.Compression.ZipFileExtensions]::ExtractToFile($binaries[0], $extracted, $false)
+    } finally { $zip.Dispose() }
+
+    New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
+    $target = Join-Path $InstallDir "plaky115.exe"
+    $staged = Join-Path $InstallDir ".plaky115.new.$([guid]::NewGuid())"
+    Copy-Item $extracted $staged
+    if (Test-Path $target) {
+        $backup = Join-Path $InstallDir ".plaky115.backup.$([guid]::NewGuid())"
+        Move-Item $target $backup
+    }
+    try {
+        Move-Item $staged $target
+        $staged = $null
+        if ($backup) { Remove-Item $backup -Force; $backup = $null }
+    } catch {
+        if ($backup) {
+            if (Test-Path $target) { Remove-Item $target -Force }
+            Move-Item $backup $target
+            $backup = $null
+        }
+        throw
+    }
+    Write-Host "plaky115 $Version installed to $target"
+} finally {
+    if ($staged -and (Test-Path $staged)) { Remove-Item $staged -Force }
+    if ($backup -and (Test-Path $backup)) { Remove-Item $backup -Force }
+    if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force }
 }

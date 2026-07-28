@@ -39,7 +39,7 @@ manifest atomically. Do not run it from the freshness workflow.
 4. `npm run metadata:generate && npm run metadata:test`.
 5. `npm run generate:all` — SDK schema types, MCP raw tool, CLI raw command, and docs index update automatically.
 6. Add a method on the appropriate resource in `sdk/src/client/<resource>.ts`. For list endpoints, expose `iterate()` and `listAll()` via `paginate()`.
-7. If user-facing, add a curated CLI command in `cli/internal/cli/dx.go`. If agent-useful, add a curated MCP workflow in `mcp-server/src/tools/curated/`.
+7. If user-facing, add a focused curated CLI module in `cli/internal/cli/`. If agent-useful, add a curated MCP workflow in `mcp-server/src/tools/curated/`.
 8. Tests: SDK unit (mock fetch), MCP scope/mode coverage, CLI dry-run. Add a live-sweep entry when wiring opt-in coverage.
 9. Run the local gates (`npm run test:surfaces && npm --prefix sdk test && npm --prefix mcp-server test && (cd cli && go test ./...)`).
 

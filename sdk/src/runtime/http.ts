@@ -1,4 +1,4 @@
-import { PlakyAbortError, PlakyConnectionError, PlakyDecodeError, PlakyTimeoutError, classify } from "./errors.js";
+import { PlakyAbortError, PlakyConnectionError, PlakyDecodeError, PlakyResponseTooLargeError, PlakyTimeoutError, classify } from "./errors.js";
 import { buildHeaders, buildUrl, serializeBody } from "./internal/request-builders.js";
 import { doFetch, getFetch } from "./internal/fetcher.js";
 import { getRequestId, parseErrorBody, parseResponse } from "./internal/responses.js";
@@ -6,6 +6,7 @@ import { canRetry, canRetryError, parseRetryAfter, retryDelay, shouldRetryRespon
 import type { Interceptors } from "./interceptors.js";
 import type { RateLimitSink } from "./rate-limit.js";
 import type { ApiKeyProvider, FetchLike, HeaderProvider, PlakyApiResponse, QueryParams, ResponseType } from "./types.js";
+import { assertTrustedRequestURL, validateRequestOptions } from "./internal/validation.js";
 
 export { mergeHeadersInto, resolveHeaders } from "./internal/request-builders.js";
 
@@ -35,6 +36,8 @@ export type PlakyRequestOptions = {
   timeoutMs?: number | undefined;
   /** Max retries for retryable GET failures. Mutations are never retried. */
   maxRetries?: number | undefined;
+  /** Maximum bytes buffered for non-streaming success and error bodies. */
+  maxResponseBytes?: number | undefined;
   /** Extra headers to merge in. */
   headers?: HeaderProvider | undefined;
   /** Custom `fetch` implementation (for proxying or testing). */
@@ -52,8 +55,6 @@ export type PlakyRequestOptions = {
   /** Override how the response body is parsed (defaults to `json`). */
   responseType?: ResponseType | undefined;
 };
-
-const DEFAULT_TIMEOUT_MS = 30_000;
 
 /**
  * Execute a raw request and return only the parsed body. This is the transport
@@ -84,12 +85,13 @@ export async function request<T>(req: RawRequest, opts: PlakyRequestOptions): Pr
  *   {@link PlakyTimeoutError}, {@link PlakyAbortError}, or {@link PlakyConnectionError}.
  */
 export async function requestWithResponse<T>(req: RawRequest, opts: PlakyRequestOptions): Promise<PlakyApiResponse<T>> {
+  const validated = validateRequestOptions(opts);
   const fetchFn = getFetch(opts.fetch);
   const operationId = req.operationId ?? `${req.method} ${req.path}`;
-  const maxRetries = canRetry(req, opts) ? opts.maxRetries ?? 0 : 0;
+  const maxRetries = canRetry(req, opts) ? validated.maxRetries : 0;
 
   for (let attempt = 0; ; attempt++) {
-    const url = buildUrl(opts.serverURL, req.path, req.query);
+    const url = buildUrl(validated.serverURL, req.path, req.query);
     const headers = await buildHeaders(req, opts);
     const body = serializeBody(req.body, headers);
     const init: RequestInit = { method: req.method, headers };
@@ -100,6 +102,8 @@ export async function requestWithResponse<T>(req: RawRequest, opts: PlakyRequest
     const intercepted = opts.interceptors?.request
       ? await opts.interceptors.request({ url, init, operationId })
       : { url, init };
+    assertTrustedRequestURL(validated.serverURL, intercepted.url);
+    const finalInit: RequestInit = { ...intercepted.init, redirect: "manual" };
 
     // Only the transport call (doFetch) is retry-eligible. Anything that throws
     // *after* a successful response — JSON decode failures, a throwing response
@@ -107,7 +111,7 @@ export async function requestWithResponse<T>(req: RawRequest, opts: PlakyRequest
     // never be re-wrapped as a connection error or retried.
     let response: Response;
     try {
-      response = await doFetch(fetchFn, intercepted.url, intercepted.init, opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+      response = await doFetch(fetchFn, intercepted.url, finalInit, validated.timeoutMs);
     } catch (error) {
       if (error instanceof PlakyAbortError) throw error;
 
@@ -143,7 +147,7 @@ export async function requestWithResponse<T>(req: RawRequest, opts: PlakyRequest
     const responseType = req.responseType ?? opts.responseType ?? "json";
 
     if (!response.ok) {
-      const errorBody = await parseErrorBody(response);
+      const errorBody = await parseErrorBody(response, validated.maxResponseBytes);
       await opts.interceptors?.response?.({
         url: intercepted.url,
         response,
@@ -168,8 +172,9 @@ export async function requestWithResponse<T>(req: RawRequest, opts: PlakyRequest
 
     let data: T;
     try {
-      data = await parseResponse<T>(response, responseType);
+      data = await parseResponse<T>(response, responseType, validated.maxResponseBytes);
     } catch (error) {
+      if (error instanceof PlakyResponseTooLargeError) throw error;
       throw new PlakyDecodeError("Failed to parse the Plaky API response body.", {
         cause: error,
         status: response.status,

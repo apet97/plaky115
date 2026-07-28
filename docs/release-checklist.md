@@ -6,6 +6,8 @@ Run from a clean worktree on the release branch.
 
 ```bash
 npm run verify
+npm run audit:production
+npm run govulncheck
 npm run workflow:policy:test
 npm run pack:smoke
 npm run secret:scan
@@ -24,7 +26,16 @@ external action references, enforces same-line version comments and least
 permissions, and validates the weekly GitHub Actions Dependabot configuration.
 Reviewed pin provenance is recorded in `docs/release/action-pins.md`.
 
-## Optional Live Gate
+## Live Gates
+
+Run the GET-only gate with a rotated, securely injected key:
+
+```bash
+npm --prefix sdk run build
+npm run live:read
+```
+
+Run the mutation gate only after separate sacrificial authorization:
 
 ```bash
 PLAKY115_API_KEY=... \
@@ -70,7 +81,9 @@ long-lived CI token.
 4. Confirm the protected GitHub environment `npm-release` has the intended
    reviewer/tag policy, then create and push one annotated tag:
    `git tag -a vX.Y.Z -m "Plaky115 vX.Y.Z" && git push origin vX.Y.Z`.
-5. The tag starts two root workflows. `.github/workflows/release-npm.yml` runs
+5. The tag starts two root workflows. Both check out `github.ref` and require
+   checkout `HEAD`, the peeled tag commit, and `GITHUB_SHA` to match.
+   `.github/workflows/release-npm.yml` runs
    the complete gates, checks both exact versions are absent from npm, then
    publishes SDK before MCP with OIDC trusted publishing and automatic
    provenance. `.github/workflows/release-cli.yml` runs GoReleaser from `cli/`
@@ -90,6 +103,15 @@ recovery evidence.
 npx --yes plaky115-mcp --help
 plaky115 --help
 ```
+
+Verify each npm attestation against the immutable tag commit:
+
+```bash
+node scripts/verify-npm-attestation.mjs --package plaky115 --version X.Y.Z --tag vX.Y.Z --commit <full-tag-commit>
+node scripts/verify-npm-attestation.mjs --package plaky115-mcp --version X.Y.Z --tag vX.Y.Z --commit <full-tag-commit>
+```
+
+Record the sanitized result using `docs/release-evidence-template.md`.
 
 ## Secret Hygiene
 
