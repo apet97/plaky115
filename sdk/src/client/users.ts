@@ -64,13 +64,14 @@ export class UsersResource {
    * Lazily iterate users across pages. `limit` is a client-side cap.
    *
    * @param opts - Filters plus `pageSize` and optional client-side `limit`.
+   * @param options - Per-request overrides applied to every page request.
    * @returns An async iterator with `firstPage()` and `toArray()` helpers.
    */
-  iterate(opts: UserIteratorParams = {}): PaginatedIterator<UserShape> {
+  iterate(opts: UserIteratorParams = {}, options?: PlakyRequestOverrides): PaginatedIterator<UserShape> {
     const { limit, pageSize, ...query } = opts;
     return paginate<UserShape>(
       async ({ page, pageSize }) => {
-        const res = await this.list({ ...query, page, pageSize });
+        const res = await this.list({ ...query, page, pageSize }, options);
         return { data: (res.data ?? []) as UserShape[], hasMore: res.hasMore === true, raw: res };
       },
       { pageSize, limit },
@@ -81,11 +82,12 @@ export class UsersResource {
    * Collect all matching users into an array, walking every page.
    *
    * @param opts - Filters plus `pageSize` and optional client-side `limit`.
+   * @param options - Per-request overrides applied to every page request.
    * @returns Every matching user.
    */
-  async listAll(opts: UserIteratorParams = {}): Promise<UserShape[]> {
+  async listAll(opts: UserIteratorParams = {}, options?: PlakyRequestOverrides): Promise<UserShape[]> {
     const out: UserShape[] = [];
-    for await (const u of this.iterate(opts)) out.push(u);
+    for await (const u of this.iterate(opts, options)) out.push(u);
     return out;
   }
 }

@@ -49,6 +49,7 @@ Before opening a pull request, run:
 
 ```bash
 npm run verify
+npm run audit:all
 npm run secret:scan
 git diff --check
 ```

@@ -256,6 +256,9 @@ test("every read workflow accepts its exact valid input", async () => {
   const previousFetch = globalThis.fetch;
   globalThis.fetch = async (url) => {
     const path = new URL(url.toString()).pathname;
+    if (path.endsWith("/spaces/1")) return Response.json({ id: 1, title: "Space" });
+    if (path.endsWith("/spaces/1/boards/2")) return Response.json({ id: 2, title: "Board" });
+    if (path.endsWith("/spaces/1/boards/2/items/3")) return Response.json({ id: 3, title: "Item" });
     if (path.endsWith("/comments")) return new Response("[]", { headers: { "content-type": "application/json" } });
     if (path.endsWith("/items")) return new Response(JSON.stringify({ data: [{ id: 3, title: "Item" }], hasMore: false }), { headers: { "content-type": "application/json" } });
     if (path.endsWith("/boards")) return new Response(JSON.stringify({ data: [{ id: 2, title: "Board" }], hasMore: false }), { headers: { "content-type": "application/json" } });
@@ -283,6 +286,8 @@ test("item search emits bounded progress only when the client supplies a token",
   const previousFetch = globalThis.fetch;
   globalThis.fetch = async (url) => {
     const path = new URL(url).pathname;
+    if (path.endsWith("/spaces/1")) return Response.json({ id: 1, title: "Space" });
+    if (path.endsWith("/spaces/1/boards/2")) return Response.json({ id: 2, title: "Board" });
     if (path.endsWith("/spaces")) return Response.json({ data: [{ id: 1, title: "Space" }], hasMore: false });
     if (path.endsWith("/boards")) return Response.json({ data: [{ id: 2, title: "Board" }], hasMore: false });
     return Response.json({ data: [{ id: 3, title: "Item" }], hasMore: false });

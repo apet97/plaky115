@@ -27,15 +27,15 @@ export const findTool: McpToolDefinition = {
   async handler(input, ctx) {
     const args = input as { type: "space" | "board" | "item"; query: string; spaceId?: EntityRef; boardId?: EntityRef; includeRaw?: boolean };
     if (args.type === "space") {
-      const spaces = await ctx.client.spaces.listAll();
+      const spaces = await ctx.client.spaces.listAll({}, { signal: ctx.signal });
       const needle = args.query.toLowerCase();
       const matched = spaces.filter((s) => String(s.title ?? "").toLowerCase().includes(needle));
       return ctx.respond({ data: matched, hasMore: false }, { compactKind: "space", includeRaw: args.includeRaw === true });
     }
     if (args.type === "board") {
       if (args.spaceId === undefined) throw new Error("plaky_find: spaceId required when type=board");
-      const space = await resolveSpace(ctx.client, args.spaceId);
-      const boards = await ctx.client.boards.listAll({ spaceId: asSpaceId(space.id!) });
+      const space = await resolveSpace(ctx.client, args.spaceId, { signal: ctx.signal });
+      const boards = await ctx.client.boards.listAll({ spaceId: asSpaceId(space.id!) }, { signal: ctx.signal });
       const needle = args.query.toLowerCase();
       const matched = boards.filter((b) => String(b.title ?? "").toLowerCase().includes(needle));
       return ctx.respond({ data: matched, hasMore: false }, { compactKind: "board", includeRaw: args.includeRaw === true });
@@ -44,7 +44,7 @@ export const findTool: McpToolDefinition = {
       if (args.spaceId === undefined || args.boardId === undefined) {
         throw new Error("plaky_find: spaceId and boardId required when type=item");
       }
-      const items = await searchItems(ctx.client, { space: args.spaceId, board: args.boardId, query: args.query });
+      const items = await searchItems(ctx.client, { space: args.spaceId, board: args.boardId, query: args.query, signal: ctx.signal });
       return ctx.respond({ data: items, hasMore: false }, { compactKind: "item", includeRaw: args.includeRaw === true });
     }
     throw new Error(`plaky_find: unsupported type ${String(args.type)}`);

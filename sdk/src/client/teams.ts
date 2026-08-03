@@ -51,12 +51,13 @@ export class TeamsResource {
    * Lazily iterate teams across pages. `limit` is a client-side cap.
    *
    * @param opts - Optional `pageSize` and client-side `limit`.
+   * @param options - Per-request overrides applied to every page request.
    * @returns An async iterator with `firstPage()` and `toArray()` helpers.
    */
-  iterate(opts: { pageSize?: number; limit?: number } = {}): PaginatedIterator<TeamShape> {
+  iterate(opts: { pageSize?: number; limit?: number } = {}, options?: PlakyRequestOverrides): PaginatedIterator<TeamShape> {
     return paginate<TeamShape>(
       async ({ page, pageSize }) => {
-        const res = await this.list({ page, pageSize });
+        const res = await this.list({ page, pageSize }, options);
         return { data: (res.data ?? []) as TeamShape[], hasMore: res.hasMore === true, raw: res };
       },
       opts,
@@ -67,11 +68,12 @@ export class TeamsResource {
    * Collect all teams into an array, walking every page.
    *
    * @param opts - Optional `pageSize` and client-side `limit`.
+   * @param options - Per-request overrides applied to every page request.
    * @returns Every team.
    */
-  async listAll(opts: { pageSize?: number; limit?: number } = {}): Promise<TeamShape[]> {
+  async listAll(opts: { pageSize?: number; limit?: number } = {}, options?: PlakyRequestOverrides): Promise<TeamShape[]> {
     const out: TeamShape[] = [];
-    for await (const t of this.iterate(opts)) out.push(t);
+    for await (const t of this.iterate(opts, options)) out.push(t);
     return out;
   }
 }

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 
 const scanner = fileURLToPath(new URL("secret-scan.mjs", import.meta.url));
 const token = (tail) => ["pl", "k_", tail].join("");
@@ -92,6 +92,25 @@ test("scanner skips NUL binary files, explicit build directories, and symlinks",
     } finally {
       await rm(outside, { force: true });
     }
+  });
+});
+
+test("scanner honors Git ignored paths at a repository root", async () => {
+  await withTempDir(async (root) => {
+    execFileSync("git", ["-C", root, "init", "--quiet"]);
+    await writeFile(join(root, ".gitignore"), ".env\nignored.txt\nignored-dir/\n.live-artifacts/\n");
+    await writeFile(join(root, "visible.txt"), token("visible"));
+    await writeFile(join(root, ".env"), token("environment"));
+    await writeFile(join(root, "ignored.txt"), token("ignored"));
+    await mkdir(join(root, "ignored-dir"));
+    await writeFile(join(root, "ignored-dir", "nested.txt"), token("nested"));
+    await mkdir(join(root, ".live-artifacts"));
+    await writeFile(join(root, ".live-artifacts", "captured.txt"), token("artifact"));
+
+    const result = run(root);
+    const output = `${result.stdout}${result.stderr}`;
+    assert.equal(result.status, 1);
+    assert.equal(output, ".live-artifacts/captured.txt:1: count=1\nvisible.txt:1: count=1\n");
   });
 });
 

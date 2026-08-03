@@ -101,6 +101,9 @@ func drainPaged(pageSize int, fetch func(page int, pageSize int) (any, error)) (
 		if !hasMore {
 			return all, nil
 		}
+		if len(batch) == 0 {
+			return nil, fmt.Errorf("pagination page %d was empty while hasMore was true", page)
+		}
 		if page >= maxPaginationPages {
 			return nil, fmt.Errorf("pagination aborted after %d pages", maxPaginationPages)
 		}

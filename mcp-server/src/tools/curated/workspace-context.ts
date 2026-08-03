@@ -21,7 +21,7 @@ export const workspaceContextTool: McpToolDefinition = {
   }).passthrough(),
   async handler(input, ctx) {
     const { includeRaw } = input as { includeRaw?: boolean };
-    const map = await workspaceMap(ctx.client);
+    const map = await workspaceMap(ctx.client, { signal: ctx.signal });
     return ctx.respond(map, { compactKind: "raw", includeRaw: includeRaw === true });
   },
 };

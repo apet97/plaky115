@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -22,5 +23,22 @@ func TestMustIDPreservesExactJSONIntegers(t *testing.T) {
 		if _, err := mustID(value); err == nil {
 			t.Fatalf("mustID(%v) succeeded", value)
 		}
+	}
+}
+
+func TestDrainPagedRejectsEmptyPageWithHasMore(t *testing.T) {
+	calls := 0
+	_, err := drainPaged(200, func(page, pageSize int) (any, error) {
+		calls++
+		if pageSize != 200 {
+			t.Fatalf("page size = %d, want 200", pageSize)
+		}
+		return map[string]any{"data": []any{}, "hasMore": true}, nil
+	})
+	if err == nil || !strings.Contains(err.Error(), "empty while hasMore was true") {
+		t.Fatalf("drainPaged error = %v", err)
+	}
+	if calls != 1 {
+		t.Fatalf("drainPaged made %d calls, want 1", calls)
 	}
 }

@@ -9,6 +9,16 @@ beforeEach(() => {
   globalThis.fetch = async (url, init) => fetchMock(url.toString(), init);
 });
 
+function directScopeResponse(url) {
+  if (url.endsWith("/v1/public/spaces/1")) {
+    return new Response(JSON.stringify({ id: 1, title: "Ops" }), { status: 200, headers: { "content-type": "application/json" } });
+  }
+  if (url.endsWith("/v1/public/spaces/1/boards/11")) {
+    return new Response(JSON.stringify({ id: 11, title: "Roadmap" }), { status: 200, headers: { "content-type": "application/json" } });
+  }
+  return undefined;
+}
+
 test("workspaceMap uses expanded boards across the paginated space sequence", async () => {
   let spaceCalls = 0;
   let boardCalls = 0;
@@ -109,6 +119,8 @@ test("workspaceMap resolves the space collection once and preserves order", asyn
 test("bulkUpdateItems with dryRun records dry-run per update without calling write", async () => {
   let writeCalls = 0;
   fetchMock = (u, init) => {
+    const direct = directScopeResponse(u);
+    if (direct) return direct;
     if (init?.method === "PATCH") {
       writeCalls++;
       return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
@@ -138,6 +150,8 @@ test("bulkUpdateItems with dryRun records dry-run per update without calling wri
 
 test("bulkUpdateItems reports updated/error per item and continues past a failure", async () => {
   fetchMock = (u, init) => {
+    const direct = directScopeResponse(u);
+    if (direct) return direct;
     if (init?.method === "PATCH") {
       if (u.includes("/items/101/")) {
         return new Response(JSON.stringify({ message: "boom" }), { status: 500, headers: { "content-type": "application/json" } });
@@ -169,6 +183,8 @@ test("bulkUpdateItems can stop after an ambiguous write failure", async () => {
   const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   c.spaces.listAll = async () => [{ id: 1, title: "Ops" }];
   c.boards.listAll = async () => [{ id: 11, title: "Roadmap" }];
+  c.spaces.get = async () => ({ id: 1, title: "Ops" });
+  c.boards.get = async () => ({ id: 11, title: "Roadmap" });
   c.items.updateFields = async () => {
     writeCalls++;
     throw new Error("possibly committed");
@@ -188,6 +204,8 @@ test("bulkUpdateItems forwards cancellation to the in-flight write", async () =>
   const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   c.spaces.listAll = async () => [{ id: 1, title: "Ops" }];
   c.boards.listAll = async () => [{ id: 11, title: "Roadmap" }];
+  c.spaces.get = async () => ({ id: 1, title: "Ops" });
+  c.boards.get = async () => ({ id: 11, title: "Roadmap" });
   c.items.updateFields = async (_input, options) => {
     assert.equal(options?.signal, controller.signal);
     controller.abort();
@@ -208,6 +226,8 @@ test("exportItems csv byte-matches the shared safe and raw fixtures", async () =
   const expectedSafe = readFileSync(new URL("../../test/fixtures/export/items.safe.csv", import.meta.url), "utf8");
   const expectedRaw = readFileSync(new URL("../../test/fixtures/export/items.raw.csv", import.meta.url), "utf8");
   fetchMock = (u) => {
+    const direct = directScopeResponse(u);
+    if (direct) return direct;
     if (u.includes("/items")) {
       return new Response(JSON.stringify({ data: fixtureItems, hasMore: false }), { status: 200, headers: { "content-type": "application/json" } });
     }
@@ -226,6 +246,8 @@ test("exportItems csv byte-matches the shared safe and raw fixtures", async () =
 
 test("exportItems jsonl serializes each item to a line", async () => {
   fetchMock = (u) => {
+    const direct = directScopeResponse(u);
+    if (direct) return direct;
     if (u.includes("/items")) {
       return new Response(JSON.stringify({ data: [{ id: 1, title: "A" }, { id: 2, title: "B" }], hasMore: false }), { status: 200, headers: { "content-type": "application/json" } });
     }
@@ -246,6 +268,8 @@ test("exportItems jsonl serializes each item to a line", async () => {
 
 test("searchItems filters by title fragment", async () => {
   fetchMock = (u) => {
+    const direct = directScopeResponse(u);
+    if (direct) return direct;
     if (u.includes("/items")) {
       return new Response(JSON.stringify({ data: [{ id: 1, title: "Ship API wrapper" }, { id: 2, title: "Bug triage" }], hasMore: false }), { status: 200, headers: { "content-type": "application/json" } });
     }
@@ -265,6 +289,8 @@ test("searchItems filters by title fragment", async () => {
 
 test("searchItems matches a field value, not just the title", async () => {
   fetchMock = (u) => {
+    const direct = directScopeResponse(u);
+    if (direct) return direct;
     if (u.includes("/items")) {
       return new Response(JSON.stringify({ data: [
         { id: 1, title: "Task one", fields: [{ key: "status-1", title: "Status", type: "STATUS", value: "Blocked" }] },
@@ -289,6 +315,8 @@ function detailedSearchClient(pages) {
   const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   client.spaces.listAll = async () => [{ id: 1, title: "Ops" }];
   client.boards.listAll = async () => [{ id: 11, title: "Roadmap" }];
+  client.spaces.get = async () => ({ id: 1, title: "Ops" });
+  client.boards.get = async () => ({ id: 11, title: "Roadmap" });
   const requests = [];
   client.items.list = async (params) => {
     requests.push(params);

@@ -67,6 +67,26 @@ test("empty page with hasMore true stops instead of looping forever", async () =
   assert.equal(calls, 1);
 });
 
+test("iterator and page iterators retry the same page after a fetcher failure", async () => {
+  let iteratorAttempts = 0;
+  const iterator = paginate(async ({ page }) => {
+    if (page === 1 && iteratorAttempts++ === 0) throw new Error("temporary page failure");
+    return { data: [page], hasMore: false, raw: { page } };
+  });
+
+  await assert.rejects(iterator.next(), /temporary page failure/);
+  assert.deepEqual(await iterator.next(), { done: false, value: 1 });
+
+  let pageAttempts = 0;
+  const pages = paginate(async ({ page }) => {
+    if (page === 1 && pageAttempts++ === 0) throw new Error("temporary page failure");
+    return { data: [page], hasMore: false, raw: { page } };
+  }).pages();
+
+  await assert.rejects(pages.next(), /temporary page failure/);
+  assert.deepEqual((await pages.next()).value.raw, { page: 1 });
+});
+
 test("invalid page size throws RangeError", () => {
   assert.throws(() => paginate(async () => ({ data: [], hasMore: false, raw: {} }), { pageSize: 0 }), RangeError);
 });

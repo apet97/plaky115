@@ -37,6 +37,7 @@ export function paginate<T>(fetcher: PageFetcher<T>, opts: PageOptions = {}): Pa
   let yielded = 0;
   let page = 1;
   let buffer: T[] = [];
+  let bufferIndex = 0;
   let done = false;
 
   const iterator: AsyncIterableIterator<T> = {
@@ -48,18 +49,20 @@ export function paginate<T>(fetcher: PageFetcher<T>, opts: PageOptions = {}): Pa
         return { done: true, value: undefined as never };
       }
 
-      while (buffer.length === 0 && !done) {
-        const current = await fetchPage(fetcher, page++, pageSize);
+      while (bufferIndex >= buffer.length && !done) {
+        const current = await fetchPage(fetcher, page, pageSize);
+        page++;
         buffer = current.data.slice();
+        bufferIndex = 0;
         done = !current.hasMore || current.data.length === 0;
       }
 
-      if (buffer.length === 0) {
+      if (bufferIndex >= buffer.length) {
         return { done: true, value: undefined as never };
       }
 
       yielded++;
-      return { done: false, value: buffer.shift()! };
+      return { done: false, value: buffer[bufferIndex++]! };
     },
   };
 
@@ -78,7 +81,8 @@ export function paginate<T>(fetcher: PageFetcher<T>, opts: PageOptions = {}): Pa
       async next() {
         if (stop) return { done: true, value: undefined as never };
 
-        const current = await fetchPage(fetcher, nextPage++, pageSize);
+        const current = await fetchPage(fetcher, nextPage, pageSize);
+        nextPage++;
         stop = !current.hasMore || current.data.length === 0;
 
         return { done: false, value: current };
@@ -94,7 +98,8 @@ export function paginate<T>(fetcher: PageFetcher<T>, opts: PageOptions = {}): Pa
     let nextPage = 1;
 
     while (out.length < max) {
-      const current = await fetchPage(fetcher, nextPage++, pageSize);
+      const current = await fetchPage(fetcher, nextPage, pageSize);
+      nextPage++;
       const remaining = max - out.length;
       out.push(...current.data.slice(0, remaining));
 
