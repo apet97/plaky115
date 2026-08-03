@@ -37,15 +37,32 @@ beforeEach(() => {
   spaceListCalls = 0;
   globalThis.fetch = async (url) => {
     const u = url.toString();
+    const itemMatch = u.match(/\/spaces\/(\d+)\/boards\/(\d+)\/items\/(\d+)$/);
+    if (itemMatch) {
+      const bid = Number(itemMatch[2]);
+      const item = (ITEMS_BY_BOARD[bid] ?? []).find((candidate) => String(candidate.id) === itemMatch[3]);
+      return item ? json(item) : new Response("{}", { status: 404, headers: { "content-type": "application/json" } });
+    }
     const itemsMatch = u.match(/\/spaces\/\d+\/boards\/(\d+)\/items/);
     if (itemsMatch) {
       const bid = Number(itemsMatch[1]);
       return json({ data: ITEMS_BY_BOARD[bid] ?? [], hasMore: false });
     }
+    const boardMatch = u.match(/\/spaces\/(\d+)\/boards\/(\d+)$/);
+    if (boardMatch) {
+      const sid = Number(boardMatch[1]);
+      const board = (BOARDS_BY_SPACE[sid] ?? []).find((candidate) => String(candidate.id) === boardMatch[2]);
+      return board ? json(board) : new Response("{}", { status: 404, headers: { "content-type": "application/json" } });
+    }
     const boardsMatch = u.match(/\/spaces\/(\d+)\/boards/);
     if (boardsMatch) {
       const sid = Number(boardsMatch[1]);
       return json({ data: BOARDS_BY_SPACE[sid] ?? [], hasMore: false });
+    }
+    const spaceMatch = u.match(/\/spaces\/([^/?]+)$/);
+    if (spaceMatch) {
+      const space = SPACES.find((candidate) => String(candidate.id) === spaceMatch[1]);
+      return space ? json(space) : new Response("{}", { status: 404, headers: { "content-type": "application/json" } });
     }
     if (u.endsWith("/users") || u.includes("/users?")) return json({ data: USERS, hasMore: false });
     if (u.endsWith("/teams") || u.includes("/teams?")) return json({ data: TEAMS, hasMore: false });
@@ -61,6 +78,7 @@ test("resolveSpace by numeric ID hits direct match", async () => {
   const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   const s = await resolveSpace(c, 2);
   assert.equal(s.title, "Engineering");
+  assert.equal(spaceListCalls, 0);
 });
 
 test("resolveSpace by name picks unique match", async () => {
@@ -97,7 +115,7 @@ test("resolveItem walks space -> board -> item without re-listing spaces", async
   const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   const item = await resolveItem(c, { space: 1, board: "Roadmap", item: "wrapper" });
   assert.equal(item.id, 100);
-  assert.equal(spaceListCalls, 1);
+  assert.equal(spaceListCalls, 0);
 });
 
 test("resolveItem by numeric id resolves directly", async () => {
@@ -132,6 +150,29 @@ test("resolver preserves above-safe-integer decimal IDs and rejects unsafe numbe
   spaceListCalls = 0;
   await assert.rejects(resolveSpace(c, 9007199254740992), /decimal strings/);
   assert.equal(spaceListCalls, 0);
+});
+
+test("resolvers forward cancellation to collection and direct lookups", async () => {
+  const controller = new AbortController();
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
+  c.spaces.listAll = async (_params, options) => {
+    assert.equal(options?.signal, controller.signal);
+    return [{ id: 1, title: "Ops" }];
+  };
+  c.boards.listAll = async (_params, options) => {
+    assert.equal(options?.signal, controller.signal);
+    return [{ id: 11, title: "Roadmap" }];
+  };
+  c.spaces.get = async (id, options) => {
+    assert.equal(id, "1");
+    assert.equal(options?.signal, controller.signal);
+    return { id: 1, title: "Ops" };
+  };
+
+  const byTitle = await resolveSpaceAndBoard(c, { space: "ops", board: "roadmap" }, { signal: controller.signal });
+  assert.equal(byTitle.board.id, 11);
+  const byId = await resolveSpace(c, 1, { signal: controller.signal });
+  assert.equal(byId.id, 1);
 });
 
 test("resolver rejects non-canonical and out-of-range decimal IDs", async () => {

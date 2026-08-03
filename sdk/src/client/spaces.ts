@@ -82,13 +82,14 @@ export class SpacesResource {
    * page-based). See `docs/api-behavior.md`.
    *
    * @param opts - `expand`, `pageSize`, and optional client-side `limit`.
+   * @param options - Per-request overrides applied to every page request.
    * @returns An async iterator with `firstPage()` and `toArray()` helpers.
    */
-  iterate(opts: SpaceIteratorParams = {}): PaginatedIterator<SpaceShape> {
+  iterate(opts: SpaceIteratorParams = {}, options?: PlakyRequestOverrides): PaginatedIterator<SpaceShape> {
     const { limit, pageSize, ...query } = opts;
     return paginate<SpaceShape>(
       async ({ page, pageSize }) => {
-        const res = await this.list({ ...query, page, pageSize });
+        const res = await this.list({ ...query, page, pageSize }, options);
         return { data: (res.data ?? []) as SpaceShape[], hasMore: res.hasMore === true, raw: res };
       },
       { pageSize, limit },
@@ -100,11 +101,12 @@ export class SpacesResource {
    * `limit` if set.
    *
    * @param opts - `expand`, `pageSize`, and optional client-side `limit`.
+   * @param options - Per-request overrides applied to every page request.
    * @returns Every matching space.
    */
-  async listAll(opts: SpaceIteratorParams = {}): Promise<SpaceShape[]> {
+  async listAll(opts: SpaceIteratorParams = {}, options?: PlakyRequestOverrides): Promise<SpaceShape[]> {
     const out: SpaceShape[] = [];
-    for await (const s of this.iterate(opts)) out.push(s);
+    for await (const s of this.iterate(opts, options)) out.push(s);
     return out;
   }
 }

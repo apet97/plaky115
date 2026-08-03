@@ -96,9 +96,10 @@ npx --yes plaky115-mcp --help
 }
 ```
 
-The server defaults to curated tools and read scope. Write and destructive tools
-must be enabled explicitly. See the [MCP guide](mcp-server/README.md) and
-[client installation snippets](docs/install-snippets.md).
+The default is equivalent to curated tools with read scope. Raw, write, and
+destructive tools must be enabled explicitly. Uploads accept base64 content plus
+metadata and never arbitrary local filesystem paths. See the [MCP guide](mcp-server/README.md)
+and [client installation snippets](docs/install-snippets.md).
 
 ## What ships
 
@@ -182,10 +183,20 @@ npm run verify
 SDK/MCP lint and tests, Go tests/build, 32-operation parity, package audits,
 consumer installation, secret scanning, and GoReleaser configuration.
 
+For a focused documentation or package-surface check, run
+`npm run docs:surface:test && npm run examples:check && npm run artifacts:audit`.
+`npm run audit:production` checks published runtime dependencies; a full npm
+audit also includes development-only generator and test tooling. Run
+`npm run audit:all` to check both package dependency trees.
+
 See [CONTRIBUTING.md](CONTRIBUTING.md) before changing generated surfaces or
 public contracts.
 
 ## Live smoke
+
+For GET-only proof, inject a rotated key securely, build the SDK, and run
+`npm --prefix sdk run build && npm run live:read`. It does not create or modify
+workspace data.
 
 Use only an explicitly sacrificial workspace:
 

@@ -278,13 +278,14 @@ export class ItemsResource {
    * yielded (the API has no server-side `limit`/`offset`). See `docs/api-behavior.md`.
    *
    * @param params - List filters plus `pageSize` and optional client-side `limit`.
+   * @param options - Per-request overrides applied to every page request.
    * @returns An async iterator with `firstPage()` and `toArray()` helpers.
    */
-  iterate(params: ItemIteratorParams): PaginatedIterator<ItemShape> {
+  iterate(params: ItemIteratorParams, options?: PlakyRequestOverrides): PaginatedIterator<ItemShape> {
     const { limit, pageSize, ...query } = params;
     return paginate<ItemShape>(
       async ({ page, pageSize }) => {
-        const res = await this.list({ ...query, page, pageSize });
+        const res = await this.list({ ...query, page, pageSize }, options);
         return { data: (res.data ?? []) as ItemShape[], hasMore: res.hasMore === true, raw: res };
       },
       { pageSize, limit },
@@ -295,11 +296,12 @@ export class ItemsResource {
    * Collect all matching items into an array, walking every page.
    *
    * @param params - List filters plus `pageSize` and optional client-side `limit`.
+   * @param options - Per-request overrides applied to every page request.
    * @returns Every matching item.
    */
-  async listAll(params: ItemIteratorParams): Promise<ItemShape[]> {
+  async listAll(params: ItemIteratorParams, options?: PlakyRequestOverrides): Promise<ItemShape[]> {
     const out: ItemShape[] = [];
-    for await (const i of this.iterate(params)) out.push(i);
+    for await (const i of this.iterate(params, options)) out.push(i);
     return out;
   }
 }

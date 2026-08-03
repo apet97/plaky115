@@ -28,9 +28,9 @@ surface is local credential handling, transport, and the request/response path.
 - Keys are never written to logs, errors, screenshots, docs, or command output.
   The SDK, MCP server, CLI, and live sweep use the grammar and sole marker in
   `security/plaky-api-key-grammar.md`.
-- `npm run secret:scan` is the required pre-push gate. It scans the working tree
-  directly, including `.live-artifacts`, and fails on any token-shaped value or
-  scanner I/O error without printing the matched value.
+- `npm run secret:scan` is the required pre-push gate. It scans tracked and
+  non-ignored working-tree files directly, plus `.live-artifacts`, and fails on
+  any token-shaped value or scanner I/O error without printing the matched value.
 - Rotate a key immediately if it is shared in chat, pasted into a file, or used
   in a sacrificial smoke run.
 

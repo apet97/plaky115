@@ -131,12 +131,13 @@ export class ItemCommentsResource {
    * Lazily iterate comments on an item across pages. `limit` is a client-side cap.
    *
    * @param params - `spaceId`, `boardId`, `itemId`, optional `pageSize`/`limit`.
+   * @param options - Per-request overrides applied to every page request.
    * @returns An async iterator with `firstPage()` and `toArray()` helpers.
    */
-  iterate(params: CommentScopeParams & { pageSize?: number; limit?: number }): PaginatedIterator<CommentShape> {
+  iterate(params: CommentScopeParams & { pageSize?: number; limit?: number }, options?: PlakyRequestOverrides): PaginatedIterator<CommentShape> {
     return paginate<CommentShape>(
       async ({ page, pageSize }) => {
-        const res = await this.list({ ...params, page, pageSize });
+        const res = await this.list({ ...params, page, pageSize }, options);
         return { data: (res.data ?? []) as CommentShape[], hasMore: res.hasMore === true, raw: res };
       },
       { pageSize: params.pageSize, limit: params.limit },
@@ -147,11 +148,12 @@ export class ItemCommentsResource {
    * Collect all comments on an item into an array, walking every page.
    *
    * @param params - `spaceId`, `boardId`, `itemId`, optional `pageSize`/`limit`.
+   * @param options - Per-request overrides applied to every page request.
    * @returns Every comment on the item.
    */
-  async listAll(params: CommentScopeParams & { pageSize?: number; limit?: number }): Promise<CommentShape[]> {
+  async listAll(params: CommentScopeParams & { pageSize?: number; limit?: number }, options?: PlakyRequestOverrides): Promise<CommentShape[]> {
     const out: CommentShape[] = [];
-    for await (const c of this.iterate(params)) out.push(c);
+    for await (const c of this.iterate(params, options)) out.push(c);
     return out;
   }
 }

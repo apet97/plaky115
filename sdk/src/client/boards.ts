@@ -53,12 +53,13 @@ export class BoardsResource {
    * Lazily iterate boards in a space across pages. `limit` is a client-side cap.
    *
    * @param params - `spaceId`, optional `pageSize` and client-side `limit`.
+   * @param options - Per-request overrides applied to every page request.
    * @returns An async iterator with `firstPage()` and `toArray()` helpers.
    */
-  iterate(params: { spaceId: SpaceId; pageSize?: number; limit?: number }): PaginatedIterator<BoardShape> {
+  iterate(params: { spaceId: SpaceId; pageSize?: number; limit?: number }, options?: PlakyRequestOverrides): PaginatedIterator<BoardShape> {
     return paginate<BoardShape>(
       async ({ page, pageSize }) => {
-        const res = await this.list({ spaceId: params.spaceId, page, pageSize });
+        const res = await this.list({ spaceId: params.spaceId, page, pageSize }, options);
         return { data: (res.data ?? []) as BoardShape[], hasMore: res.hasMore === true, raw: res };
       },
       { pageSize: params.pageSize, limit: params.limit },
@@ -69,11 +70,12 @@ export class BoardsResource {
    * Collect all boards in a space into an array, walking every page.
    *
    * @param params - `spaceId`, optional `pageSize` and client-side `limit`.
+   * @param options - Per-request overrides applied to every page request.
    * @returns Every board in the space.
    */
-  async listAll(params: { spaceId: SpaceId; pageSize?: number; limit?: number }): Promise<BoardShape[]> {
+  async listAll(params: { spaceId: SpaceId; pageSize?: number; limit?: number }, options?: PlakyRequestOverrides): Promise<BoardShape[]> {
     const out: BoardShape[] = [];
-    for await (const b of this.iterate(params)) out.push(b);
+    for await (const b of this.iterate(params, options)) out.push(b);
     return out;
   }
 }

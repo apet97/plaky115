@@ -1,6 +1,7 @@
 import type { PlakyClient } from "../client/client.js";
 import { resolveSpaceAndBoard, type EntityRef } from "../resolvers/index.js";
 import { asSpaceId, asBoardId, asItemId } from "../runtime/ids.js";
+import type { PlakyRequestOverrides } from "../runtime/types.js";
 import type { ItemShape } from "../client/shapes.js";
 import { renderItemsCsv, type CsvSafety } from "./internal/csv.js";
 
@@ -11,14 +12,14 @@ type WithIdTitle = {
   boards?: WithIdTitle[] | undefined;
 };
 
-export async function workspaceMap(client: PlakyClient): Promise<Array<{ id: number | string | undefined; title: string | undefined; boards: WithIdTitle[] }>> {
-  const spaces = (await client.spaces.listAll({ expand: ["board"] })) as WithIdTitle[];
+export async function workspaceMap(client: PlakyClient, options?: PlakyRequestOverrides): Promise<Array<{ id: number | string | undefined; title: string | undefined; boards: WithIdTitle[] }>> {
+  const spaces = (await client.spaces.listAll({ expand: ["board"] }, options)) as WithIdTitle[];
   const out = [];
   for (const space of spaces) {
     const boards = Array.isArray(space.boards)
       ? space.boards
       : space.id !== undefined
-        ? ((await client.boards.listAll({ spaceId: asSpaceId(space.id) })) as WithIdTitle[])
+        ? ((await client.boards.listAll({ spaceId: asSpaceId(space.id) }, options)) as WithIdTitle[])
         : [];
     out.push({ id: space.id, title: space.title, boards });
   }
@@ -48,7 +49,8 @@ export async function searchItemsDetailed(client: PlakyClient, params: SearchIte
     throw new RangeError("limit must be a finite positive integer");
   }
 
-  const { space, board } = await resolveSpaceAndBoard(client, { space: params.space, board: params.board });
+  const requestOptions = params.signal ? { signal: params.signal } : undefined;
+  const { space, board } = await resolveSpaceAndBoard(client, { space: params.space, board: params.board }, requestOptions);
   const needle = params.query.toLowerCase();
   const data: ItemShape[] = [];
   let scanned = 0;
@@ -115,7 +117,8 @@ export type BulkUpdateParams = {
 };
 
 export async function bulkUpdateItems(client: PlakyClient, params: BulkUpdateParams): Promise<Array<{ itemId: number | string; status: "dry-run" | "updated" | "error"; detail?: unknown }>> {
-  const { space, board } = await resolveSpaceAndBoard(client, { space: params.space, board: params.board });
+  const requestOptions = params.signal ? { signal: params.signal } : undefined;
+  const { space, board } = await resolveSpaceAndBoard(client, { space: params.space, board: params.board }, requestOptions);
   const out = [];
   for (const [index, update] of params.updates.entries()) {
     if (params.signal?.aborted) throw params.signal.reason ?? new DOMException("Aborted", "AbortError");
@@ -146,11 +149,13 @@ export type ExportItemsParams = {
   board: EntityRef;
   format: "jsonl" | "csv";
   csvSafety?: CsvSafety | undefined;
+  signal?: AbortSignal | undefined;
 };
 
 export async function exportItems(client: PlakyClient, params: ExportItemsParams): Promise<string> {
-  const { space, board } = await resolveSpaceAndBoard(client, { space: params.space, board: params.board });
-  const items = (await client.items.listAll({ spaceId: asSpaceId(space.id!), boardId: asBoardId(board.id!) })) as Array<Record<string, unknown>>;
+  const requestOptions = params.signal ? { signal: params.signal } : undefined;
+  const { space, board } = await resolveSpaceAndBoard(client, { space: params.space, board: params.board }, requestOptions);
+  const items = (await client.items.listAll({ spaceId: asSpaceId(space.id!), boardId: asBoardId(board.id!) }, requestOptions)) as Array<Record<string, unknown>>;
   if (params.format === "jsonl") {
     return items.map((i) => JSON.stringify(i)).join("\n");
   }

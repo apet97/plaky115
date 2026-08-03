@@ -70,7 +70,7 @@ export async function executeWorkflow(
 
   switch (workflowId) {
     case "workspace.map":
-      return ctx.respond(await workspaceMap(ctx.client), { compactKind: "raw" });
+      return ctx.respond(await workspaceMap(ctx.client, { signal: ctx.signal }), { compactKind: "raw" });
     case "items.search": {
       const limit = (args["limit"] as number | undefined) ?? 200;
       const progress = createProgressReporter(ctx.progress, limit, "items scanned");
@@ -155,7 +155,7 @@ export async function executeWorkflow(
         boardId: asBoardId(readRef(resolved, "board")),
         itemId: asItemId(readRef(resolved, "item")),
         ...(args["limit"] !== undefined ? { limit: args["limit"] as number } : {}),
-      });
+      }, { signal: ctx.signal });
       return ctx.respond({ data: result, hasMore: false }, { compactKind: "comment" });
     }
     case "export.items": {
@@ -164,6 +164,7 @@ export async function executeWorkflow(
         space: readRef(args, "space") as EntityRef,
         board: readRef(args, "board") as EntityRef,
         format,
+        signal: ctx.signal,
       });
       return ctx.respond({ format, body });
     }
@@ -182,7 +183,7 @@ export async function resolveMutationInput(
       spaceId: readRef(resolved, "space"),
       boardId: readRef(resolved, "board"),
       items: updates.map((update) => update.itemId),
-    });
+    }, { signal: ctx.signal });
     return {
       ...resolved,
       updates: updates.map((update, index) => ({ ...update, itemId: exactId(items[index], "item") })),
@@ -192,7 +193,7 @@ export async function resolveMutationInput(
     const resolved = await resolveEntityPath(args, false, ctx);
     const itemGroup = await resolveItemGroupInBoard(ctx.client, {
       spaceId: readRef(resolved, "space"), boardId: readRef(resolved, "board"), itemGroup: readRef(args, "itemGroup"),
-    });
+    }, { signal: ctx.signal });
     return { ...resolved, itemGroupId: exactId(itemGroup, "item group") };
   }
   if (workflowId === "itemFiles.update") {
@@ -200,7 +201,7 @@ export async function resolveMutationInput(
     const itemFile = await resolveItemFileOnItem(ctx.client, {
       spaceId: readRef(resolved, "space"), boardId: readRef(resolved, "board"), itemId: readRef(resolved, "item"),
       itemFile: readRef(args, "itemFile"),
-    });
+    }, { signal: ctx.signal });
     return { ...resolved, itemFileId: exactId(itemFile, "item file") };
   }
   return resolveEntityPath(args, workflowId === "comments.add" || workflowId.startsWith("itemFiles."), ctx);
@@ -220,7 +221,7 @@ async function resolveEntityPath(
   const { space, board } = await resolveSpaceAndBoard(ctx.client, {
     space: readRef(args, "space") as EntityRef,
     board: readRef(args, "board") as EntityRef,
-  });
+  }, { signal: ctx.signal });
   const resolved: Record<string, unknown> = {
     ...withoutAliases(args),
     spaceId: exactId(space, "space"),
@@ -231,7 +232,7 @@ async function resolveEntityPath(
       spaceId: exactId(space, "space"),
       boardId: exactId(board, "board"),
       items: [readRef(args, "item") as EntityRef],
-    });
+    }, { signal: ctx.signal });
     resolved["itemId"] = exactId(item, "item");
   }
   return resolved;

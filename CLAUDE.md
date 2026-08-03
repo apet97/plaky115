@@ -45,7 +45,7 @@ npm --prefix mcp-server run lint && npm --prefix mcp-server test
 npm run generate:all && npm run generated:drift && npm run codegen:test
 
 # Release candidate
-npm run audit:production && npm run govulncheck && npm run verify
+npm run audit:all && npm run govulncheck && npm run verify
 
 # GET-only live contract (rotated key, secure environment injection)
 npm --prefix sdk run build && npm run live:read
@@ -53,6 +53,17 @@ npm --prefix sdk run build && npm run live:read
 
 Do not “fix” generated output directly. Find the owning metadata or generator,
 change it, regenerate, and review the complete drift.
+
+## Working-tree and documentation hygiene
+
+- Preserve the current dirty work. Limit audits to tracked files with
+  `git ls-files` and `git grep`; do not inspect or change ignored taskbooks,
+  plans, `.env` files, build outputs, or execution ledgers.
+- The focused hygiene gate is:
+  `npm run docs:surface:test && npm run examples:check && npm run artifacts:audit && git diff --check`.
+- `npm run audit:production` covers shipped runtime dependencies. A full
+  `npm --prefix sdk audit` can additionally report development-only generator
+  and test tooling; keep that distinction explicit in maintenance reports.
 
 ## Current behavior worth preserving
 

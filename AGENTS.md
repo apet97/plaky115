@@ -51,6 +51,22 @@ npm --prefix mcp-server ci
 - Path IDs are canonical non-negative signed-int64 decimals. Numbers above the
   JavaScript safe-integer limit use strings, and malformed IDs fail before I/O.
 
+## Repository hygiene
+
+- Preserve unrelated dirty work. For repository audits, restrict searches to
+  tracked files with `git ls-files` and `git grep`; do not inspect, delete, or
+  modify ignored local taskbooks, plans, `.env` files, build outputs, or
+  execution ledgers.
+- For docs or hygiene work, run `npm run docs:surface:test`,
+  `npm run examples:check`, `npm run artifacts:audit`, and `git diff --check`.
+- TypeScript strict/no-unused checks, Go tests/vet, and surface gates are useful
+  dead-code signals but are not an exhaustive exported-symbol analysis. A
+  tracked script or test must be reachable from a package/workflow command or
+  explicitly documented as manual before it is kept as maintained code.
+- `npm run audit:production` covers published runtime dependencies only. A full
+  `npm audit` also includes development tooling; report those findings
+  separately and keep both lockfiles installable with `npm ci`.
+
 ## Verification by change type
 
 Focused SDK:
@@ -85,6 +101,8 @@ Documentation changes:
 npm run generate:docs-index
 npm run docs:surface:test
 npm run examples:check
+npm run artifacts:audit
+git diff --check
 rg -n "s[p]eakeasy|S[p]eakeasy|x-s[p]eakeasy|\\.s[p]eakeasy" . -g '!**/node_modules/**' -g '!**/.git/**'
 ```
 
@@ -95,7 +113,7 @@ Release-grade gate:
 
 ```bash
 npm run verify
-npm run audit:production
+npm run audit:all
 npm run govulncheck
 (cd sdk && npm pack --dry-run --json)
 (cd mcp-server && npm pack --dry-run --json)

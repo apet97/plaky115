@@ -59,11 +59,12 @@ export class ItemGroupsResource {
     );
   }
 
-  iterate(params: ItemGroupIteratorParams): PaginatedIterator<ItemGroupShape> {
+  /** Lazily iterate item groups across pages. */
+  iterate(params: ItemGroupIteratorParams, options?: PlakyRequestOverrides): PaginatedIterator<ItemGroupShape> {
     const { limit, pageSize, ...scope } = params;
     return paginate<ItemGroupShape>(
       async ({ page, pageSize }) => {
-        const result = await this.list({ ...scope, page, pageSize });
+        const result = await this.list({ ...scope, page, pageSize }, options);
         return {
           data: (result.data ?? []) as ItemGroupShape[],
           hasMore: result.hasMore === true,
@@ -74,9 +75,10 @@ export class ItemGroupsResource {
     );
   }
 
-  async listAll(params: ItemGroupIteratorParams): Promise<ItemGroupShape[]> {
+  /** Collect every item group on the board. */
+  async listAll(params: ItemGroupIteratorParams, options?: PlakyRequestOverrides): Promise<ItemGroupShape[]> {
     const groups: ItemGroupShape[] = [];
-    for await (const group of this.iterate(params)) groups.push(group);
+    for await (const group of this.iterate(params, options)) groups.push(group);
     return groups;
   }
 

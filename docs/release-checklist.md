@@ -6,7 +6,7 @@ Run from a clean worktree on the release branch.
 
 ```bash
 npm run verify
-npm run audit:production
+npm run audit:all
 npm run govulncheck
 npm run workflow:policy:test
 npm run pack:smoke
@@ -116,4 +116,5 @@ Record the sanitized result using `docs/release-evidence-template.md`.
 ## Secret Hygiene
 
 - Rotate any API key that appears in a shell history, chat log, or backup.
-- `secret:scan` enforces no `plk_` literal anywhere in the repo.
+- `secret:scan` enforces no `plk_` literal in tracked and non-ignored repository
+  files or `.live-artifacts`.
