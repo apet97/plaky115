@@ -60,7 +60,7 @@ async function verifyRegistrySignature(packageName, version) {
   const directory = await mkdtemp(join(tmpdir(), "plaky115-attestation-"));
   try {
     await writeFile(join(directory, "package.json"), JSON.stringify({ private: true, dependencies: { [packageName]: version } }));
-    await run("npm", ["install", "--package-lock-only", "--ignore-scripts", "--audit=false"], directory);
+    await run("npm", ["install", "--ignore-scripts", "--audit=false"], directory);
     await run("npm", ["audit", "signatures"], directory);
   } finally {
     await rm(directory, { recursive: true, force: true });

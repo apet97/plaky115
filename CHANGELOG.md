@@ -3,6 +3,24 @@
 All notable user-visible changes are recorded here. The project follows
 semantic versioning from `0.2.0` onward.
 
+## [1.0.1] - 2026-08-03
+
+Maintenance release for the SDK, CLI, MCP server, and release tooling.
+
+### Correctness and safety
+
+- Preserve resolver cancellation and direct exact-ID lookups across SDK
+  workflows, and retry a failed pagination fetch without skipping its page.
+- Fail closed on empty CLI pages that claim more data, while keeping raw and
+  curated SDK, CLI, and MCP behavior in parity.
+- Make post-release npm signature verification install the inspected registry
+  package before checking its signatures.
+
+### Release and documentation
+
+- Refresh dependency overrides, package audits, secret scanning, package
+  surface checks, and public safety documentation.
+
 ## [1.0.0] - 2026-07-28
 
 First stable release of the SDK, CLI, MCP server, generators, and release
@@ -79,5 +97,6 @@ First complete public release of the hand-crafted Plaky toolkit.
 - Added UUID-scoped sacrificial live proof across API, SDK, CLI, and MCP with
   exact-ID cleanup and a single mutation-attempt budget.
 
+[1.0.1]: https://github.com/apet97/plaky115/releases/tag/v1.0.1
 [1.0.0]: https://github.com/apet97/plaky115/releases/tag/v1.0.0
 [0.2.0]: https://github.com/apet97/plaky115/releases/tag/v0.2.0
