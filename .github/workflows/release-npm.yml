@@ -113,10 +113,11 @@ jobs:
       - name: Emit sanitized release evidence
         env:
           PLAKY115_RELEASE_CONFIG_READBACK: ${{ vars.PLAKY115_RELEASE_CONFIG_READBACK }}
-        run: node scripts/write-release-evidence.mjs \
-          --manifest .release-artifacts/release-digests.json \
-          --publication .release-artifacts/publication.json \
-          --output .release-artifacts/release-evidence.json \
+        run: >-
+          node scripts/write-release-evidence.mjs
+          --manifest .release-artifacts/release-digests.json
+          --publication .release-artifacts/publication.json
+          --output .release-artifacts/release-evidence.json
           --cli-status pass
 
       - name: Upload npm release evidence
