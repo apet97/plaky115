@@ -104,9 +104,10 @@ jobs:
         run: node scripts/write-release-evidence.mjs --check-readback
 
       - name: Classify registry and publish exact artifacts
-        run: node scripts/publish-npm-release.mjs \
-          --manifest .release-artifacts/release-digests.json \
-          --tag "${GITHUB_REF_NAME}" \
+        run: >-
+          node scripts/publish-npm-release.mjs
+          --manifest .release-artifacts/release-digests.json
+          --tag "${GITHUB_REF_NAME}"
           --commit "${GITHUB_SHA}" > .release-artifacts/publication.json
 
       - name: Emit sanitized release evidence
