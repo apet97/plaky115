@@ -6,6 +6,7 @@ import type { ResourceRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId, ItemGroupId } from "../runtime/ids.js";
 import type { StrictPagedResult, ItemGroupShape } from "./shapes.js";
 import type { components } from "../generated/types.js";
+import { normalizeItemGroupCreatePlan, normalizeItemGroupUpdatePlan } from "../workflows/mutation-plans.js";
 
 export type ItemGroupCreateBody = components["schemas"]["ItemGroupCreateRequest"];
 export type ItemGroupUpdateBody = components["schemas"]["ItemGroupUpdateRequest"];
@@ -95,12 +96,13 @@ export class ItemGroupsResource {
   }
 
   create(params: ItemGroupCreateParams, options?: ResourceRequestOverrides): Promise<ItemGroupShape> {
+    const normalized = normalizeItemGroupCreatePlan(params);
     const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     return this.client.request<ItemGroupShape>(
       {
         method: "POST",
         path: `/v1/public/spaces/${idPathSegment(params.spaceId)}/boards/${idPathSegment(params.boardId)}/item-groups`,
-        body: params.body,
+        body: normalized.body,
         operationId: "createItemGroup",
       },
       { ...options, idempotencyKey },
@@ -108,12 +110,13 @@ export class ItemGroupsResource {
   }
 
   update(params: ItemGroupUpdateParams, options?: ResourceRequestOverrides): Promise<ItemGroupShape> {
+    const normalized = normalizeItemGroupUpdatePlan(params);
     const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     return this.client.request<ItemGroupShape>(
       {
         method: "PUT",
         path: itemGroupPath(params),
-        body: params.body,
+        body: normalized.body,
         operationId: "updateItemGroup",
       },
       { ...options, idempotencyKey },

@@ -355,6 +355,29 @@ test("every mutation workflow and mutation plan resolves exact targets without w
   }
 });
 
+test("exact-ID mutation dry-runs perform no resolver I/O", async () => {
+  const previousFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    throw new Error("exact-ID dry-run must not fetch");
+  };
+  const { client, server } = await connectedPair({ mode: "curated", scopes: ["read", "write"], serverURL: "https://example.test" });
+  try {
+    const response = await client.callTool({
+      name: "plaky_execute_mutation_workflow",
+      arguments: { workflowId: "items.create", input: { spaceId: "9007199254740992", boardId: 2, body: {} } },
+    });
+    assert.notEqual(response.isError, true, response.content?.[0]?.text);
+    assert.equal(response.structuredContent.input.spaceId, "9007199254740992");
+    assert.equal(response.structuredContent.input.boardId, "2");
+    assert.equal(calls, 0);
+  } finally {
+    await server.close();
+    globalThis.fetch = previousFetch;
+  }
+});
+
 test("new mutation workflows return completed receipts with exact target IDs", async () => {
   let writeCalls = 0;
   const previousFetch = globalThis.fetch;

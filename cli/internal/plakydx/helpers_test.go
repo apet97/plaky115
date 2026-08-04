@@ -95,6 +95,34 @@ func TestOpenUploadFlagRequiresStdinFilenameAndDoesNotCloseStdin(t *testing.T) {
 	}
 }
 
+func TestValidateUploadMetadataMatchesUploadPolicy(t *testing.T) {
+	got, err := ValidateUploadMetadata(strings.Repeat("a", MaxUploadFilenameBytes), "TEXT/PLAIN; CHARSET=utf-8")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "text/plain; charset=utf-8" {
+		t.Fatalf("normalized media type = %q", got)
+	}
+
+	for _, test := range []struct {
+		name     string
+		fileName string
+		media    string
+	}{
+		{name: "filename too long", fileName: strings.Repeat("a", MaxUploadFilenameBytes+1), media: "text/plain"},
+		{name: "multibyte filename too long", fileName: strings.Repeat("é", 128), media: "text/plain"},
+		{name: "path separator", fileName: "dir/file.txt", media: "text/plain"},
+		{name: "control character", fileName: "line\nfeed.txt", media: "text/plain"},
+		{name: "invalid media type", fileName: "file.txt", media: "text/plain\r\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := ValidateUploadMetadata(test.fileName, test.media); err == nil {
+				t.Fatal("metadata unexpectedly accepted")
+			}
+		})
+	}
+}
+
 func TestConfirmationAndVoidOutput(t *testing.T) {
 	cmd := helperCommand()
 	var output bytes.Buffer

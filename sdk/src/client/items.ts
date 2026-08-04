@@ -6,6 +6,7 @@ import type { ResourceRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId, ItemId, FieldKey } from "../runtime/ids.js";
 import type { StrictPagedResult, ItemShape } from "./shapes.js";
 import type { components } from "../generated/types.js";
+import { normalizeItemCreatePlan, normalizeItemUpdateFieldsPlan } from "../workflows/mutation-plans.js";
 
 /** Request body for creating an item, derived from the generated `ItemCreateRequest`. */
 export type ItemCreateBody = components["schemas"]["ItemCreateRequest"];
@@ -96,6 +97,9 @@ export type DryRunPlan = {
   dryRun: true;
   operation: string;
   payload: Record<string, unknown>;
+  targetIds?: Readonly<Record<string, string>>;
+  writeCount?: number;
+  requiresLiveResolution?: boolean;
 };
 
 /** Items resource. Access via `client.items`. */
@@ -190,15 +194,16 @@ export class ItemsResource {
    * ```
    */
   async create(params: ItemCreateParams, options?: ResourceRequestOverrides): Promise<ItemShape | DryRunPlan> {
+    const normalized = normalizeItemCreatePlan(params);
     if (params.dryRun === true) {
-      return planMutation("createItem", { spaceId: params.spaceId, boardId: params.boardId, body: params.body });
+      return planMutation(normalized);
     }
     const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     return this.client.request<ItemShape>(
       {
         method: "POST",
         path: `/v1/public/spaces/${idPathSegment(params.spaceId)}/boards/${idPathSegment(params.boardId)}/items`,
-        body: params.body,
+        body: normalized.body,
         operationId: "createItem",
       },
       { ...options, idempotencyKey },
@@ -259,15 +264,16 @@ export class ItemsResource {
    * @returns The updated {@link ItemShape}, or a {@link DryRunPlan} when `dryRun` is true.
    */
   async updateFields(params: ItemUpdateFieldsParams, options?: ResourceRequestOverrides): Promise<ItemShape | DryRunPlan> {
+    const normalized = normalizeItemUpdateFieldsPlan(params);
     if (params.dryRun === true) {
-      return planMutation("updateItemFields", { spaceId: params.spaceId, boardId: params.boardId, itemId: params.itemId, body: params.body });
+      return planMutation(normalized);
     }
     const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     return this.client.request<ItemShape>(
       {
         method: "PATCH",
         path: `/v1/public/spaces/${idPathSegment(params.spaceId)}/boards/${idPathSegment(params.boardId)}/items/${idPathSegment(params.itemId)}/fields`,
-        body: params.body,
+        body: normalized.body,
         operationId: "updateItemFields",
       },
       { ...options, idempotencyKey },
@@ -307,6 +313,22 @@ export class ItemsResource {
   }
 }
 
-function planMutation(op: string, payload: Record<string, unknown>): DryRunPlan {
-  return { dryRun: true, operation: op, payload };
+function planMutation(normalized: {
+  operationId: string;
+  targetIds: Readonly<Record<string, string>>;
+  body: Readonly<Record<string, unknown>>;
+  writeCount: number;
+  requiresLiveResolution: boolean;
+}): DryRunPlan {
+  return {
+    dryRun: true,
+    operation: normalized.operationId,
+    payload: {
+      ...normalized.targetIds,
+      body: normalized.body,
+    },
+    targetIds: normalized.targetIds,
+    writeCount: normalized.writeCount,
+    requiresLiveResolution: normalized.requiresLiveResolution,
+  };
 }

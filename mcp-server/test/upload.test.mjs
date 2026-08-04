@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import {
   MAX_UPLOAD_BYTES_HARD_CEILING,
+  UploadValidationError,
   buildFileUploadFormData,
   decodeBase64Upload,
   estimateBase64DecodedBytes,
@@ -69,13 +70,19 @@ test("filename and content type are validated", () => {
     () => buildFileUploadFormData({ fileBase64: "", fileName: "bad\tname", contentType: "text/plain" }),
     /fileName/,
   );
-  for (const fileName of ["../escape.txt", "nested/file.txt", "nested\\file.txt", "double..dot.txt"]) {
+  for (const fileName of ["../escape.txt", "nested/file.txt", "nested\\file.txt"]) {
     assert.throws(
       () => buildFileUploadFormData({ fileBase64: "", fileName, contentType: "text/plain" }),
       /fileName/,
       fileName,
     );
   }
+  assert.doesNotThrow(() => buildFileUploadFormData({ fileBase64: "", fileName: "double..dot.txt", contentType: "text/plain" }));
+  assert.doesNotThrow(() => buildFileUploadFormData({ fileBase64: "", fileName: "x".repeat(255), contentType: "text/plain; charset=utf-8" }));
+  assert.throws(
+    () => buildFileUploadFormData({ fileBase64: "", fileName: "x".repeat(256), contentType: "text/plain" }),
+    (error) => error instanceof UploadValidationError && error.code === "invalid-filename" && error.path === "fileName",
+  );
   assert.throws(
     () => buildFileUploadFormData({ fileBase64: "", fileName: "file", contentType: "bad\r\ntype" }),
     /contentType/,

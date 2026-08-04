@@ -11,12 +11,23 @@ import {
   resolveItemsInBoard,
   resolveItemGroupInBoard,
   resolveItemFileOnItem,
+  normalizeCommentPlan,
+  normalizeItemCreatePlan,
+  normalizeItemFileUpdatePlan,
+  normalizeItemGroupCreatePlan,
+  normalizeItemGroupUpdatePlan,
+  normalizeItemUpdateFieldsPlan,
   type EntityRef,
   type ItemCreateBody,
 } from "plaky115";
 import type { McpToolContext, McpToolDefinition } from "../../runtime/types.js";
 import { createProgressReporter } from "../../runtime/progress.js";
-import { buildFileUploadFormData, estimateBase64DecodedBytes } from "../../runtime/upload.js";
+import {
+  buildFileUploadFormDataFromNormalized,
+  estimateBase64DecodedBytes,
+  resolveMaxUploadBytes,
+} from "../../runtime/upload.js";
+import { normalizeUpload, type NormalizedUpload } from "plaky115";
 
 import {
   MUTATION_WORKFLOW_IDS,
@@ -61,11 +72,18 @@ export async function executeWorkflow(
   const workflowId = input.workflowId;
   const args = (input.input ?? {}) as Record<string, unknown>;
   const dryRun = "dryRun" in input ? input.dryRun : undefined;
+  const normalizedUpload = workflowId === "itemFiles.upload"
+    ? await normalizeUpload({
+      fileBase64: args["fileBase64"] as string,
+      fileName: args["fileName"] as string,
+      ...(args["contentType"] === undefined ? {} : { contentType: args["contentType"] as string }),
+    }, resolveMaxUploadBytes())
+    : undefined;
   const resolvedArgs = isMutationWorkflow(workflowId)
     ? await resolveMutationInput(workflowId, args, ctx)
     : args;
   if (isMutationWorkflow(workflowId) && dryRun !== false) {
-    return ctx.respond({ workflowId, dryRun: true, input: mutationPlanReceiptInput(workflowId, resolvedArgs) });
+    return ctx.respond({ workflowId, dryRun: true, input: mutationPlanReceiptInput(workflowId, resolvedArgs, normalizedUpload) });
   }
 
   switch (workflowId) {
@@ -158,11 +176,8 @@ export async function executeWorkflow(
       return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result, ctx));
     }
     case "itemFiles.upload": {
-      const form = buildFileUploadFormData({
-        fileBase64: resolvedArgs["fileBase64"] as string,
-        fileName: resolvedArgs["fileName"] as string,
-        ...(resolvedArgs["contentType"] !== undefined ? { contentType: resolvedArgs["contentType"] as string } : {}),
-      });
+      if (normalizedUpload === undefined) throw new Error("upload normalization was not prepared");
+      const form = buildFileUploadFormDataFromNormalized(normalizedUpload);
       const file = form.get("file");
       if (!(file instanceof Blob)) throw new Error("validated upload did not produce a file");
       const result = await ctx.attempt.mutate({
@@ -219,38 +234,108 @@ export async function resolveMutationInput(
   if (workflowId === "items.updateFields") {
     const resolved = await resolveEntityPath(args, false, ctx);
     const updates = args["updates"] as Array<{ itemId: EntityRef; body: Record<string, unknown> }>;
-    const items = await resolveItemsInBoard(ctx.client, {
-      spaceId: readRef(resolved, "space"),
-      boardId: readRef(resolved, "board"),
-      items: updates.map((update) => update.itemId),
-    }, { signal: ctx.signal });
+    const itemIds = updates.every((update) => entityId(update.itemId) !== undefined)
+      ? updates.map((update) => entityId(update.itemId)!)
+      : (await resolveItemsInBoard(ctx.client, {
+        spaceId: readRef(resolved, "space"),
+        boardId: readRef(resolved, "board"),
+        items: updates.map((update) => update.itemId),
+      }, { signal: ctx.signal })).map((item) => exactId(item, "item"));
+    const normalizedUpdates = updates.map((update, index) => {
+      const itemId = itemIds[index]!;
+      const normalized = normalizeItemUpdateFieldsPlan({
+        spaceId: resolved["spaceId"] as string | number,
+        boardId: resolved["boardId"] as string | number,
+        itemId,
+        body: update.body,
+      });
+      return { itemId, body: normalized.body };
+    });
     return {
       ...resolved,
-      updates: updates.map((update, index) => ({ ...update, itemId: exactId(items[index], "item") })),
+      updates: normalizedUpdates,
     };
   }
   if (workflowId === "itemGroups.update") {
     const resolved = await resolveEntityPath(args, false, ctx);
-    const itemGroup = await resolveItemGroupInBoard(ctx.client, {
-      spaceId: readRef(resolved, "space"), boardId: readRef(resolved, "board"), itemGroup: readRef(args, "itemGroup"),
-    }, { signal: ctx.signal });
-    return { ...resolved, itemGroupId: exactId(itemGroup, "item group") };
+    const itemGroupRef = readRef(args, "itemGroup");
+    const itemGroupId = entityId(itemGroupRef) ?? exactId(await resolveItemGroupInBoard(ctx.client, {
+      spaceId: readRef(resolved, "space"), boardId: readRef(resolved, "board"), itemGroup: itemGroupRef,
+    }, { signal: ctx.signal }), "item group");
+    const normalized = normalizeItemGroupUpdatePlan({
+      spaceId: resolved["spaceId"] as string | number,
+      boardId: resolved["boardId"] as string | number,
+      itemGroupId,
+      body: args["body"],
+    });
+    return { ...resolved, itemGroupId, body: normalized.body };
   }
   if (workflowId === "itemFiles.update") {
     const resolved = await resolveEntityPath(args, true, ctx);
-    const itemFile = await resolveItemFileOnItem(ctx.client, {
+    const itemFileRef = readRef(args, "itemFile");
+    const itemFileId = entityId(itemFileRef) ?? exactId(await resolveItemFileOnItem(ctx.client, {
       spaceId: readRef(resolved, "space"), boardId: readRef(resolved, "board"), itemId: readRef(resolved, "item"),
-      itemFile: readRef(args, "itemFile"),
-    }, { signal: ctx.signal });
-    return { ...resolved, itemFileId: exactId(itemFile, "item file") };
+      itemFile: itemFileRef,
+    }, { signal: ctx.signal }), "item file");
+    const normalized = normalizeItemFileUpdatePlan({
+      spaceId: resolved["spaceId"] as string | number,
+      boardId: resolved["boardId"] as string | number,
+      itemId: resolved["itemId"] as string | number,
+      itemFileId,
+      body: args["body"],
+    });
+    return { ...resolved, itemFileId, body: normalized.body };
   }
-  return resolveEntityPath(args, workflowId === "comments.add" || workflowId.startsWith("itemFiles."), ctx);
+  const resolved = await resolveEntityPath(args, workflowId === "comments.add" || workflowId.startsWith("itemFiles."), ctx);
+  if (workflowId === "items.create") {
+    const sourceBody = args["body"] as Record<string, unknown>;
+    let body: Record<string, unknown> = sourceBody;
+    if (sourceBody["groupTitle"] !== undefined) {
+      if (sourceBody["groupId"] !== undefined) throw new TypeError("body.groupId and body.groupTitle cannot both be provided");
+      const group = await resolveItemGroupInBoard(ctx.client, {
+        spaceId: resolved["spaceId"] as string | number,
+        boardId: resolved["boardId"] as string | number,
+        itemGroup: { title: sourceBody["groupTitle"] as string },
+      }, { signal: ctx.signal });
+      const itemGroupId = exactId(group, "item group");
+      const { groupTitle: _groupTitle, ...withoutGroupTitle } = sourceBody;
+      body = { ...withoutGroupTitle, groupId: itemGroupId };
+    }
+    const normalized = normalizeItemCreatePlan({
+      spaceId: resolved["spaceId"] as string | number,
+      boardId: resolved["boardId"] as string | number,
+      body,
+    });
+    return { ...resolved, body: normalized.body };
+  }
+  if (workflowId === "comments.add") {
+    const normalized = normalizeCommentPlan({
+      spaceId: resolved["spaceId"] as string | number,
+      boardId: resolved["boardId"] as string | number,
+      itemId: resolved["itemId"] as string | number,
+      body: { text: args["text"] },
+    });
+    return { ...resolved, text: normalized.body["text"] };
+  }
+  if (workflowId === "itemGroups.create") {
+    const normalized = normalizeItemGroupCreatePlan({
+      spaceId: resolved["spaceId"] as string | number,
+      boardId: resolved["boardId"] as string | number,
+      body: args["body"],
+    });
+    return { ...resolved, body: normalized.body };
+  }
+  return resolved;
 }
 
-export function mutationPlanReceiptInput(workflowId: MutationWorkflowId, args: Record<string, unknown>): Record<string, unknown> {
+export function mutationPlanReceiptInput(workflowId: MutationWorkflowId, args: Record<string, unknown>, normalizedUpload?: NormalizedUpload): Record<string, unknown> {
   if (workflowId !== "itemFiles.upload") return args;
   const { fileBase64, ...safe } = args;
-  return { ...safe, decodedBytes: estimateBase64DecodedBytes(fileBase64 as string) };
+  return {
+    ...safe,
+    decodedBytes: normalizedUpload?.decodedBytes ?? estimateBase64DecodedBytes(fileBase64 as string),
+    ...(normalizedUpload === undefined ? {} : { mediaType: normalizedUpload.mediaType, sha256: normalizedUpload.sha256 }),
+  };
 }
 
 async function resolveEntityPath(
@@ -258,22 +343,30 @@ async function resolveEntityPath(
   includeItem: boolean,
   ctx: McpToolContext,
 ): Promise<Record<string, unknown>> {
-  const { space, board } = await resolveSpaceAndBoard(ctx.client, {
-    space: readRef(args, "space") as EntityRef,
-    board: readRef(args, "board") as EntityRef,
-  }, { signal: ctx.signal });
+  const spaceRef = readRef(args, "space") as EntityRef;
+  const boardRef = readRef(args, "board") as EntityRef;
+  const directSpaceId = entityId(spaceRef);
+  const directBoardId = entityId(boardRef);
+  const resolvedScope = directSpaceId !== undefined && directBoardId !== undefined
+    ? { space: { id: directSpaceId }, board: { id: directBoardId } }
+    : await resolveSpaceAndBoard(ctx.client, { space: spaceRef, board: boardRef }, { signal: ctx.signal });
   const resolved: Record<string, unknown> = {
     ...withoutAliases(args),
-    spaceId: exactId(space, "space"),
-    boardId: exactId(board, "board"),
+    spaceId: exactId(resolvedScope.space, "space"),
+    boardId: exactId(resolvedScope.board, "board"),
   };
   if (includeItem) {
-    const [item] = await resolveItemsInBoard(ctx.client, {
-      spaceId: exactId(space, "space"),
-      boardId: exactId(board, "board"),
-      items: [readRef(args, "item") as EntityRef],
-    }, { signal: ctx.signal });
-    resolved["itemId"] = exactId(item, "item");
+    const itemRef = readRef(args, "item") as EntityRef;
+    const directItemId = entityId(itemRef);
+    if (directItemId !== undefined) resolved["itemId"] = directItemId;
+    else {
+      const [item] = await resolveItemsInBoard(ctx.client, {
+        spaceId: resolved["spaceId"] as string,
+        boardId: resolved["boardId"] as string,
+        items: [itemRef],
+      }, { signal: ctx.signal });
+      resolved["itemId"] = exactId(item, "item");
+    }
   }
   return resolved;
 }
@@ -290,6 +383,20 @@ function withoutAliases(args: Record<string, unknown>): Record<string, unknown> 
 function exactId(value: { id?: string | number | undefined } | undefined, label: string): string {
   if (value?.id === undefined) throw new Error(`${label} resolver returned no ID`);
   return String(value.id);
+}
+
+function entityId(value: EntityRef): string | undefined {
+  const candidate = typeof value === "object" && value !== null ? (value as { id?: unknown }).id : value;
+  if (typeof candidate === "number") {
+    if (!Number.isSafeInteger(candidate) || candidate < 0) throw new TypeError("identifier must be a safe non-negative integer; pass larger identifiers as decimal strings");
+    return String(candidate);
+  }
+  if (typeof candidate === "string" && /^(0|[1-9]\d*)$/.test(candidate)) {
+    if (BigInt(candidate) > 9_223_372_036_854_775_807n) throw new TypeError("identifier exceeds signed int64 range");
+    return candidate;
+  }
+  if (typeof candidate === "string" && /^\d+$/.test(candidate)) throw new TypeError("identifier must be a canonical non-negative decimal string");
+  return undefined;
 }
 
 function mutationReceipt(

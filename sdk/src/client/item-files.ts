@@ -6,6 +6,7 @@ import type { ResourceRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId, ItemId, ItemFileId } from "../runtime/ids.js";
 import type { ItemFileDownloadShape, ItemFileShape } from "./shapes.js";
 import type { components } from "../generated/types.js";
+import { normalizeBlobUploadPlan, normalizeItemFileUpdatePlan } from "../workflows/mutation-plans.js";
 
 export type ItemFileUpdateBody = components["schemas"]["ItemFileUpdateRequest"];
 
@@ -50,10 +51,15 @@ export class ItemFilesResource {
     return assertArrayResult<ItemFileShape>(response, "listItemFiles");
   }
 
-  upload(params: ItemFileUploadParams, options?: ResourceRequestOverrides): Promise<ItemFileShape> {
+  async upload(params: ItemFileUploadParams, options?: ResourceRequestOverrides): Promise<ItemFileShape> {
+    const normalized = await normalizeBlobUploadPlan(params);
     const body = new FormData();
-    if (params.fileName === undefined) body.append("file", params.file);
-    else body.append("file", params.file, params.fileName);
+    const mediaType = normalized.upload?.mediaType ?? "application/octet-stream";
+    const file = params.file.type === mediaType
+      ? params.file
+      : new Blob([params.file], { type: mediaType });
+    if (params.fileName === undefined) body.append("file", file);
+    else body.append("file", file, normalized.upload?.fileName);
 
     const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     return this.client.request<ItemFileShape>(
@@ -94,12 +100,13 @@ export class ItemFilesResource {
   }
 
   update(params: ItemFileUpdateParams, options?: ResourceRequestOverrides): Promise<ItemFileShape> {
+    const normalized = normalizeItemFileUpdatePlan(params);
     const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     return this.client.request<ItemFileShape>(
       {
         method: "PUT",
         path: itemFilePath(params),
-        body: params.body,
+        body: normalized.body,
         operationId: "updateItemFile",
       },
       { ...options, idempotencyKey },

@@ -12,6 +12,7 @@ import {
   PlakyError,
   PlakyPartialMutationError,
   PlakyTimeoutError,
+  UploadValidationError,
   redact,
 } from "plaky115";
 import type { MutationReceipt } from "plaky115";
@@ -20,6 +21,7 @@ import { selectTools, UsageError, type Mode } from "./modes.js";
 import { filterByScopes } from "./scopes.js";
 import { compactByKind, serializeForMcp, structuredForMcp } from "../runtime/compaction.js";
 import { createMutationAttempt, McpMutationAttemptError, type McpAttemptSnapshot } from "../runtime/attempts.js";
+import { resolveMaxUploadBytes } from "../runtime/upload.js";
 import type {
   McpScope,
   McpToolContext,
@@ -49,6 +51,7 @@ export type ServerOptions = {
 };
 
 export function buildServer(opts: ServerOptions): { server: McpServer; tools: McpToolDefinition[] } {
+  resolveMaxUploadBytes();
   const client = new PlakyClient({
     apiKey: opts.apiKey,
     ...(opts.serverURL ? { serverURL: opts.serverURL } : {}),
@@ -146,12 +149,12 @@ function isMcpResponse(value: unknown): value is McpToolResponse {
 
 export function toToolErrorResponse(
   error: unknown,
-  toolName?: string,
+  _toolName?: string,
   attempt?: McpAttemptSnapshot,
   tool?: McpToolDefinition,
   input?: unknown,
 ): McpToolResponse {
-  const detail = classifyToolError(error, toolName, attempt, tool, input);
+  const detail = classifyToolError(error, _toolName, attempt, tool, input);
   if (detail === undefined) throw redactedError(error);
   const payload: McpToolErrorEnvelope = { error: detail };
   const structuredContent = structuredForMcp(payload) as McpToolErrorEnvelope;
@@ -164,7 +167,7 @@ export function toToolErrorResponse(
 
 function classifyToolError(
   error: unknown,
-  toolName?: string,
+  _toolName?: string,
   attempt?: McpAttemptSnapshot,
   tool?: McpToolDefinition,
   input?: unknown,
@@ -197,6 +200,16 @@ function classifyToolError(
     }, state);
   }
   if (error instanceof PlakyAbortError) return plakyDetail("abort", error, false, state);
+  if (error instanceof UploadValidationError) {
+    return withAttemptDetails({
+      category: "validation",
+      name: error.name,
+      message: redact(error.message),
+      retryable: false,
+      code: error.code,
+      path: error.path,
+    }, state);
+  }
   if (error instanceof PlakyError) return plakyDetail("plaky", error, false, state);
   if (error instanceof ZodError) {
     return withAttemptDetails({
@@ -208,14 +221,6 @@ function classifyToolError(
   }
   if (error instanceof UsageError) {
     return { category: "usage", name: error.name, message: redact(error.message), retryable: false };
-  }
-  if (toolName === "plaky_upload_item_file" && isUploadValidationError(error)) {
-    return {
-      category: "validation",
-      name: "UploadValidationError",
-      message: redact(error.message),
-      retryable: false,
-    };
   }
   return undefined;
 }
@@ -305,11 +310,6 @@ function formatZodError(error: ZodError): string {
   return error.issues
     .map((issue) => `${issue.path.length > 0 ? issue.path.join(".") : "input"}: ${issue.message}`)
     .join("; ");
-}
-
-function isUploadValidationError(error: unknown): error is Error {
-  if (!(error instanceof Error)) return false;
-  return /(?:fileBase64|fileName|contentType|maxBytes|decoded upload|PLAKY115_MCP_MAX_UPLOAD_BYTES)/i.test(error.message);
 }
 
 function redactedError(error: unknown): Error {

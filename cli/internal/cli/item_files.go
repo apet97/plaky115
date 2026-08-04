@@ -2,6 +2,7 @@
 package cli
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/apet97/plaky115-cli/internal/plakydx"
 	"github.com/apet97/plaky115-cli/internal/plakysdk"
@@ -128,7 +129,28 @@ func curatedUpload(cmd *cobra.Command) (*curatedUploadInput, error) {
 		if fileName == "" {
 			return nil, fmt.Errorf("--filename is required with --file -")
 		}
-		return &curatedUploadInput{reader: cmd.InOrStdin(), fileName: fileName, contentType: contentType, close: func() error { return nil }}, nil
+		validatedType, err := plakydx.ValidateUploadMetadata(fileName, contentType)
+		if err != nil {
+			return nil, err
+		}
+		data, err := io.ReadAll(io.LimitReader(cmd.InOrStdin(), plakydx.MaxUploadBytes+1))
+		if err != nil {
+			return nil, fmt.Errorf("read --file -: %w", err)
+		}
+		if int64(len(data)) > plakydx.MaxUploadBytes {
+			return nil, fmt.Errorf("upload exceeds the %d-byte limit", plakydx.MaxUploadBytes)
+		}
+		return &curatedUploadInput{reader: bytes.NewReader(data), fileName: fileName, contentType: validatedType, close: func() error { return nil }}, nil
+	}
+	info, err := os.Stat(source)
+	if err != nil {
+		return nil, fmt.Errorf("stat --file: %w", err)
+	}
+	if info.Size() > plakydx.MaxUploadBytes {
+		return nil, fmt.Errorf("upload exceeds the %d-byte limit", plakydx.MaxUploadBytes)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("--file must name a regular file")
 	}
 	file, err := os.Open(source)
 	if err != nil {
@@ -137,5 +159,10 @@ func curatedUpload(cmd *cobra.Command) (*curatedUploadInput, error) {
 	if fileName == "" {
 		fileName = filepath.Base(source)
 	}
-	return &curatedUploadInput{reader: file, fileName: fileName, contentType: contentType, close: file.Close}, nil
+	validatedType, err := plakydx.ValidateUploadMetadata(fileName, contentType)
+	if err != nil {
+		_ = file.Close()
+		return nil, err
+	}
+	return &curatedUploadInput{reader: file, fileName: fileName, contentType: validatedType, close: file.Close}, nil
 }

@@ -6,6 +6,7 @@ import type { ResourceRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId, ItemId, CommentId } from "../runtime/ids.js";
 import type { StrictPagedResult, CommentShape } from "./shapes.js";
 import type { components } from "../generated/types.js";
+import { normalizeCommentPlan } from "../workflows/mutation-plans.js";
 
 export type CommentScopeParams = {
   spaceId: SpaceId | string | number;
@@ -63,12 +64,13 @@ export class ItemCommentsResource {
    * ```
    */
   async create(params: CommentScopeParams & { body: CommentWriteBody; idempotencyKey?: string }, options?: ResourceRequestOverrides): Promise<CommentShape> {
+    const normalized = normalizeCommentPlan(params);
     const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     return this.client.request<CommentShape>(
       {
         method: "POST",
         path: `/v1/public/spaces/${idPathSegment(params.spaceId)}/boards/${idPathSegment(params.boardId)}/items/${idPathSegment(params.itemId)}/comments`,
-        body: params.body,
+        body: normalized.body,
         operationId: "createItemComment",
       },
       { ...options, idempotencyKey },
@@ -87,12 +89,13 @@ export class ItemCommentsResource {
     params: CommentScopeParams & { itemCommentId: CommentId | string | number; body: CommentWriteBody; idempotencyKey?: string },
     options?: ResourceRequestOverrides,
   ): Promise<CommentShape> {
+    const normalized = normalizeCommentPlan({ ...params, operationId: "updateItemComment" });
     const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     return this.client.request<CommentShape>(
       {
         method: "PUT",
         path: `/v1/public/spaces/${idPathSegment(params.spaceId)}/boards/${idPathSegment(params.boardId)}/items/${idPathSegment(params.itemId)}/comments/${idPathSegment(params.itemCommentId)}`,
-        body: params.body,
+        body: normalized.body,
         operationId: "updateItemComment",
       },
       { ...options, idempotencyKey },

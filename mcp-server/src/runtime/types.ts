@@ -25,6 +25,7 @@ export type McpToolError = {
   retryable: boolean;
   status?: number;
   code?: string | number;
+  path?: string;
   requestId?: string;
   retryAfterMs?: number;
   attempted?: boolean;

@@ -165,8 +165,14 @@ export class PlakyServerError extends PlakyApiError {}
  * `candidates` holds the ambiguous matches.
  */
 export class PlakyAmbiguousMatchError extends PlakyError {
-  constructor(message: string, readonly candidates: unknown[]) {
+  readonly candidates: readonly unknown[];
+  readonly candidateCount: number;
+
+  constructor(message: string, candidates: readonly unknown[]) {
     super(message);
+    this.candidates = Object.freeze([...candidates]);
+    this.candidateCount = this.candidates.length;
+    Object.defineProperty(this, "candidates", { enumerable: false });
   }
 }
 

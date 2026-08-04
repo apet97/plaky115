@@ -95,6 +95,25 @@ export type { RateLimitSnapshot } from "./runtime/rate-limit.js";
 export { paginate } from "./runtime/pagination.js";
 export type { Page, PageFetcher, PageOptions, PaginatedIterator } from "./runtime/pagination.js";
 export type { PlakyRequestOptions } from "./runtime/http.js";
+export {
+  MAX_UPLOAD_BYTES_HARD_CEILING,
+  MAX_UPLOAD_FILENAME_BYTES,
+  UploadValidationError,
+  decodeBase64Upload,
+  estimateBase64DecodedBytes,
+  normalizeUpload,
+  normalizeUploadMediaType,
+  normalizeUploadMetadata,
+  validateBlobUpload,
+  validateUploadFileName,
+  validateUploadLimit,
+} from "./runtime/upload.js";
+export type {
+  NormalizedUpload,
+  UploadInput,
+  UploadMetadata,
+  UploadValidationCode,
+} from "./runtime/upload.js";
 
 export type {
   paths as PlakyOpenApiPaths,
@@ -195,7 +214,18 @@ export {
   resolveItemGroupInBoard,
   resolveItemFileOnItem,
 } from "./resolvers/index.js";
-export type { EntityRef } from "./resolvers/index.js";
+export type { EntityRef, EntitySelector } from "./resolvers/index.js";
 
 export { workspaceMap, searchItems, searchItemsDetailed, bulkUpdateItems, exportItems } from "./workflows/index.js";
 export type { SearchItemsParams, SearchItemsDetailedResult, BulkUpdateParams, ExportItemsParams } from "./workflows/index.js";
+export {
+  normalizeBase64UploadPlan,
+  normalizeBlobUploadPlan,
+  normalizeCommentPlan,
+  normalizeItemCreatePlan,
+  normalizeItemFileUpdatePlan,
+  normalizeItemGroupCreatePlan,
+  normalizeItemGroupUpdatePlan,
+  normalizeItemUpdateFieldsPlan,
+} from "./workflows/mutation-plans.js";
+export type { NormalizedMutationPlan, NormalizedUploadPlan } from "./workflows/mutation-plans.js";

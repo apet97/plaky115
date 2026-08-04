@@ -1,12 +1,15 @@
 package plakydx
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/apet97/plaky115-cli/internal/plakysdk"
 	"github.com/spf13/cobra"
@@ -18,6 +21,11 @@ type openedUpload struct {
 	ContentType string
 	close       func() error
 }
+
+const (
+	MaxUploadBytes         int64 = 25 * 1024 * 1024
+	MaxUploadFilenameBytes       = 255
+)
 
 func (upload *openedUpload) Close() error {
 	if upload.close == nil {
@@ -182,19 +190,40 @@ func openUploadFlag(cmd *cobra.Command) (*openedUpload, error) {
 		if fileName == "" {
 			return nil, fmt.Errorf("--filename is required with --file -")
 		}
-		return &openedUpload{
-			Reader:      cmd.InOrStdin(),
-			FileName:    fileName,
-			ContentType: contentType,
-		}, nil
+		contentType, err = ValidateUploadMetadata(fileName, contentType)
+		if err != nil {
+			return nil, err
+		}
+		data, err := io.ReadAll(io.LimitReader(cmd.InOrStdin(), MaxUploadBytes+1))
+		if err != nil {
+			return nil, fmt.Errorf("read --file -: %w", err)
+		}
+		if int64(len(data)) > MaxUploadBytes {
+			return nil, fmt.Errorf("upload exceeds the %d-byte limit", MaxUploadBytes)
+		}
+		return &openedUpload{Reader: bytes.NewReader(data), FileName: fileName, ContentType: contentType}, nil
 	}
 
-	file, err := os.Open(source)
+	info, err := os.Stat(source)
 	if err != nil {
 		return nil, fmt.Errorf("open --file: %w", err)
 	}
+	if info.Size() > MaxUploadBytes {
+		return nil, fmt.Errorf("upload exceeds the %d-byte limit", MaxUploadBytes)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("--file must name a regular file")
+	}
 	if fileName == "" {
 		fileName = filepath.Base(source)
+	}
+	contentType, err = ValidateUploadMetadata(fileName, contentType)
+	if err != nil {
+		return nil, err
+	}
+	file, err := os.Open(source)
+	if err != nil {
+		return nil, fmt.Errorf("open --file: %w", err)
 	}
 	return &openedUpload{
 		Reader:      file,
@@ -202,6 +231,32 @@ func openUploadFlag(cmd *cobra.Command) (*openedUpload, error) {
 		ContentType: contentType,
 		close:       file.Close,
 	}, nil
+}
+
+// ValidateUploadMetadata applies the same local filename/media-type policy to
+// raw and curated CLI uploads before a request body is constructed.
+func ValidateUploadMetadata(fileName, contentType string) (string, error) {
+	if fileName == "" {
+		return "", fmt.Errorf("upload filename must be non-empty")
+	}
+	if strings.ContainsAny(fileName, `/\\`) || !utf8.ValidString(fileName) || len([]byte(fileName)) > MaxUploadFilenameBytes {
+		return "", fmt.Errorf("upload filename must be a safe UTF-8 name of at most %d bytes", MaxUploadFilenameBytes)
+	}
+	for _, r := range fileName {
+		if r < 0x20 || (r >= 0x7f && r <= 0x9f) {
+			return "", fmt.Errorf("upload filename must not contain control characters")
+		}
+	}
+	for _, r := range contentType {
+		if r < 0x20 || (r >= 0x7f && r <= 0x9f) {
+			return "", fmt.Errorf("upload content type must not contain control characters")
+		}
+	}
+	mediaType, params, err := mime.ParseMediaType(contentType)
+	if err != nil || mediaType == "" {
+		return "", fmt.Errorf("upload content type must be a valid media type")
+	}
+	return mime.FormatMediaType(mediaType, params), nil
 }
 
 func confirmationFlag(cmd *cobra.Command) error {

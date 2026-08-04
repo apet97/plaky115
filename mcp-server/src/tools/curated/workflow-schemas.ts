@@ -13,7 +13,20 @@ export type MutationWorkflowId = (typeof MUTATION_WORKFLOW_IDS)[number];
 export type WorkflowId = (typeof WORKFLOW_IDS)[number];
 
 const titleRef = z.string().min(1).refine((value) => !/^\d+$/.test(value), "numeric identifiers must be canonical signed int64 values");
-const entityRefSchema = z.union([int64Id, titleRef]).describe("Exact numeric ID or non-empty title reference.");
+const selectorObject = z.object({
+  id: int64Id.optional(),
+  title: z.string().min(1).optional(),
+  name: z.string().min(1).optional(),
+  email: z.string().min(1).optional(),
+}).strict().superRefine((value, ctx) => {
+  if (value.id === undefined && value.title === undefined && value.name === undefined && value.email === undefined) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "selector must include id, title, name, or email" });
+  }
+  const labels = [value.title === undefined ? undefined : "title", value.name === undefined ? undefined : "name", value.email === undefined ? undefined : "email"];
+  const present = labels.filter((label): label is string => label !== undefined);
+  if (present.length > 1) ctx.addIssue({ code: z.ZodIssueCode.custom, message: `selector fields conflict: ${present.join(", ")}` });
+});
+const entityRefSchema = z.union([int64Id, titleRef, selectorObject]).describe("Exact numeric ID, text reference, or field-specific selector.");
 
 export type EntityName = "space" | "board" | "item" | "itemGroup" | "itemFile";
 
