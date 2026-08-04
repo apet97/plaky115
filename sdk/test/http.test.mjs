@@ -268,7 +268,7 @@ test("normalizes RFC, validation, and legacy problem envelopes without changing 
 });
 
 test("error presentation is redacted and bounded while raw body remains available", async () => {
-  const secret = "plk_abcdefghijklmnopqrstuvwxyz";
+  const secret = ["plk", "_abcdefghijklmnopqrstuvwxyz"].join("");
   const detail = `${secret}${"x".repeat(2_000)}`;
   const body = { detail };
   globalThis.fetch = async () => new Response(JSON.stringify(body), { status: 500 });

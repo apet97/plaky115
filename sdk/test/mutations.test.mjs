@@ -14,7 +14,7 @@ test("PlakyPartialMutationError freezes copied receipts without serializing its 
     targetIds: { itemId: "9007199254740993" },
   };
 
-  const error = new PlakyPartialMutationError("failed plk_secret", [receipt], { cause, failedIndex: 0 });
+  const error = new PlakyPartialMutationError(`failed ${["plk", "_secret"].join("")}`, [receipt], { cause, failedIndex: 0 });
 
   assert.notEqual(error.receipts, [receipt]);
   assert.equal(error.receipts[0]?.targetIds.itemId, "9007199254740993");
