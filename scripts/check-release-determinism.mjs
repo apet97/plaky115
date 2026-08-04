@@ -2,7 +2,7 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { withOwnedTempDirectory, withOwnedWorktree, linkPackageDependencies, runBoundedCommand, sanitizedEnvironment } from "./lib/verification-runner.mjs";
+import { withOwnedTempDirectory, withOwnedWorktree, runBoundedCommand, sanitizedEnvironment } from "./lib/verification-runner.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const packages = ["sdk", "mcp-server"];
@@ -12,7 +12,6 @@ export async function checkReleaseDeterminism(sourceRoot = root) {
     const lanes = [];
     for (const lane of ["first", "second"]) {
       lanes.push(await withOwnedWorktree(sourceRoot, async (worktreeRoot) => {
-        await linkPackageDependencies(sourceRoot, worktreeRoot);
         const output = join(temporaryRoot, lane);
         await mkdir(output, { recursive: true });
         const digests = [];
