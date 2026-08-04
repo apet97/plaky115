@@ -270,7 +270,7 @@ export async function withOwnedWorktree(sourceRoot, callback, options = {}) {
     } finally {
       if (added) {
         try {
-          await runBoundedCommand("git", ["worktree", "remove", "--force", "--quiet", worktreeRoot], {
+          await runBoundedCommand("git", ["worktree", "remove", "--force", worktreeRoot], {
             cwd: sourceRoot,
             env: environment,
             timeoutMs: options.cleanupTimeoutMs ?? 30_000,

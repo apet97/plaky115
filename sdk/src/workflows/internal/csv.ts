@@ -21,9 +21,7 @@ export type CsvSchema = {
  * change the header or cause an unbounded discovery pass.
  */
 export function createItemsCsvSchema(items: JsonRecord[], fieldDefinitions: JsonRecord[] = []): CsvSchema {
-  const topKeys = Array.from(new Set([
-    ...items.flatMap((item) => Object.keys(item).filter((key) => key !== "fields")),
-  ])).sort(compareText);
+  const topKeys = Array.from(new Set(items.flatMap((item) => Object.keys(item).filter((key) => key !== "fields")))).sort(compareText);
   const descriptors = new Map<string, FieldDescriptor>();
   let missingOccurrence = 0;
 
@@ -59,7 +57,7 @@ export function renderItemsCsvChunk(items: JsonRecord[], safety: CsvSafety, sche
 export function renderItemsCsv(items: JsonRecord[], safety: CsvSafety): string {
   if (items.length === 0) return "";
 
-  const topKeys = Array.from(new Set(items.flatMap((item) => Object.keys(item).filter((key) => key !== "fields")))).sort(compareText);
+  const topKeys = [...new Set(items.flatMap((item) => Object.keys(item).filter((key) => key !== "fields")))].sort(compareText);
   const topKeySet = new Set(topKeys);
   const descriptors = new Map<string, FieldDescriptor>();
   const fieldValues = items.map((item) => collectFieldValues(item, descriptors));
