@@ -8,16 +8,13 @@ import (
 
 func newUpdateItemFieldsCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update-item-fields",
-		Short: "Update item fields",
-		Args:  cobra.NoArgs,
+		Use:         "update-item-fields",
+		Short:       "Update item fields",
+		Annotations: map[string]string{"plaky115.stdin-consumer": "body"},
+		Args:        cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := getClient(cmd)
-			if err != nil {
-				return err
-			}
 			ctx := cmd.Context()
-			return plakydx.RunUpdateItemFields(ctx, cmd, client)
+			return plakydx.RunUpdateItemFields(ctx, cmd, getClient)
 		},
 	}
 	cmd.Flags().String("space-id", "", "Represents unique space identifier across the system. (required)")

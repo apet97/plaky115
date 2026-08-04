@@ -12,12 +12,8 @@ func newArchiveWidgetCmd(getClient ClientFactory) *cobra.Command {
 		Short: "archiveWidget fixture",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := getClient(cmd)
-			if err != nil {
-				return err
-			}
 			ctx := cmd.Context()
-			return plakydx.RunArchiveWidget(ctx, cmd, client)
+			return plakydx.RunArchiveWidget(ctx, cmd, getClient)
 		},
 	}
 	cmd.Flags().String("widget-id", "", "Widget identifier. (required)")

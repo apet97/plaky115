@@ -12,12 +12,8 @@ func newGetTeamCmd(getClient ClientFactory) *cobra.Command {
 		Short: "Retrieve a team",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := getClient(cmd)
-			if err != nil {
-				return err
-			}
 			ctx := cmd.Context()
-			return plakydx.RunGetTeam(ctx, cmd, client)
+			return plakydx.RunGetTeam(ctx, cmd, getClient)
 		},
 	}
 	cmd.Flags().String("team-id", "", "Represents unique team identifier across the system. (required)")

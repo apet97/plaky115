@@ -11,18 +11,38 @@ func newReactionsReplaceCommand(getClient clientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "reactions-replace",
 		Short: "Replace reactions for one item comment.",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			c, err := getClient(cmd)
+			spaceID, err := requiredFlagString(cmd, "space-id")
 			if err != nil {
 				return err
 			}
-			spaceID, _ := cmd.Flags().GetString("space-id")
-			boardID, _ := cmd.Flags().GetString("board-id")
-			itemID, _ := cmd.Flags().GetString("item-id")
-			commentID, _ := cmd.Flags().GetString("comment-id")
-			bodyText, _ := cmd.Flags().GetString("body")
+			boardID, err := requiredFlagString(cmd, "board-id")
+			if err != nil {
+				return err
+			}
+			itemID, err := requiredFlagString(cmd, "item-id")
+			if err != nil {
+				return err
+			}
+			commentID, err := requiredFlagString(cmd, "comment-id")
+			if err != nil {
+				return err
+			}
+			bodyText, err := requiredFlagString(cmd, "body")
+			if err != nil {
+				return err
+			}
+			if err := validateIDValues(
+				struct{ name, value string }{"space-id", spaceID},
+				struct{ name, value string }{"board-id", boardID},
+				struct{ name, value string }{"item-id", itemID},
+				struct{ name, value string }{"comment-id", commentID},
+			); err != nil {
+				return err
+			}
 			dry, _ := cmd.Flags().GetBool("dry-run")
-			body, err := plakydx.ParseBody(cmd, bodyText)
+			body, err := plakydx.ParseJSONBody(cmd, bodyText, true, "reactions")
 			if err != nil {
 				return err
 			}
@@ -38,6 +58,10 @@ func newReactionsReplaceCommand(getClient clientFactory) *cobra.Command {
 						"body":      body,
 					},
 				})
+			}
+			c, err := getClient(cmd)
+			if err != nil {
+				return err
 			}
 			out, err := c.ReplaceCommentReactions(cmd.Context(), plakysdk.ReplaceCommentReactionsOptions{
 				SpaceId:       spaceID,
@@ -58,6 +82,7 @@ func newReactionsReplaceCommand(getClient clientFactory) *cobra.Command {
 	cmd.Flags().String("comment-id", "", "Comment ID (required)")
 	cmd.Flags().String("body", "", "Request body JSON, @file.json, or @- for stdin (required)")
 	cmd.Flags().Bool("dry-run", false, "Print the plan without calling the API")
+	markStdinConsumer(cmd, "body")
 	markRequired(cmd, "space-id", "board-id", "item-id", "comment-id", "body")
 	return cmd
 }

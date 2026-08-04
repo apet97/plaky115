@@ -8,16 +8,13 @@ import (
 
 func newReplaceCommentReactionsCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "replace-comment-reactions",
-		Short: "Replace comment reactions",
-		Args:  cobra.NoArgs,
+		Use:         "replace-comment-reactions",
+		Short:       "Replace comment reactions",
+		Annotations: map[string]string{"plaky115.stdin-consumer": "body"},
+		Args:        cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := getClient(cmd)
-			if err != nil {
-				return err
-			}
 			ctx := cmd.Context()
-			return plakydx.RunReplaceCommentReactions(ctx, cmd, client)
+			return plakydx.RunReplaceCommentReactions(ctx, cmd, getClient)
 		},
 	}
 	cmd.Flags().String("space-id", "", "Represents unique space identifier across the system. (required)")

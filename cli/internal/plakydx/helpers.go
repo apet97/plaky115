@@ -8,6 +8,7 @@ import (
 	"mime"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -25,6 +26,8 @@ type openedUpload struct {
 const (
 	MaxUploadBytes         int64 = 25 * 1024 * 1024
 	MaxUploadFilenameBytes       = 255
+	MaxJSONBytes                 = 16 * 1024 * 1024
+	MaxJSONDepth                 = 128
 )
 
 func (upload *openedUpload) Close() error {
@@ -116,11 +119,49 @@ func jsonBodyFlag(cmd *cobra.Command, required bool, requiredProperties ...strin
 		}
 		return nil, nil
 	}
+	return ParseJSONBody(cmd, raw, required, requiredProperties...)
+}
+
+// ParseBody resolves a raw --body value into JSON: "@-" reads stdin, "@file"
+// reads a file, and anything else is parsed as inline JSON.
+func ParseBody(cmd *cobra.Command, raw string) (any, error) {
+	var (
+		body   []byte
+		source = "--body"
+	)
+	if raw == "@-" {
+		var err error
+		body, err = readBoundedJSON(cmd.InOrStdin(), MaxJSONBytes, "read --body @-")
+		if err != nil {
+			return nil, err
+		}
+		source = "--body @-"
+	} else if file, ok := strings.CutPrefix(raw, "@"); ok {
+		handle, err := os.Open(file)
+		if err != nil {
+			return nil, fmt.Errorf("read --body file: %w", err)
+		}
+		defer handle.Close()
+		body, err = readBoundedJSON(handle, MaxJSONBytes, "read --body file")
+		if err != nil {
+			return nil, err
+		}
+		source = "--body @" + file
+	} else {
+		if len([]byte(raw)) > MaxJSONBytes {
+			return nil, fmt.Errorf("--body exceeds the %d-byte limit", MaxJSONBytes)
+		}
+		body = []byte(raw)
+	}
+	return decodeStrictJSON(body, source)
+}
+
+func ParseJSONBody(cmd *cobra.Command, raw string, required bool, requiredProperties ...string) (any, error) {
 	value, err := ParseBody(cmd, raw)
 	if err != nil {
 		return nil, err
 	}
-	if value == nil {
+	if value == nil && required {
 		return nil, fmt.Errorf("JSON body must be a JSON object")
 	}
 	if err := plakysdk.ValidateJSONBody(value, required, requiredProperties...); err != nil {
@@ -129,44 +170,110 @@ func jsonBodyFlag(cmd *cobra.Command, required bool, requiredProperties ...strin
 	return value, nil
 }
 
-// ParseBody resolves a raw --body value into JSON: "@-" reads stdin, "@file"
-// reads a file, and anything else is parsed as inline JSON.
-func ParseBody(cmd *cobra.Command, raw string) (any, error) {
-	if raw == "@-" {
-		body, err := io.ReadAll(cmd.InOrStdin())
-		if err != nil {
-			return nil, fmt.Errorf("read --body @-: %w", err)
-		}
-		raw = string(body)
-	} else if file, ok := strings.CutPrefix(raw, "@"); ok {
-		body, err := os.ReadFile(file)
-		if err != nil {
-			return nil, fmt.Errorf("read --body file: %w", err)
-		}
-		raw = string(body)
+func readBoundedJSON(input io.Reader, max int, source string) ([]byte, error) {
+	body, err := io.ReadAll(io.LimitReader(input, int64(max)+1))
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", source, err)
 	}
+	if len(body) > max {
+		return nil, fmt.Errorf("%s exceeds the %d-byte limit", source, max)
+	}
+	return body, nil
+}
 
-	decoder := json.NewDecoder(strings.NewReader(raw))
+func decodeStrictJSON(body []byte, source string) (any, error) {
+	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.UseNumber()
-	var value any
-	if err := decoder.Decode(&value); err != nil {
-		return nil, fmt.Errorf("invalid --body JSON: %w", err)
-	}
-	if err := ensureJSONEnd(decoder); err != nil {
+	value, err := decodeJSONValue(decoder, "$", 0, source)
+	if err != nil {
 		return nil, err
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		if err == nil {
+			return nil, strictJSONError(source, "$", "multiple JSON values")
+		}
+		return nil, strictJSONError(source, "$", err)
 	}
 	return value, nil
 }
 
-func ensureJSONEnd(decoder *json.Decoder) error {
-	var extra any
-	if err := decoder.Decode(&extra); err != io.EOF {
-		if err == nil {
-			return fmt.Errorf("invalid --body JSON: multiple values")
+func decodeJSONValue(decoder *json.Decoder, pointer string, depth int, source string) (any, error) {
+	token, err := decoder.Token()
+	if err != nil {
+		return nil, strictJSONError(source, pointer, err)
+	}
+	delim, isDelim := token.(json.Delim)
+	if !isDelim {
+		return token, nil
+	}
+	if depth >= MaxJSONDepth {
+		return nil, strictJSONError(source, pointer, fmt.Sprintf("maximum nesting depth %d exceeded", MaxJSONDepth))
+	}
+
+	switch delim {
+	case '{':
+		object := make(map[string]any)
+		for decoder.More() {
+			keyToken, err := decoder.Token()
+			if err != nil {
+				return nil, strictJSONError(source, pointer, err)
+			}
+			key, ok := keyToken.(string)
+			if !ok {
+				return nil, strictJSONError(source, pointer, "object key must be a string")
+			}
+			childPointer := joinJSONPointer(pointer, key)
+			if _, exists := object[key]; exists {
+				return nil, strictJSONError(source, childPointer, "duplicate object key")
+			}
+			value, err := decodeJSONValue(decoder, childPointer, depth+1, source)
+			if err != nil {
+				return nil, err
+			}
+			object[key] = value
 		}
-		return fmt.Errorf("invalid --body JSON: %w", err)
+		if err := consumeJSONDelimiter(decoder, '}', source, pointer); err != nil {
+			return nil, err
+		}
+		return object, nil
+	case '[':
+		array := make([]any, 0)
+		for decoder.More() {
+			childPointer := joinJSONPointer(pointer, strconv.Itoa(len(array)))
+			value, err := decodeJSONValue(decoder, childPointer, depth+1, source)
+			if err != nil {
+				return nil, err
+			}
+			array = append(array, value)
+		}
+		if err := consumeJSONDelimiter(decoder, ']', source, pointer); err != nil {
+			return nil, err
+		}
+		return array, nil
+	default:
+		return nil, strictJSONError(source, pointer, "unexpected delimiter")
+	}
+}
+
+func consumeJSONDelimiter(decoder *json.Decoder, want json.Delim, source, pointer string) error {
+	token, err := decoder.Token()
+	if err != nil {
+		return strictJSONError(source, pointer, err)
+	}
+	if token != want {
+		return strictJSONError(source, pointer, fmt.Sprintf("expected %q", want))
 	}
 	return nil
+}
+
+func joinJSONPointer(pointer, token string) string {
+	token = strings.ReplaceAll(token, "~", "~0")
+	token = strings.ReplaceAll(token, "/", "~1")
+	return pointer + "/" + token
+}
+
+func strictJSONError(source, pointer string, detail any) error {
+	return fmt.Errorf("invalid --body JSON in %s at %s: %v", source, pointer, detail)
 }
 
 func openUploadFlag(cmd *cobra.Command) (*openedUpload, error) {

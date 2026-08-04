@@ -19,14 +19,15 @@ export function buildCobraCommand(op) {
   lines.push(`\tcmd := &cobra.Command{`);
   lines.push(`\t\tUse:   ${JSON.stringify(useSlug)},`);
   lines.push(`\t\tShort: ${JSON.stringify(op.summary ?? op.operationId)},`);
+  if (descriptor.requestKind === "json") {
+    lines.push(`\t\tAnnotations: map[string]string{"plaky115.stdin-consumer": "body"},`);
+  } else if (descriptor.requestKind === "multipart") {
+    lines.push(`\t\tAnnotations: map[string]string{"plaky115.stdin-consumer": "file"},`);
+  }
   lines.push(`\t\tArgs:  cobra.NoArgs,`);
   lines.push(`\t\tRunE: func(cmd *cobra.Command, args []string) error {`);
-  lines.push(`\t\t\tclient, err := getClient(cmd)`);
-  lines.push(`\t\t\tif err != nil {`);
-  lines.push(`\t\t\t\treturn err`);
-  lines.push(`\t\t\t}`);
-  lines.push(`\t\t\tctx := cmd.Context()`);
-  lines.push(`\t\t\treturn plakydx.Run${cap(op.operationId)}(ctx, cmd, client)`);
+	lines.push(`\t\t\tctx := cmd.Context()`);
+	lines.push(`\t\t\treturn plakydx.Run${cap(op.operationId)}(ctx, cmd, getClient)`);
   lines.push(`\t\t},`);
   lines.push(`\t}`);
   for (const parameter of pathParameters) {
@@ -182,7 +183,7 @@ function goRunnerLines(op) {
   const fn = cap(op.operationId);
   const lines = [];
   lines.push(`// Run${fn} reads raw flags and executes ${op.operationId}.`);
-  lines.push(`func Run${fn}(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {`);
+  lines.push(`func Run${fn}(ctx context.Context, cmd *cobra.Command, getClient func(*cobra.Command) (*plakysdk.Client, error)) error {`);
   if (op.confirmation === "destructive") {
     lines.push(`\tif err := confirmationFlag(cmd); err != nil {`);
     lines.push(`\t\treturn err`);
@@ -213,6 +214,10 @@ function goRunnerLines(op) {
     lines.push(`\t\treturn err`);
     lines.push(`\t}`);
   }
+  lines.push(`\tc, err := getClient(cmd)`);
+  lines.push(`\tif err != nil {`);
+  lines.push(`\t\treturn err`);
+  lines.push(`\t}`);
   lines.push(`\topts := plakysdk.${fn}Options{`);
   for (const parameter of descriptor.pathParameters) {
     lines.push(`\t\t${cap(parameter.name)}: ${localName(parameter.name)},`);

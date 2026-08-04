@@ -12,13 +12,26 @@ func newItemGroupsListCommand(getClient clientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "item-groups-list",
 		Short: "List every item group on a board.",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			spaceID, err := requiredFlagString(cmd, "space-id")
+			if err != nil {
+				return err
+			}
+			boardID, err := requiredFlagString(cmd, "board-id")
+			if err != nil {
+				return err
+			}
+			if err := validateIDValues(
+				struct{ name, value string }{"space-id", spaceID},
+				struct{ name, value string }{"board-id", boardID},
+			); err != nil {
+				return err
+			}
 			c, err := getClient(cmd)
 			if err != nil {
 				return err
 			}
-			spaceID, _ := cmd.Flags().GetString("space-id")
-			boardID, _ := cmd.Flags().GetString("board-id")
 			groups, err := drainPaged(200, func(page, pageSize int) (any, error) {
 				return c.ListItemGroups(cmd.Context(), plakysdk.ListItemGroupsOptions{
 					SpaceId: spaceID, BoardId: boardID, Page: page, PageSize: pageSize,
@@ -40,15 +53,30 @@ func newItemGroupsCreateCommand(getClient clientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "item-groups-create",
 		Short: "Create an item group from friendly flags.",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			c, err := getClient(cmd)
+			spaceID, err := requiredFlagString(cmd, "space-id")
 			if err != nil {
 				return err
 			}
-			spaceID, _ := cmd.Flags().GetString("space-id")
-			boardID, _ := cmd.Flags().GetString("board-id")
-			title, _ := cmd.Flags().GetString("title")
-			color, _ := cmd.Flags().GetString("color")
+			boardID, err := requiredFlagString(cmd, "board-id")
+			if err != nil {
+				return err
+			}
+			title, err := requiredFlagString(cmd, "title")
+			if err != nil {
+				return err
+			}
+			color, err := requiredFlagString(cmd, "color")
+			if err != nil {
+				return err
+			}
+			if err := validateIDValues(
+				struct{ name, value string }{"space-id", spaceID},
+				struct{ name, value string }{"board-id", boardID},
+			); err != nil {
+				return err
+			}
 			ranking, _ := cmd.Flags().GetString("ranking")
 			idempotencyKey, _ := cmd.Flags().GetString("idempotency-key")
 			dryRun, _ := cmd.Flags().GetBool("dry-run")
@@ -62,6 +90,10 @@ func newItemGroupsCreateCommand(getClient clientFactory) *cobra.Command {
 			payload := map[string]any{"spaceId": spaceID, "boardId": boardID, "body": body}
 			if dryRun {
 				return plakydx.EmitJSON(cmd, map[string]any{"dryRun": true, "operation": "createItemGroup", "payload": payload})
+			}
+			c, err := getClient(cmd)
+			if err != nil {
+				return err
 			}
 			out, err := c.CreateItemGroup(cmd.Context(), plakysdk.CreateItemGroupOptions{
 				SpaceId: spaceID, BoardId: boardID, JSONBody: body, IdempotencyKey: idempotencyKey,
@@ -87,14 +119,27 @@ func newItemGroupsArchiveCommand(getClient clientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "item-groups-archive",
 		Short: "Archive an item group by exact ID.",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			c, err := getClient(cmd)
+			spaceID, err := requiredFlagString(cmd, "space-id")
 			if err != nil {
 				return err
 			}
-			spaceID, _ := cmd.Flags().GetString("space-id")
-			boardID, _ := cmd.Flags().GetString("board-id")
-			itemGroupID, _ := cmd.Flags().GetString("item-group-id")
+			boardID, err := requiredFlagString(cmd, "board-id")
+			if err != nil {
+				return err
+			}
+			itemGroupID, err := requiredFlagString(cmd, "item-group-id")
+			if err != nil {
+				return err
+			}
+			if err := validateIDValues(
+				struct{ name, value string }{"space-id", spaceID},
+				struct{ name, value string }{"board-id", boardID},
+				struct{ name, value string }{"item-group-id", itemGroupID},
+			); err != nil {
+				return err
+			}
 			dryRun, _ := cmd.Flags().GetBool("dry-run")
 			payload := map[string]any{"spaceId": spaceID, "boardId": boardID, "itemGroupId": itemGroupID}
 			if dryRun {
@@ -103,6 +148,10 @@ func newItemGroupsArchiveCommand(getClient clientFactory) *cobra.Command {
 			confirmed, _ := cmd.Flags().GetBool("confirm")
 			if !confirmed {
 				return fmt.Errorf("--confirm is required to archive an item group")
+			}
+			c, err := getClient(cmd)
+			if err != nil {
+				return err
 			}
 			if err := c.ArchiveItemGroup(cmd.Context(), plakysdk.ArchiveItemGroupOptions{
 				SpaceId: spaceID, BoardId: boardID, ItemGroupId: itemGroupID,

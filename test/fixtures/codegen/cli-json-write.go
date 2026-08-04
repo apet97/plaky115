@@ -8,16 +8,13 @@ import (
 
 func newCreateWidgetCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create-widget",
-		Short: "createWidget fixture",
-		Args:  cobra.NoArgs,
+		Use:         "create-widget",
+		Short:       "createWidget fixture",
+		Annotations: map[string]string{"plaky115.stdin-consumer": "body"},
+		Args:        cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := getClient(cmd)
-			if err != nil {
-				return err
-			}
 			ctx := cmd.Context()
-			return plakydx.RunCreateWidget(ctx, cmd, client)
+			return plakydx.RunCreateWidget(ctx, cmd, getClient)
 		},
 	}
 	cmd.Flags().String("body", "", "Request body JSON, @file.json, or @- for stdin (required)")

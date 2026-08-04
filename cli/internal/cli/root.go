@@ -2,7 +2,7 @@
 package cli
 
 import (
-	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -23,6 +23,11 @@ var (
 	BuildTime = "unknown"
 )
 
+const (
+	stdinConsumerAnnotation = "plaky115.stdin-consumer"
+	maxAPIKeyBytes          = 8 * 1024
+)
+
 func NewRootCommand() (*cobra.Command, error) {
 	root := &cobra.Command{
 		Use:           "plaky115",
@@ -40,6 +45,7 @@ func NewRootCommand() (*cobra.Command, error) {
 	root.PersistentFlags().String("timeout", "", "HTTP timeout as a duration, for example 10s or 2m")
 	root.PersistentFlags().String("user-agent", "", "Override the User-Agent sent to Plaky")
 	root.PersistentFlags().Bool("json", false, "Emit errors as a JSON envelope on stderr")
+	root.PersistentPreRunE = validateStdinOwnership
 
 	getClient := func(cmd *cobra.Command) (*plakysdk.Client, error) {
 		return buildClient(cmd.Root())
@@ -114,29 +120,77 @@ func buildClient(root *cobra.Command) (*plakysdk.Client, error) {
 }
 
 func readAPIKey(input io.Reader) (string, error) {
-	reader := bufio.NewReader(io.LimitReader(input, 8*1024+2))
-	line, err := reader.ReadString('\n')
-	if err != nil && err != io.EOF {
-		return "", fmt.Errorf("read --api-key-stdin: %w", err)
-	}
-	key := strings.TrimSuffix(strings.TrimSuffix(line, "\n"), "\r")
-	if strings.TrimSpace(key) == "" {
-		return "", fmt.Errorf("--api-key-stdin requires one non-empty line")
-	}
-	extra, err := io.ReadAll(reader)
+	data, err := io.ReadAll(io.LimitReader(input, maxAPIKeyBytes+1))
 	if err != nil {
 		return "", fmt.Errorf("read --api-key-stdin: %w", err)
 	}
-	if len(extra) > 0 {
+	if len(data) > maxAPIKeyBytes {
+		return "", fmt.Errorf("--api-key-stdin exceeds the %d-byte limit", maxAPIKeyBytes)
+	}
+	if newline := bytes.IndexByte(data, '\n'); newline >= 0 {
+		if newline != len(data)-1 {
+			return "", fmt.Errorf("--api-key-stdin accepts exactly one line")
+		}
+		data = data[:newline]
+		data = bytes.TrimSuffix(data, []byte{'\r'})
+	}
+	if bytes.IndexByte(data, '\r') >= 0 {
 		return "", fmt.Errorf("--api-key-stdin accepts exactly one line")
 	}
+	key := string(data)
+	if key == "" || strings.TrimSpace(key) != key {
+		return "", fmt.Errorf("--api-key-stdin requires one non-empty line")
+	}
 	return key, nil
+}
+
+func validateStdinOwnership(cmd *cobra.Command, _ []string) error {
+	consumers := make([]string, 0, 3)
+	if flag := cmd.Flag("api-key-stdin"); flag != nil && flag.Value.String() == "true" {
+		consumers = append(consumers, "--api-key-stdin")
+	}
+	declared := commandStdinConsumers(cmd)
+	if declared["body"] {
+		if value, err := cmd.Flags().GetString("body"); err == nil && value == "@-" {
+			consumers = append(consumers, "--body @-")
+		}
+	}
+	if declared["file"] {
+		if value, err := cmd.Flags().GetString("file"); err == nil && value == "-" {
+			consumers = append(consumers, "--file -")
+		}
+	}
+	if len(consumers) > 1 {
+		return fmt.Errorf("stdin has multiple active consumers: %s", strings.Join(consumers, ", "))
+	}
+	return nil
+}
+
+func commandStdinConsumers(cmd *cobra.Command) map[string]bool {
+	consumers := map[string]bool{}
+	for current := cmd; current != nil; current = current.Parent() {
+		if current.Annotations != nil {
+			for _, consumer := range strings.Split(current.Annotations[stdinConsumerAnnotation], ",") {
+				if consumer == "body" || consumer == "file" {
+					consumers[consumer] = true
+				}
+			}
+		}
+	}
+	if cmd.Flag("body") != nil {
+		consumers["body"] = true
+	}
+	if cmd.Flag("file") != nil {
+		consumers["file"] = true
+	}
+	return consumers
 }
 
 func newDoctorCommand(getClient clientFactory) *cobra.Command {
 	return &cobra.Command{
 		Use:   "doctor",
 		Short: "Print CLI configuration and basic status",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, err := getClient(cmd)
 			if err != nil {

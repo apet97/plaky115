@@ -97,6 +97,98 @@ func TestAPIKeyStdinRejectsMissingExtraAndConflictingInput(t *testing.T) {
 	}
 }
 
+func TestAPIKeyStdinIsBounded(t *testing.T) {
+	input := strings.Repeat("x", maxAPIKeyBytes+1)
+	_, err := executeRootWithInput(t, bytes.NewBufferString(input), "--api-key-stdin", "doctor")
+	if err == nil || !strings.Contains(err.Error(), "exceeds") {
+		t.Fatalf("oversized API key error = %v", err)
+	}
+	if strings.Contains(err.Error(), input) {
+		t.Fatal("oversized API key was echoed")
+	}
+}
+
+func TestStdinOwnershipRejectsPairsAndTripleBeforeReading(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "api key and body",
+			args: []string{"--api-key-stdin", "raw", "create-item", "--space-id", "1", "--board-id", "2", "--body", "@-"},
+		},
+		{
+			name: "api key and file",
+			args: []string{"--api-key-stdin", "raw", "upload-item-file", "--space-id", "1", "--board-id", "2", "--item-id", "3", "--file", "-", "--filename", "fixture.txt"},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			reader := &failOnRead{}
+			cmd, err := NewRootCommand()
+			if err != nil {
+				t.Fatal(err)
+			}
+			cmd.SetIn(reader)
+			cmd.SetArgs(test.args)
+			err = cmd.Execute()
+			if err == nil || !strings.Contains(err.Error(), "multiple active consumers") {
+				t.Fatalf("ownership error = %v", err)
+			}
+			if reader.touched {
+				t.Fatal("stdin was read before ownership rejection")
+			}
+		})
+	}
+
+	reader := &failOnRead{}
+	fixture := &cobra.Command{Use: "fixture"}
+	fixture.PersistentFlags().Bool("api-key-stdin", false, "")
+	fixture.Flags().String("body", "", "")
+	fixture.Flags().String("file", "", "")
+	if err := fixture.Flags().Set("body", "@-"); err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.Flags().Set("file", "-"); err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.PersistentFlags().Set("api-key-stdin", "true"); err != nil {
+		t.Fatal(err)
+	}
+	fixture.SetIn(reader)
+	if err := validateStdinOwnership(fixture, nil); err == nil || !strings.Contains(err.Error(), "multiple active consumers") {
+		t.Fatalf("triple ownership error = %v", err)
+	}
+	if reader.touched {
+		t.Fatal("stdin was read during triple ownership rejection")
+	}
+}
+
+func TestRawBodyValidationPrecedesClientConstruction(t *testing.T) {
+	reader := &failOnRead{}
+	cmd, err := NewRootCommand()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd.SetIn(reader)
+	cmd.SetArgs([]string{"--api-key-stdin", "raw", "create-item", "--space-id", "1", "--board-id", "2", "--body", "{not-json}"})
+	err = cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "invalid --body JSON") {
+		t.Fatalf("body validation error = %v", err)
+	}
+	if reader.touched {
+		t.Fatal("API key stdin was read before local body validation")
+	}
+}
+
+type failOnRead struct {
+	touched bool
+}
+
+func (reader *failOnRead) Read([]byte) (int, error) {
+	reader.touched = true
+	return 0, errors.New("stdin must not be read")
+}
+
 func TestItemsExportCSV(t *testing.T) {
 	fixtureItems := readExportFixture(t, "items.json")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

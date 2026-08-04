@@ -11,15 +11,31 @@ func newCommentsAddCommand(getClient clientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "comments-add",
 		Short: "Add a comment to an item.",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			c, err := getClient(cmd)
+			spaceID, err := requiredFlagString(cmd, "space-id")
 			if err != nil {
 				return err
 			}
-			spaceID, _ := cmd.Flags().GetString("space-id")
-			boardID, _ := cmd.Flags().GetString("board-id")
-			itemID, _ := cmd.Flags().GetString("item-id")
-			text, _ := cmd.Flags().GetString("text")
+			boardID, err := requiredFlagString(cmd, "board-id")
+			if err != nil {
+				return err
+			}
+			itemID, err := requiredFlagString(cmd, "item-id")
+			if err != nil {
+				return err
+			}
+			text, err := requiredFlagString(cmd, "text")
+			if err != nil {
+				return err
+			}
+			if err := validateIDValues(
+				struct{ name, value string }{"space-id", spaceID},
+				struct{ name, value string }{"board-id", boardID},
+				struct{ name, value string }{"item-id", itemID},
+			); err != nil {
+				return err
+			}
 			dry, _ := cmd.Flags().GetBool("dry-run")
 			body := map[string]any{"text": text}
 			if dry {
@@ -28,6 +44,10 @@ func newCommentsAddCommand(getClient clientFactory) *cobra.Command {
 					"operation": "createItemComment",
 					"payload":   map[string]any{"spaceId": spaceID, "boardId": boardID, "itemId": itemID, "body": body},
 				})
+			}
+			c, err := getClient(cmd)
+			if err != nil {
+				return err
 			}
 			out, err := c.CreateItemComment(cmd.Context(), plakysdk.CreateItemCommentOptions{
 				SpaceId: spaceID,
@@ -54,14 +74,31 @@ func newCommentsThreadCommand(getClient clientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "comments-thread",
 		Short: "List the comment thread for one item.",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			spaceID, err := requiredFlagString(cmd, "space-id")
+			if err != nil {
+				return err
+			}
+			boardID, err := requiredFlagString(cmd, "board-id")
+			if err != nil {
+				return err
+			}
+			itemID, err := requiredFlagString(cmd, "item-id")
+			if err != nil {
+				return err
+			}
+			if err := validateIDValues(
+				struct{ name, value string }{"space-id", spaceID},
+				struct{ name, value string }{"board-id", boardID},
+				struct{ name, value string }{"item-id", itemID},
+			); err != nil {
+				return err
+			}
 			c, err := getClient(cmd)
 			if err != nil {
 				return err
 			}
-			spaceID, _ := cmd.Flags().GetString("space-id")
-			boardID, _ := cmd.Flags().GetString("board-id")
-			itemID, _ := cmd.Flags().GetString("item-id")
 			out, err := c.ListItemComments(cmd.Context(), plakysdk.ListItemCommentsOptions{
 				SpaceId: spaceID,
 				BoardId: boardID,

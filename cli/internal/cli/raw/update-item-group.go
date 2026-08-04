@@ -8,16 +8,13 @@ import (
 
 func newUpdateItemGroupCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update-item-group",
-		Short: "Update an item group",
-		Args:  cobra.NoArgs,
+		Use:         "update-item-group",
+		Short:       "Update an item group",
+		Annotations: map[string]string{"plaky115.stdin-consumer": "body"},
+		Args:        cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := getClient(cmd)
-			if err != nil {
-				return err
-			}
 			ctx := cmd.Context()
-			return plakydx.RunUpdateItemGroup(ctx, cmd, client)
+			return plakydx.RunUpdateItemGroup(ctx, cmd, getClient)
 		},
 	}
 	cmd.Flags().String("space-id", "", "Represents unique space identifier across the system. (required)")

@@ -12,12 +12,8 @@ func newListSpacesCmd(getClient ClientFactory) *cobra.Command {
 		Short: "List workspace spaces",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := getClient(cmd)
-			if err != nil {
-				return err
-			}
 			ctx := cmd.Context()
-			return plakydx.RunListSpaces(ctx, cmd, client)
+			return plakydx.RunListSpaces(ctx, cmd, getClient)
 		},
 	}
 	cmd.Flags().StringArray("expand", nil, "Comma-separated list of relationships to be expanded into full objects.")

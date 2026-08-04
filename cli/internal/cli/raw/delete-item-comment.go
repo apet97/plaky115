@@ -12,12 +12,8 @@ func newDeleteItemCommentCmd(getClient ClientFactory) *cobra.Command {
 		Short: "Delete item comment",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := getClient(cmd)
-			if err != nil {
-				return err
-			}
 			ctx := cmd.Context()
-			return plakydx.RunDeleteItemComment(ctx, cmd, client)
+			return plakydx.RunDeleteItemComment(ctx, cmd, getClient)
 		},
 	}
 	cmd.Flags().String("space-id", "", "Represents unique space identifier across the system. (required)")

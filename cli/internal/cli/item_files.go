@@ -16,14 +16,31 @@ func newItemFilesListCommand(getClient clientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "item-files-list",
 		Short: "List files attached to an item.",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			spaceID, err := requiredFlagString(cmd, "space-id")
+			if err != nil {
+				return err
+			}
+			boardID, err := requiredFlagString(cmd, "board-id")
+			if err != nil {
+				return err
+			}
+			itemID, err := requiredFlagString(cmd, "item-id")
+			if err != nil {
+				return err
+			}
+			if err := validateIDValues(
+				struct{ name, value string }{"space-id", spaceID},
+				struct{ name, value string }{"board-id", boardID},
+				struct{ name, value string }{"item-id", itemID},
+			); err != nil {
+				return err
+			}
 			c, err := getClient(cmd)
 			if err != nil {
 				return err
 			}
-			spaceID, _ := cmd.Flags().GetString("space-id")
-			boardID, _ := cmd.Flags().GetString("board-id")
-			itemID, _ := cmd.Flags().GetString("item-id")
 			out, err := c.ListItemFiles(cmd.Context(), plakysdk.ListItemFilesOptions{SpaceId: spaceID, BoardId: boardID, ItemId: itemID})
 			if err != nil {
 				return err
@@ -39,20 +56,37 @@ func newItemFilesUploadCommand(getClient clientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "item-files-upload",
 		Short: "Upload one file to an item.",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			c, err := getClient(cmd)
+			spaceID, err := requiredFlagString(cmd, "space-id")
 			if err != nil {
 				return err
 			}
-			spaceID, _ := cmd.Flags().GetString("space-id")
-			boardID, _ := cmd.Flags().GetString("board-id")
-			itemID, _ := cmd.Flags().GetString("item-id")
+			boardID, err := requiredFlagString(cmd, "board-id")
+			if err != nil {
+				return err
+			}
+			itemID, err := requiredFlagString(cmd, "item-id")
+			if err != nil {
+				return err
+			}
+			if err := validateIDValues(
+				struct{ name, value string }{"space-id", spaceID},
+				struct{ name, value string }{"board-id", boardID},
+				struct{ name, value string }{"item-id", itemID},
+			); err != nil {
+				return err
+			}
 			idempotencyKey, _ := cmd.Flags().GetString("idempotency-key")
 			upload, err := curatedUpload(cmd)
 			if err != nil {
 				return err
 			}
 			defer upload.close()
+			c, err := getClient(cmd)
+			if err != nil {
+				return err
+			}
 			out, err := c.UploadItemFile(cmd.Context(), plakysdk.UploadItemFileOptions{
 				SpaceId: spaceID, BoardId: boardID, ItemId: itemID,
 				Multipart:      &plakysdk.MultipartFileBody{Reader: upload.reader, FileName: upload.fileName, ContentType: upload.contentType},
@@ -69,6 +103,7 @@ func newItemFilesUploadCommand(getClient clientFactory) *cobra.Command {
 	cmd.Flags().String("filename", "", "Filename; required with --file - and otherwise defaults to the path basename")
 	cmd.Flags().String("content-type", "", "Optional file media type")
 	cmd.Flags().String("idempotency-key", "", "Optional Idempotency-Key header")
+	markStdinConsumer(cmd, "file")
 	markRequired(cmd, "file")
 	return cmd
 }
@@ -77,15 +112,36 @@ func newItemFilesDownloadLinkCommand(getClient clientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "item-files-download-link",
 		Short: "Return signed download-link metadata without downloading bytes.",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			spaceID, err := requiredFlagString(cmd, "space-id")
+			if err != nil {
+				return err
+			}
+			boardID, err := requiredFlagString(cmd, "board-id")
+			if err != nil {
+				return err
+			}
+			itemID, err := requiredFlagString(cmd, "item-id")
+			if err != nil {
+				return err
+			}
+			itemFileID, err := requiredFlagString(cmd, "item-file-id")
+			if err != nil {
+				return err
+			}
+			if err := validateIDValues(
+				struct{ name, value string }{"space-id", spaceID},
+				struct{ name, value string }{"board-id", boardID},
+				struct{ name, value string }{"item-id", itemID},
+				struct{ name, value string }{"item-file-id", itemFileID},
+			); err != nil {
+				return err
+			}
 			c, err := getClient(cmd)
 			if err != nil {
 				return err
 			}
-			spaceID, _ := cmd.Flags().GetString("space-id")
-			boardID, _ := cmd.Flags().GetString("board-id")
-			itemID, _ := cmd.Flags().GetString("item-id")
-			itemFileID, _ := cmd.Flags().GetString("item-file-id")
 			out, err := c.GetItemFileDownload(cmd.Context(), plakysdk.GetItemFileDownloadOptions{
 				SpaceId: spaceID, BoardId: boardID, ItemId: itemID, ItemFileId: itemFileID,
 			})

@@ -8,16 +8,13 @@ import (
 
 func newCreateItemCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create-item",
-		Short: "Create an item",
-		Args:  cobra.NoArgs,
+		Use:         "create-item",
+		Short:       "Create an item",
+		Annotations: map[string]string{"plaky115.stdin-consumer": "body"},
+		Args:        cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := getClient(cmd)
-			if err != nil {
-				return err
-			}
 			ctx := cmd.Context()
-			return plakydx.RunCreateItem(ctx, cmd, client)
+			return plakydx.RunCreateItem(ctx, cmd, getClient)
 		},
 	}
 	cmd.Flags().String("space-id", "", "Represents unique space identifier across the system. (required)")

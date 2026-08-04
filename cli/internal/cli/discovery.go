@@ -17,17 +17,24 @@ func newFindCommand(getClient clientFactory) *cobra.Command {
 		Use:   "find",
 		Short: "Find spaces, boards, or items by text fragment.",
 		Long:  "Search Plaky records by case-insensitive text. For type=board pass --space-id; for type=item pass --space-id and --board-id.",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			c, err := getClient(cmd)
+			typ, err := requiredFlagString(cmd, "type")
 			if err != nil {
 				return err
 			}
-			typ, _ := cmd.Flags().GetString("type")
-			query, _ := cmd.Flags().GetString("query")
+			query, err := cmd.Flags().GetString("query")
+			if err != nil {
+				return err
+			}
 			needle := strings.ToLower(query)
 			ctx := cmd.Context()
 			switch typ {
 			case "space":
+				c, err := getClient(cmd)
+				if err != nil {
+					return err
+				}
 				out, err := drainPaged(200, func(page, pageSize int) (any, error) {
 					return c.ListSpaces(ctx, plakysdk.ListSpacesOptions{Page: page, PageSize: pageSize})
 				})
@@ -40,9 +47,16 @@ func newFindCommand(getClient clientFactory) *cobra.Command {
 				}
 				return plakydx.EmitJSON(cmd, hits)
 			case "board":
-				spaceID, _ := cmd.Flags().GetString("space-id")
-				if spaceID == "" {
+				spaceID, err := requiredFlagString(cmd, "space-id")
+				if err != nil {
 					return fmt.Errorf("--space-id required when --type=board")
+				}
+				if err := validateIDValues(struct{ name, value string }{"space-id", spaceID}); err != nil {
+					return err
+				}
+				c, err := getClient(cmd)
+				if err != nil {
+					return err
 				}
 				out, err := drainPaged(200, func(page, pageSize int) (any, error) {
 					return c.ListBoards(ctx, plakysdk.ListBoardsOptions{SpaceId: spaceID, Page: page, PageSize: pageSize})
@@ -56,14 +70,27 @@ func newFindCommand(getClient clientFactory) *cobra.Command {
 				}
 				return plakydx.EmitJSON(cmd, hits)
 			case "item":
-				spaceID, _ := cmd.Flags().GetString("space-id")
-				boardID, _ := cmd.Flags().GetString("board-id")
-				limit, _ := cmd.Flags().GetInt("limit")
-				if spaceID == "" || boardID == "" {
+				spaceID, err := requiredFlagString(cmd, "space-id")
+				if err != nil {
 					return fmt.Errorf("--space-id and --board-id required when --type=item")
+				}
+				boardID, err := requiredFlagString(cmd, "board-id")
+				if err != nil {
+					return fmt.Errorf("--space-id and --board-id required when --type=item")
+				}
+				limit, _ := cmd.Flags().GetInt("limit")
+				if err := validateIDValues(
+					struct{ name, value string }{"space-id", spaceID},
+					struct{ name, value string }{"board-id", boardID},
+				); err != nil {
+					return err
 				}
 				if limit <= 0 {
 					return fmt.Errorf("--limit must be a positive integer")
+				}
+				c, err := getClient(cmd)
+				if err != nil {
+					return err
 				}
 				return emitDetailedItemSearch(cmd, c, spaceID, boardID, needle, limit)
 			default:
@@ -173,14 +200,27 @@ func newFieldsListCommand(getClient clientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "fields-list",
 		Short: "List field definitions for a board.",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			spaceID, err := requiredFlagString(cmd, "space-id")
+			if err != nil {
+				return err
+			}
+			boardID, err := requiredFlagString(cmd, "board-id")
+			if err != nil {
+				return err
+			}
+			if err := validateIDValues(
+				struct{ name, value string }{"space-id", spaceID},
+				struct{ name, value string }{"board-id", boardID},
+			); err != nil {
+				return err
+			}
+			showConfig, _ := cmd.Flags().GetBool("show-config")
 			c, err := getClient(cmd)
 			if err != nil {
 				return err
 			}
-			spaceID, _ := cmd.Flags().GetString("space-id")
-			boardID, _ := cmd.Flags().GetString("board-id")
-			showConfig, _ := cmd.Flags().GetBool("show-config")
 			out, err := c.GetBoard(cmd.Context(), plakysdk.GetBoardOptions{SpaceId: spaceID, BoardId: boardID})
 			if err != nil {
 				return err
