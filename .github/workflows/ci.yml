@@ -37,6 +37,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm --prefix sdk ci
+          npm --prefix sdk run build
           npm --prefix mcp-server ci
           cd cli && go mod download
       - name: Verify contracts, generation, security, and release policy
@@ -64,6 +65,7 @@ jobs:
         with:
           bun-version: "1.2.17"
       - run: npm --prefix sdk ci
+      - run: npm --prefix sdk run build
       - run: npm --prefix mcp-server ci
       - run: npm --prefix sdk run typecheck && npm --prefix sdk run test:types && npm --prefix sdk run lint && npm --prefix sdk test
       - run: npm --prefix mcp-server run lint && npm --prefix mcp-server test
