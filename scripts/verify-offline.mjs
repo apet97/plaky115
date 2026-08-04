@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import { platform, release } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
@@ -44,6 +44,7 @@ export async function runVerification(options = {}) {
         await runGate(gate, { worktreeRoot, cliBinary, signal, report });
       }
 
+      await rm(verificationRoot, { recursive: true, force: true });
       await assertWorktreeClean(worktreeRoot, signal);
       report.status = "passed";
       return report;
