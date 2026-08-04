@@ -1721,7 +1721,7 @@
       "mutation": true,
       "request": {
         "kind": "multipart",
-        "required": false,
+        "required": true,
         "mediaType": "multipart/form-data",
         "parts": [
           {

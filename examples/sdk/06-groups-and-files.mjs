@@ -15,7 +15,7 @@ console.log("item groups on first page:", groups.data?.length ?? 0);
 
 if (process.env.MUTATE_GROUPS === "1") {
   const title = `plaky115 example group ${Date.now()}`;
-  const created = await client.itemGroups.create({ spaceId, boardId, body: { title } });
+  const created = await client.itemGroups.create({ spaceId, boardId, body: { title, color: "#123456" } });
   if (created.id === undefined) throw new Error("created group has no id");
   try {
     const current = await client.itemGroups.get({ spaceId, boardId, itemGroupId: created.id });

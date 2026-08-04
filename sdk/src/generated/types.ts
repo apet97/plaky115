@@ -522,11 +522,11 @@ export interface components {
         /** @description Represents board response. */
         readonly BoardResponse: {
             /** @description Indicates if the board is default. */
-            readonly defaultBoard?: boolean;
+            readonly defaultBoard?: boolean | null;
             /** @description Represents configured default values used when creating new item. */
-            readonly defaultValues?: components["schemas"]["BoardDefaultValues"];
+            readonly defaultValues?: components["schemas"]["BoardDefaultValues"] | null;
             /** @description Represents description of the board. */
-            readonly description?: string;
+            readonly description?: string | null;
             /**
              * @description Represents permission modes for the board edit actions.
              * @enum {string}
@@ -534,7 +534,7 @@ export interface components {
             readonly editPermissionsMode?: "EVERYTHING" | "CONTENT" | "UPDATES";
             readonly fields?: readonly components["schemas"]["ItemAttributeDefinition"][];
             /** @description Represents folder containing the board. Can be returned as an ID or a full object if expanded. */
-            readonly folder?: components["schemas"]["FolderResponse"] | number;
+            readonly folder?: components["schemas"]["FolderResponse"] | number | null;
             readonly groups?: readonly components["schemas"]["ItemGroupResponse"][];
             /**
              * Format: int64
@@ -667,6 +667,41 @@ export interface components {
              * @enum {string}
              */
             readonly type?: "STRING" | "NUMBER" | "DATE_TIME" | "STATUS" | "TAG" | "PERSON" | "RICH_TEXT" | "LINK" | "TIMELINE";
+        } | {
+            readonly configuration?: components["schemas"]["NoConfiguration"];
+            /** @constant */
+            readonly type: "STRING";
+        } | {
+            readonly configuration?: components["schemas"]["NumberConfiguration"];
+            /** @constant */
+            readonly type: "NUMBER";
+        } | {
+            readonly configuration?: components["schemas"]["DateTimeConfiguration"];
+            /** @constant */
+            readonly type: "DATE_TIME";
+        } | {
+            readonly configuration?: components["schemas"]["StatusConfiguration"];
+            /** @constant */
+            readonly type: "STATUS";
+        } | {
+            readonly configuration?: components["schemas"]["TagConfiguration"];
+            /** @constant */
+            readonly type: "TAG";
+        } | {
+            readonly configuration?: components["schemas"]["PersonConfiguration"];
+            /** @constant */
+            readonly type: "PERSON";
+        } | {
+            readonly configuration?: components["schemas"]["TimelineConfiguration"];
+            /** @constant */
+            readonly type: "TIMELINE";
+        } | {
+            readonly configuration?: components["schemas"]["NoConfiguration"];
+            /** @enum {unknown} */
+            readonly type: "RICH_TEXT" | "LINK";
+        } | {
+            readonly configuration?: unknown;
+            readonly type: string;
         };
         /** @description Represents item create request. */
         readonly ItemCreateRequest: {
@@ -813,7 +848,7 @@ export interface components {
         };
         readonly ItemGroupCreateRequest: {
             /** @description Represents color of the item group. Color value must be in standard RGB hexadecimal format. */
-            readonly color?: string;
+            readonly color: string;
             /** @description Represents lexicographical string used for custom ordering/sorting. */
             readonly ranking?: string;
             /** @description Represents title of the item group. */
@@ -835,7 +870,7 @@ export interface components {
         };
         readonly ItemGroupUpdateRequest: {
             /** @description Represents color of the item group. Color value must be in standard RGB hexadecimal format. */
-            readonly color?: string;
+            readonly color: string;
             /** @description Represents lexicographical string used for custom ordering/sorting. */
             readonly ranking: string;
             /** @description Represents title of the item group. */
@@ -860,12 +895,12 @@ export interface components {
             /** @description Represents ID of the user who created the item, it can be expanded to retrieve full user details. */
             readonly createdBy?: components["schemas"]["ShortUserResponse"] | number;
             /** @description Indicates whether the item is softly deleted. */
-            readonly deleted?: boolean;
+            readonly deleted?: boolean | null;
             /**
              * Format: date-time
              * @description Represents date and time of the item soft deletion (UTC) in ISO-8601 format.
              */
-            readonly deletedAt?: string;
+            readonly deletedAt?: string | null;
             /**
              * @description Represents list of the item fields present on the item. In default response values for status, tag and person
              *     fields are simple IDs. Response can be expanded to include full details for status, tag and person fields.
@@ -884,14 +919,14 @@ export interface components {
              */
             readonly id?: number;
             /** @description Represents ID of the parent for subitem, it can be expanded to include full item details. It is non-null only for subitems. */
-            readonly parent?: components["schemas"]["ItemResponse"] | number;
+            readonly parent?: components["schemas"]["ItemResponse"] | number | null;
             /** @description Represents item ranking. */
             readonly ranking?: string;
             /** @description Represents ID of the space in which item is created, it can be expanded to include full space details */
             readonly space?: components["schemas"]["SpaceResponse"] | number;
-            readonly subitems?: readonly components["schemas"]["ItemResponse"][];
-            readonly subscribedTeams?: readonly (components["schemas"]["TeamShortResponse"] | number)[];
-            readonly subscribedUsers?: readonly (components["schemas"]["ShortUserResponse"] | number)[];
+            readonly subitems?: readonly components["schemas"]["ItemResponse"][] | null;
+            readonly subscribedTeams?: readonly (components["schemas"]["TeamShortResponse"] | number)[] | null;
+            readonly subscribedUsers?: readonly (components["schemas"]["ShortUserResponse"] | number)[] | null;
             /** @description Represents item title. */
             readonly title?: string;
         };
@@ -925,41 +960,70 @@ export interface components {
              */
             readonly limit?: "ONE" | "TWO" | "THREE" | "UNLIMITED";
         };
+        readonly PlakyErrorResponse: components["schemas"]["PlakyValidationError"] | components["schemas"]["PlakyLegacyError"] | components["schemas"]["PlakyProblemDetails"] | {
+            readonly [key: string]: unknown;
+        };
+        readonly PlakyLegacyError: {
+            readonly error?: string;
+            readonly message?: string;
+        } & {
+            readonly [key: string]: unknown;
+        };
+        readonly PlakyProblemDetails: {
+            readonly detail?: string;
+            /** Format: uri-reference */
+            readonly instance?: string;
+            /** Format: int32 */
+            readonly status?: number;
+            readonly title?: string;
+            /** Format: uri-reference */
+            readonly type?: string;
+        } & {
+            readonly [key: string]: unknown;
+        };
+        readonly PlakyValidationError: {
+            /** Format: int32 */
+            readonly errorCode?: number;
+            readonly errorLabel?: string;
+            readonly violations?: readonly components["schemas"]["Violation"][];
+        } & {
+            readonly [key: string]: unknown;
+        };
         readonly PublicPagedResponseV1BoardResponse: {
             /** @description The list of elements returned for the current page. */
-            readonly data?: readonly components["schemas"]["BoardResponse"][];
+            readonly data: readonly components["schemas"]["BoardResponse"][];
             /** @description Whether there are more elements available beyond this current set. */
-            readonly hasMore?: boolean;
+            readonly hasMore: boolean;
         };
         readonly PublicPagedResponseV1ItemGroupResponse: {
             /** @description The list of elements returned for the current page. */
-            readonly data?: readonly components["schemas"]["ItemGroupResponse"][];
+            readonly data: readonly components["schemas"]["ItemGroupResponse"][];
             /** @description Whether there are more elements available beyond this current set. */
-            readonly hasMore?: boolean;
+            readonly hasMore: boolean;
         };
         readonly PublicPagedResponseV1ItemResponse: {
             /** @description The list of elements returned for the current page. */
-            readonly data?: readonly components["schemas"]["ItemResponse"][];
+            readonly data: readonly components["schemas"]["ItemResponse"][];
             /** @description Whether there are more elements available beyond this current set. */
-            readonly hasMore?: boolean;
+            readonly hasMore: boolean;
         };
         readonly PublicPagedResponseV1SpaceResponse: {
             /** @description The list of elements returned for the current page. */
-            readonly data?: readonly components["schemas"]["SpaceResponse"][];
+            readonly data: readonly components["schemas"]["SpaceResponse"][];
             /** @description Whether there are more elements available beyond this current set. */
-            readonly hasMore?: boolean;
+            readonly hasMore: boolean;
         };
         readonly PublicPagedResponseV1TeamResponse: {
             /** @description The list of elements returned for the current page. */
-            readonly data?: readonly components["schemas"]["TeamResponse"][];
+            readonly data: readonly components["schemas"]["TeamResponse"][];
             /** @description Whether there are more elements available beyond this current set. */
-            readonly hasMore?: boolean;
+            readonly hasMore: boolean;
         };
         readonly PublicPagedResponseV1UserResponse: {
             /** @description The list of elements returned for the current page. */
-            readonly data?: readonly components["schemas"]["UserResponse"][];
+            readonly data: readonly components["schemas"]["UserResponse"][];
             /** @description Whether there are more elements available beyond this current set. */
-            readonly hasMore?: boolean;
+            readonly hasMore: boolean;
         };
         readonly Reaction: {
             /**
@@ -1047,7 +1111,7 @@ export interface components {
             /** @description Represents description of the space. */
             readonly description?: string;
             /** @description Represents url of the space icon. */
-            readonly iconUrl?: string;
+            readonly iconUrl?: string | null;
             /**
              * Format: int64
              * @description Represents unique identifier of the space.
@@ -1096,7 +1160,7 @@ export interface components {
             /** @description Indicates if the team is all users team (all workspace users are part of this team). */
             readonly allUsersTeam?: boolean;
             /** @description Represents url of the team's icon. */
-            readonly iconUrl?: string;
+            readonly iconUrl?: string | null;
             /**
              * Format: int64
              * @description Represents unique team identifier across the system.
@@ -1134,7 +1198,7 @@ export interface components {
              */
             readonly birthDay?: string;
             /** @description Represents list of custom fields of the user */
-            readonly customFields?: readonly components["schemas"]["UserDetails"][];
+            readonly customFields?: readonly unknown[];
             /** @description Represents location of the user */
             readonly location?: string;
             /** @description Represents mobile phone number of the user */
@@ -1926,7 +1990,9 @@ export interface operations {
         /** @description Represents item field values to be changed. */
         readonly requestBody: {
             readonly content: {
-                readonly "application/json": string;
+                readonly "application/json": {
+                    readonly [key: string]: unknown;
+                };
             };
         };
         readonly responses: {
@@ -2042,7 +2108,7 @@ export interface operations {
             };
             readonly cookie?: never;
         };
-        readonly requestBody?: {
+        readonly requestBody: {
             readonly content: {
                 readonly "multipart/form-data": {
                     /**

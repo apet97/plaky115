@@ -945,3 +945,226 @@ actions:
         destructiveHint: true
         idempotentHint: true
         openWorldHint: true
+
+  # Evidence-backed wire corrections. These actions intentionally stay separate
+  # from the upstream mirror and are asserted by scripts/test-overlay-application.rb.
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/fields"].patch.requestBody.content["application/json"].schema
+    update:
+      type: object
+      additionalProperties: true
+
+  - target: $.components.schemas["ItemGroupCreateRequest"]
+    update:
+      required: [title, color]
+
+  - target: $.components.schemas["ItemGroupUpdateRequest"]
+    update:
+      required: [title, ranking, color]
+
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files"].post.requestBody
+    update:
+      required: true
+
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files"].post
+    update:
+      x-plaky115-filename-policy:
+        maxUtf8Bytes: 255
+        evidence: conservative-local-policy
+
+  - target: $.components.schemas["PublicPagedResponseV1BoardResponse"]
+    update:
+      required: [data, hasMore]
+
+  - target: $.components.schemas["PublicPagedResponseV1ItemGroupResponse"]
+    update:
+      required: [data, hasMore]
+
+  - target: $.components.schemas["PublicPagedResponseV1ItemResponse"]
+    update:
+      required: [data, hasMore]
+
+  - target: $.components.schemas["PublicPagedResponseV1SpaceResponse"]
+    update:
+      required: [data, hasMore]
+
+  - target: $.components.schemas["PublicPagedResponseV1TeamResponse"]
+    update:
+      required: [data, hasMore]
+
+  - target: $.components.schemas["PublicPagedResponseV1UserResponse"]
+    update:
+      required: [data, hasMore]
+
+  - target: $.paths["/v1/public/spaces"].get.parameters["query:page"].schema
+    update: { minimum: 1, maximum: 2147483647 }
+  - target: $.paths["/v1/public/spaces"].get.parameters["query:pageSize"].schema
+    update: { minimum: 1 }
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards"].get.parameters["query:page"].schema
+    update: { minimum: 1, maximum: 2147483647 }
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards"].get.parameters["query:pageSize"].schema
+    update: { minimum: 1 }
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups"].get.parameters["query:page"].schema
+    update: { minimum: 1, maximum: 2147483647 }
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups"].get.parameters["query:pageSize"].schema
+    update: { minimum: 1 }
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items"].get.parameters["query:page"].schema
+    update: { minimum: 1, maximum: 2147483647 }
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items"].get.parameters["query:pageSize"].schema
+    update: { minimum: 1 }
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/sub-items"].get.parameters["query:page"].schema
+    update: { minimum: 1, maximum: 2147483647 }
+  - target: $.paths["/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/sub-items"].get.parameters["query:pageSize"].schema
+    update: { minimum: 1 }
+  - target: $.paths["/v1/public/teams"].get.parameters["query:page"].schema
+    update: { minimum: 1, maximum: 2147483647 }
+  - target: $.paths["/v1/public/teams"].get.parameters["query:pageSize"].schema
+    update: { minimum: 1 }
+  - target: $.paths["/v1/public/users"].get.parameters["query:page"].schema
+    update: { minimum: 1, maximum: 2147483647 }
+  - target: $.paths["/v1/public/users"].get.parameters["query:pageSize"].schema
+    update: { minimum: 1 }
+
+  - target: $.components.schemas["TeamShortResponse"]
+    update:
+      type: object
+
+  - target: $.components.schemas["UserDetails"].properties["customFields"].items
+    remove: true
+  - target: $.components.schemas["UserDetails"].properties["customFields"]
+    update:
+      items: {}
+      x-plaky115-evidence: unverified
+
+  - target: $.components.schemas["SpaceResponse"].properties["iconUrl"]
+    update:
+      type: [string, "null"]
+  - target: $.components.schemas["TeamResponse"].properties["iconUrl"]
+    update:
+      type: [string, "null"]
+  - target: $.components.schemas["BoardResponse"].properties["defaultBoard"]
+    update:
+      type: [boolean, "null"]
+  - target: $.components.schemas["BoardResponse"].properties["defaultValues"]
+    remove: true
+  - target: $.components.schemas["BoardResponse"].properties
+    update:
+      defaultValues:
+        description: Represents configured default values used when creating new item.
+        anyOf:
+          - $ref: "#/components/schemas/BoardDefaultValues"
+          - type: "null"
+  - target: $.components.schemas["BoardResponse"].properties["description"]
+    update:
+      type: [string, "null"]
+  - target: $.components.schemas["BoardResponse"].properties["folder"]
+    remove: true
+  - target: $.components.schemas["BoardResponse"].properties
+    update:
+      folder:
+        description: Represents folder containing the board. Can be returned as an ID or a full object if expanded.
+        anyOf:
+          - $ref: "#/components/schemas/FolderResponse"
+          - format: int64
+            type: integer
+          - type: "null"
+  - target: $.components.schemas["ItemResponse"].properties["deleted"]
+    update:
+      type: [boolean, "null"]
+  - target: $.components.schemas["ItemResponse"].properties["deletedAt"]
+    update:
+      type: [string, "null"]
+  - target: $.components.schemas["ItemResponse"].properties["parent"]
+    remove: true
+  - target: $.components.schemas["ItemResponse"].properties
+    update:
+      parent:
+        description: Represents ID of the parent for subitem, it can be expanded to include full item details. It is non-null only for subitems.
+        anyOf:
+          - $ref: "#/components/schemas/ItemResponse"
+          - format: int64
+            type: integer
+          - type: "null"
+  - target: $.components.schemas["ItemResponse"].properties["subitems"]
+    update:
+      type: [array, "null"]
+  - target: $.components.schemas["ItemResponse"].properties["subscribedTeams"]
+    update:
+      type: [array, "null"]
+  - target: $.components.schemas["ItemResponse"].properties["subscribedUsers"]
+    update:
+      type: [array, "null"]
+
+  - target: $.components.schemas["ItemAttributeDefinition"]
+    update:
+      anyOf:
+        - properties:
+            type: { const: STRING }
+            configuration: { $ref: "#/components/schemas/NoConfiguration" }
+          required: [type]
+        - properties:
+            type: { const: NUMBER }
+            configuration: { $ref: "#/components/schemas/NumberConfiguration" }
+          required: [type]
+        - properties:
+            type: { const: DATE_TIME }
+            configuration: { $ref: "#/components/schemas/DateTimeConfiguration" }
+          required: [type]
+        - properties:
+            type: { const: STATUS }
+            configuration: { $ref: "#/components/schemas/StatusConfiguration" }
+          required: [type]
+        - properties:
+            type: { const: TAG }
+            configuration: { $ref: "#/components/schemas/TagConfiguration" }
+          required: [type]
+        - properties:
+            type: { const: PERSON }
+            configuration: { $ref: "#/components/schemas/PersonConfiguration" }
+          required: [type]
+        - properties:
+            type: { const: TIMELINE }
+            configuration: { $ref: "#/components/schemas/TimelineConfiguration" }
+          required: [type]
+        - properties:
+            type: { enum: [RICH_TEXT, LINK] }
+            configuration: { $ref: "#/components/schemas/NoConfiguration" }
+          required: [type]
+        - type: object
+          properties:
+            type: { type: string }
+            configuration: {}
+          required: [type]
+
+  - target: $.components.schemas
+    update:
+      PlakyErrorResponse:
+        anyOf:
+          - $ref: "#/components/schemas/PlakyValidationError"
+          - $ref: "#/components/schemas/PlakyLegacyError"
+          - $ref: "#/components/schemas/PlakyProblemDetails"
+          - type: object
+            additionalProperties: true
+      PlakyValidationError:
+        type: object
+        properties:
+          errorCode: { type: integer, format: int32 }
+          errorLabel: { type: string }
+          violations:
+            type: array
+            items: { $ref: "#/components/schemas/Violation" }
+        additionalProperties: true
+      PlakyLegacyError:
+        type: object
+        properties:
+          message: { type: string }
+          error: { type: string }
+        additionalProperties: true
+      PlakyProblemDetails:
+        type: object
+        properties:
+          type: { type: string, format: uri-reference }
+          title: { type: string }
+          status: { type: integer, format: int32 }
+          detail: { type: string }
+          instance: { type: string, format: uri-reference }
+        additionalProperties: true

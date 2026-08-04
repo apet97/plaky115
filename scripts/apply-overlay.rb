@@ -1,10 +1,10 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+require "fileutils"
+require "json"
 require "optparse"
 require "psych"
-require "json"
-require "fileutils"
 require "yaml"
 
 HTTP_METHODS = %w[get post put patch delete head options trace].freeze
@@ -74,8 +74,7 @@ def validate_overlay!(overlay)
 
   unexpected = overlay.keys - %w[overlay info actions]
   raise ArgumentError, "unsupported overlay root key: #{unexpected.first.inspect}" unless unexpected.empty?
-  version = overlay["overlay"]
-  raise ArgumentError, "overlay root must declare overlay: 1.0.0" unless version == "1.0.0"
+  raise ArgumentError, "overlay root must declare overlay: 1.0.0" unless overlay["overlay"] == "1.0.0"
 
   info = overlay["info"]
   raise ArgumentError, "overlay info must be an object" unless info.is_a?(Hash)
@@ -117,37 +116,114 @@ end
 def resolve_target_refs(spec, target)
   return [{ parent: spec, key: "info", value: spec.fetch("info") }] if target == "$.info"
 
-  exact = target.match(/\A\$\.(paths)\["([^"]+)"\]\.(#{HTTP_METHODS.join("|")})\z/)
-  if exact
-    path = exact[2]
-    method = exact[3]
-    path_item = spec.fetch("paths", {})[path]
-    return [] unless path_item.is_a?(Hash) && path_item[method].is_a?(Hash)
+  if target.start_with?("$.paths.*[")
+    wildcard = target.match(/\A\$\.paths\.\*\[(.*)\]\z/)
+    raise ArgumentError, "invalid target grammar: #{target}" unless wildcard
 
-    return [{ parent: path_item, key: method, value: path_item.fetch(method) }]
-  end
-
-  wildcard = target.match(/\A\$\.paths\.\*\[((?:"#{HTTP_METHODS.join('")|(?:"')}")(?:,"(?:#{HTTP_METHODS.join('|')})")*)\]\z/)
-  if wildcard
-    methods = wildcard[1].scan(/"([^"]+)"/).flatten
+    methods = wildcard[1].split(",").map { |raw| decode_target_string(raw, target) }
+    unless methods.all? { |method| HTTP_METHODS.include?(method) }
+      raise ArgumentError, "invalid wildcard method target: #{target}"
+    end
     return spec.fetch("paths", {}).flat_map do |_path, path_item|
       next [] unless path_item.is_a?(Hash)
 
-      methods.filter_map do |method|
+      methods.map do |method|
         next unless path_item[method].is_a?(Hash)
 
         { parent: path_item, key: method, value: path_item.fetch(method) }
-      end
+      end.compact
     end
+  end
+
+  component = target.match(/\A\$\.components\.schemas(?:\["([^"]+)"\])?(.*)\z/)
+  if component
+    schemas = spec.fetch("components", {}).fetch("schemas", {})
+    name = component[1]
+    root = name ? { parent: schemas, key: name, value: schemas[name] } : { parent: spec.fetch("components"), key: "schemas", value: schemas }
+    return [] if name && !schemas.key?(name)
+
+    return resolve_target_tail(root, component[2], target)
+  end
+
+  operation = target.match(/\A\$\.paths\["([^"]+)"\]\.(#{HTTP_METHODS.join("|")})(.*)\z/)
+  if operation
+    path = operation[1]
+    method = operation[2]
+    path_item = spec.fetch("paths", {})[path]
+    return [] unless path_item.is_a?(Hash) && path_item[method].is_a?(Hash)
+
+    root = { parent: path_item, key: method, value: path_item.fetch(method) }
+    return resolve_target_tail(root, operation[3], target)
   end
 
   raise ArgumentError, "invalid target grammar: #{target}"
 end
 
+def resolve_target_tail(root, tail, target)
+  tokens = tokenize_target_tail(tail, target)
+  refs = [root]
+  previous_key = nil
+  tokens.each do |kind, key|
+    next_refs = refs.flat_map do |reference|
+      value = reference.fetch(:value)
+      if kind == :key
+        next [] unless value.is_a?(Hash) && value.key?(key)
+
+        [{ parent: value, key: key, value: value.fetch(key) }]
+      elsif previous_key == "parameters" && value.is_a?(Array)
+        location, name = key.split(":", 2)
+        value.each_with_index.map do |parameter, index|
+          next unless parameter.is_a?(Hash)
+          next unless parameter["in"] == location && parameter["name"] == name
+
+          { parent: value, key: index, value: parameter }
+        end.compact
+      elsif value.is_a?(Hash) && value.key?(key)
+        [{ parent: value, key: key, value: value.fetch(key) }]
+      elsif value.is_a?(Array) && key.match?(/\A\d+\z/) && value[key.to_i]
+        [{ parent: value, key: key.to_i, value: value.fetch(key.to_i) }]
+      else
+        []
+      end
+    end
+    return [] if next_refs.empty?
+
+    refs = next_refs
+    previous_key = key
+  end
+  refs
+end
+
+def tokenize_target_tail(tail, target)
+  tokens = []
+  remaining = tail
+  until remaining.empty?
+    if (match = remaining.match(/\A\.([A-Za-z][A-Za-z0-9_-]*)/))
+      tokens << [:key, match[1]]
+      remaining = remaining.delete_prefix(match[0])
+    elsif (match = remaining.match(/\A\["([^"]+)"\]/))
+      tokens << [:bracket, decode_target_string(match[1], target)]
+      remaining = remaining.delete_prefix(match[0])
+    else
+      raise ArgumentError, "invalid target grammar: #{target}"
+    end
+  end
+  tokens
+end
+
+def decode_target_string(raw, target)
+  JSON.parse('"' + raw + '"')
+rescue JSON::ParserError
+  raise ArgumentError, "invalid quoted target key: #{target}"
+end
+
+def wildcard_target?(target)
+  target.start_with?("$.paths.*[")
+end
+
 def apply_overlay!(spec, overlay)
   validate_overlay!(overlay)
-  actions = overlay.fetch("actions")
-  prepared = actions.each_with_index.map do |action, index|
+  prepared = overlay.fetch("actions").each_with_index.map do |action, index|
     target = action.fetch("target")
     refs = begin
       resolve_target_refs(spec, target)
@@ -155,6 +231,9 @@ def apply_overlay!(spec, overlay)
       raise ArgumentError, "action #{index + 1} target #{target.inspect}: #{error.message}"
     end
     raise ArgumentError, "action #{index + 1} unmatched target: #{target}" if refs.empty?
+    if refs.length > 1 && !wildcard_target?(target)
+      raise ArgumentError, "action #{index + 1} target matched #{refs.length} nodes: #{target}"
+    end
 
     { action: action, refs: refs }
   end
@@ -164,7 +243,12 @@ def apply_overlay!(spec, overlay)
     target = action.fetch("target")
     prepared_action.fetch(:refs).each do |reference|
       if action["remove"] == true
-        reference.fetch(:parent).delete(reference.fetch(:key))
+        parent = reference.fetch(:parent)
+        if parent.is_a?(Array)
+          parent.delete_at(reference.fetch(:key))
+        else
+          parent.delete(reference.fetch(:key))
+        end
         next
       end
 
@@ -182,18 +266,12 @@ end
 
 def yaml_scalar(value)
   case value
-  when nil
-    "null"
-  when true
-    "true"
-  when false
-    "false"
-  when Numeric
-    value.to_s
-  when String
-    JSON.generate(value)
-  else
-    raise ArgumentError, "unsupported YAML scalar #{value.class}"
+  when nil then "null"
+  when true then "true"
+  when false then "false"
+  when Numeric then value.to_s
+  when String then JSON.generate(value)
+  else raise ArgumentError, "unsupported YAML scalar #{value.class}"
   end
 end
 

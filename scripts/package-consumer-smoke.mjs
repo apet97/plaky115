@@ -62,7 +62,7 @@ try {
       "const file: ItemFileShape = { id: fileId };",
       "const folder: FolderShape = { id: folderId };",
       "const download: ItemFileDownloadShape = { url: 'https://example.test/file', expiresInSeconds: 60 };",
-      "const body: ItemGroupCreateBody = { title: 'Backlog' };",
+      "const body: ItemGroupCreateBody = { title: 'Backlog', color: '#123456' };",
       "const upload: ItemFileUploadParams = { spaceId: 1, boardId: 2, itemId: 3, file: new Blob(['x']) };",
       "void group; void file; void folder; void download; void body; void upload;",
     ].join("\n"),
