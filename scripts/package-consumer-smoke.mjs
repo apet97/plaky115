@@ -4,6 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { verifyDigestManifest } from "./lib/release-artifacts.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const tmp = mkdtempSync(join(tmpdir(), "plaky115-consumer-"));
@@ -14,8 +15,12 @@ try {
   mkdirSync(tarDir, { recursive: true });
   mkdirSync(consumer, { recursive: true });
 
-  const sdkTar = pack("sdk", tarDir);
-  const mcpTar = pack("mcp-server", tarDir);
+  const artifactManifestPath = readOption("--artifacts-manifest");
+  const artifacts = artifactManifestPath
+    ? await verifyDigestManifest(artifactManifestPath)
+    : undefined;
+  const sdkTar = artifacts ? join(artifacts.manifestRoot, artifacts.records.find((record) => record.package === "plaky115").relativePath) : pack("sdk", tarDir);
+  const mcpTar = artifacts ? join(artifacts.manifestRoot, artifacts.records.find((record) => record.package === "plaky115-mcp").relativePath) : pack("mcp-server", tarDir);
 
   writeFileSync(join(consumer, "package.json"), `${JSON.stringify({ type: "module", private: true }, null, 2)}\n`);
   run("npm", ["install", "--silent", "--prefer-offline", "--no-audit", "--no-fund", sdkTar, mcpTar], {
@@ -134,4 +139,12 @@ function assertImportFails(cwd, specifier) {
     process.stderr.write(output);
     throw new Error(`${specifier} failed for an unexpected reason`);
   }
+}
+
+function readOption(name) {
+  const index = process.argv.indexOf(name);
+  if (index < 0) return undefined;
+  const value = process.argv[index + 1];
+  if (!value || value.startsWith("--")) throw new Error(`${name} requires a value`);
+  return value;
 }

@@ -9,15 +9,7 @@ const workflowDir = `${root}/.github/workflows`;
 const workflowFiles = readdirSync(workflowDir)
   .filter((name) => /\.ya?ml$/.test(name))
   .sort();
-const allowedActions = new Set([
-  "actions/checkout",
-  "actions/setup-go",
-  "actions/setup-node",
-  "actions/upload-artifact",
-  "goreleaser/goreleaser-action",
-  "oven-sh/setup-bun",
-  "ruby/setup-ruby",
-]);
+const actionPins = JSON.parse(readFileSync(`${root}/scripts/action-pins.json`, "utf8"));
 
 function parseYaml(path) {
   const result = spawnSync("ruby", ["-ryaml", "-rjson", "-e", "puts JSON.generate(YAML.load_file(ARGV.fetch(0)))", path], { encoding: "utf8" });
@@ -33,10 +25,18 @@ test("every external action is an approved repository pinned to a full SHA with 
       const match = line.match(/\buses:\s*([^\s#]+)/);
       if (!match || match[1].startsWith("./")) continue;
       const action = match[1].split("@")[0];
-      assert.ok(allowedActions.has(action), `${name}:${index + 1} unapproved action repository ${action}`);
-      assert.match(match[1], /^[^@\s]+@[0-9a-f]{40}$/, `${name}:${index + 1} action must use a full SHA`);
-      assert.match(line, /\s+# v\d+\.\d+\.\d+\s*$/, `${name}:${index + 1} action must have an exact same-line version comment`);
+      const pin = actionPins[action];
+      assert.ok(pin, `${name}:${index + 1} unapproved action repository ${action}`);
+      assert.equal(match[1], `${action}@${pin.sha}`, `${name}:${index + 1} action SHA drifted from scripts/action-pins.json`);
+      assert.match(line, new RegExp(`\\s+# ${pin.version.replaceAll(".", "\\.")}\\s*$`), `${name}:${index + 1} action version comment drifted from scripts/action-pins.json`);
     }
+  }
+});
+
+test("action pin registry and release documentation contain the same reviewed pins", () => {
+  const docs = readFileSync(`${root}/docs/release/action-pins.md`, "utf8");
+  for (const [repository, pin] of Object.entries(actionPins)) {
+    assert.match(docs, new RegExp(`${repository.replace("/", "\\/")}.*${pin.version.replaceAll(".", "\\.")}.*${pin.sha}`, "s"), `${repository} missing or stale in action-pins.md`);
   }
 });
 

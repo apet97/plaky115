@@ -47,7 +47,7 @@ test("registry preflight accepts an unambiguous E404 for both exact versions", a
     registryPreflight: true,
     runCommand: async (name, version) => {
       calls.push([name, version]);
-      return { status: 1, stdout: "", stderr: `npm error code E404\nnpm error 404 ${name}@${version}` };
+      return { state: "absent" };
     },
   });
   assert.deepEqual(calls, [["plaky115", "0.2.0"], ["plaky115-mcp", "0.2.0"]]);
@@ -59,7 +59,7 @@ test("registry preflight stops when either exact version exists", async () => {
     sdkPackage: sdk,
     mcpPackage: mcp,
     registryPreflight: true,
-    runCommand: async () => ({ status: 0, stdout: '"0.2.0"\n', stderr: "" }),
+    runCommand: async () => ({ state: "present" }),
   }), /already exists on npm/);
 });
 
@@ -69,7 +69,7 @@ test("registry authentication and network ambiguity stop the release", async () 
     sdkPackage: sdk,
     mcpPackage: mcp,
     registryPreflight: true,
-    runCommand: async () => ({ status: 1, stdout: "", stderr: "npm error code EAI_AGAIN" }),
+    runCommand: async () => ({ state: "ambiguous" }),
   }), /registry preflight was ambiguous/);
 });
 
