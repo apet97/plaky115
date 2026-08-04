@@ -96,12 +96,19 @@ export async function verifyRegistrySignature(packageName, version, options = {}
   return retryRegistryRead(
     () => withOwnedTempDirectory("plaky115-attestation-", async (directory) => {
       await writePackageManifest(directory, packageName, version);
-      await runReleaseSubprocess(npmCommand(), ["install", "--ignore-scripts", "--audit=false", "--no-fund", "--no-progress"], {
-        cwd: directory,
-        timeoutMs: options.timeoutMs,
-        maxOutputBytes: options.maxOutputBytes ?? 64 * 1024,
-        label: `install ${packageName}@${version} for signature verification`,
-      });
+      try {
+        await runReleaseSubprocess(npmCommand(), ["install", "--ignore-scripts", "--audit=false", "--no-fund", "--no-progress"], {
+          cwd: directory,
+          timeoutMs: options.timeoutMs,
+          maxOutputBytes: options.maxOutputBytes ?? 64 * 1024,
+          label: `install ${packageName}@${version} for signature verification`,
+        });
+      } catch (error) {
+        if (error instanceof VerificationCommandError && /npm error (?:code ETARGET|notarget No matching version)/i.test(error.stderr ?? "")) {
+          throw new RegistryRequestError("published package is not visible yet", { status: 404, reason: "eventual-consistency", cause: error });
+        }
+        throw error;
+      }
       try {
         await runReleaseSubprocess(npmCommand(), ["audit", "signatures"], {
           cwd: directory,
