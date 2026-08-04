@@ -4,7 +4,7 @@ export const REGISTRY_LIMITS = Object.freeze({
   requestTimeoutMs: 10_000,
   manifestBytes: 2 * 1024 * 1024,
   attestationBytes: 8 * 1024 * 1024,
-  retryDeadlineMs: 120_000,
+  retryDeadlineMs: 300_000,
 });
 
 export class RegistryRequestError extends Error {

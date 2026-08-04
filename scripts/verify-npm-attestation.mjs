@@ -97,7 +97,7 @@ export async function verifyRegistrySignature(packageName, version, options = {}
     () => withOwnedTempDirectory("plaky115-attestation-", async (directory) => {
       await writePackageManifest(directory, packageName, version);
       try {
-        await runReleaseSubprocess(npmCommand(), ["install", "--ignore-scripts", "--audit=false", "--no-fund", "--no-progress"], {
+        await runReleaseSubprocess(npmCommand(), ["install", "--prefer-online", "--ignore-scripts", "--audit=false", "--no-fund", "--no-progress"], {
           cwd: directory,
           timeoutMs: options.timeoutMs,
           maxOutputBytes: options.maxOutputBytes ?? 64 * 1024,
