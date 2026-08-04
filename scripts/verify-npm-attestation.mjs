@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
-import { withOwnedTempDirectory } from "./lib/verification-runner.mjs";
+import { VerificationCommandError, withOwnedTempDirectory } from "./lib/verification-runner.mjs";
 import {
   fetchJsonBounded,
   readRegistryPackage,
@@ -93,22 +93,32 @@ export async function loadRegistryProvenance(packageName, version, options = {})
 }
 
 export async function verifyRegistrySignature(packageName, version, options = {}) {
-  return withOwnedTempDirectory("plaky115-attestation-", async (directory) => {
-    await writePackageManifest(directory, packageName, version);
-    await runReleaseSubprocess(npmCommand(), ["install", "--ignore-scripts", "--audit=false", "--no-fund", "--no-progress"], {
-      cwd: directory,
-      timeoutMs: options.timeoutMs,
-      maxOutputBytes: options.maxOutputBytes ?? 64 * 1024,
-      label: `install ${packageName}@${version} for signature verification`,
-    });
-    await runReleaseSubprocess(npmCommand(), ["audit", "signatures"], {
-      cwd: directory,
-      timeoutMs: options.timeoutMs,
-      maxOutputBytes: options.maxOutputBytes ?? 64 * 1024,
-      label: `verify npm signature for ${packageName}@${version}`,
-    });
-    return { package: packageName, version, status: "verified" };
-  });
+  return retryRegistryRead(
+    () => withOwnedTempDirectory("plaky115-attestation-", async (directory) => {
+      await writePackageManifest(directory, packageName, version);
+      await runReleaseSubprocess(npmCommand(), ["install", "--ignore-scripts", "--audit=false", "--no-fund", "--no-progress"], {
+        cwd: directory,
+        timeoutMs: options.timeoutMs,
+        maxOutputBytes: options.maxOutputBytes ?? 64 * 1024,
+        label: `install ${packageName}@${version} for signature verification`,
+      });
+      try {
+        await runReleaseSubprocess(npmCommand(), ["audit", "signatures"], {
+          cwd: directory,
+          timeoutMs: options.timeoutMs,
+          maxOutputBytes: options.maxOutputBytes ?? 64 * 1024,
+          label: `verify npm signature for ${packageName}@${version}`,
+        });
+      } catch (error) {
+        if (error instanceof VerificationCommandError && /npm error (?:code E404|404 Not Found)/i.test(error.stderr ?? "")) {
+          throw new RegistryRequestError("npm signature is not visible yet", { status: 404, reason: "eventual-consistency", cause: error });
+        }
+        throw error;
+      }
+      return { package: packageName, version, status: "verified" };
+    }),
+    { signal: options.signal, isTransient: (error) => error instanceof RegistryRequestError && [404, 202, 429, 500, 502, 503, 504].includes(error.status) },
+  );
 }
 
 export async function verifyPublishedPackage({ packageName, version, commit, tag, expectedIntegrity, environment = RELEASE_ENVIRONMENT, builderId = REVIEWED_BUILDER_ID, signal } = {}) {
