@@ -2,6 +2,10 @@ LICENSE
 README.md
 bin/mcp-server.js
 bin/mcp-server.js.map
+esm/runtime/attempts.d.ts
+esm/runtime/attempts.d.ts.map
+esm/runtime/attempts.js
+esm/runtime/attempts.js.map
 esm/runtime/compaction.d.ts
 esm/runtime/compaction.d.ts.map
 esm/runtime/compaction.js
@@ -30,6 +34,10 @@ esm/server/build.d.mts
 esm/server/build.d.mts.map
 esm/server/build.mjs
 esm/server/build.mjs.map
+esm/server/config.d.ts
+esm/server/config.d.ts.map
+esm/server/config.js
+esm/server/config.js.map
 esm/server/index.d.ts
 esm/server/index.d.ts.map
 esm/server/index.js
@@ -38,6 +46,10 @@ esm/server/modes.d.ts
 esm/server/modes.d.ts.map
 esm/server/modes.js
 esm/server/modes.js.map
+esm/server/presentation.d.ts
+esm/server/presentation.d.ts.map
+esm/server/presentation.js
+esm/server/presentation.js.map
 esm/server/scopes.d.ts
 esm/server/scopes.d.ts.map
 esm/server/scopes.js
@@ -74,6 +86,10 @@ esm/tools/curated/search-docs.d.ts
 esm/tools/curated/search-docs.d.ts.map
 esm/tools/curated/search-docs.js
 esm/tools/curated/search-docs.js.map
+esm/tools/curated/workflow-registry.d.ts
+esm/tools/curated/workflow-registry.d.ts.map
+esm/tools/curated/workflow-registry.js
+esm/tools/curated/workflow-registry.js.map
 esm/tools/curated/workflow-schemas.d.ts
 esm/tools/curated/workflow-schemas.d.ts.map
 esm/tools/curated/workflow-schemas.js
