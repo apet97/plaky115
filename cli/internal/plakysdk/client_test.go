@@ -35,22 +35,22 @@ func TestClientDoReturnsResponseReadError(t *testing.T) {
 	}
 }
 
-func TestClientDoPreservesLargeJSONNumber(t *testing.T) {
+func TestClientDoNormalizesLargeJSONNumberToExactString(t *testing.T) {
 	const payload = `{"id":9007199254740993123}`
 	client := serverClient(t, http.StatusOK, payload, "")
 	var out map[string]any
 	if err := client.Do(t.Context(), Request{Method: http.MethodGet, Path: "/large"}, &out); err != nil {
 		t.Fatal(err)
 	}
-	number, ok := out["id"].(json.Number)
-	if !ok || number.String() != "9007199254740993123" {
+	number, ok := out["id"].(string)
+	if !ok || number != "9007199254740993123" {
 		t.Fatalf("id = %#v", out["id"])
 	}
 	reencoded, err := json.Marshal(out)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(reencoded) != payload {
+	if string(reencoded) != `{"id":"9007199254740993123"}` {
 		t.Fatalf("round trip = %s", reencoded)
 	}
 }
@@ -131,8 +131,8 @@ func TestClientDoConvertsOnlySafeJSONIntegers(t *testing.T) {
 		t.Fatalf("safe = %#v", out["safe"])
 	}
 	for _, key := range []string{"positiveBoundary", "negativeBoundary"} {
-		if _, ok := out[key].(json.Number); !ok {
-			t.Fatalf("%s = %#v, want json.Number", key, out[key])
+		if _, ok := out[key].(string); !ok {
+			t.Fatalf("%s = %#v, want exact string", key, out[key])
 		}
 	}
 }

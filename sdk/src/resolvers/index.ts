@@ -1,7 +1,7 @@
 import type { PlakyClient } from "../client/client.js";
 import { PlakyAmbiguousMatchError, PlakyNotFoundError } from "../runtime/errors.js";
 import { asSpaceId, asBoardId, asItemId } from "../runtime/ids.js";
-import type { PlakyRequestOverrides } from "../runtime/types.js";
+import type { ResourceRequestOverrides } from "../runtime/types.js";
 
 type WithId = { id?: number | string | undefined; title?: string | undefined; name?: string | undefined; email?: string | undefined };
 
@@ -61,7 +61,7 @@ function localNotFound(message: string): PlakyNotFoundError {
   });
 }
 
-export async function resolveSpace(client: PlakyClient, ref: EntityRef, options?: PlakyRequestOverrides): Promise<WithId> {
+export async function resolveSpace(client: PlakyClient, ref: EntityRef, options?: ResourceRequestOverrides): Promise<WithId> {
   const match = asId(ref);
   if (match.id !== undefined) {
     return getById(() => client.spaces.get(match.id!, options), match.id, "space");
@@ -82,7 +82,7 @@ export async function resolveSpace(client: PlakyClient, ref: EntityRef, options?
 export async function resolveSpaceAndBoard(
   client: PlakyClient,
   params: { space: EntityRef; board: EntityRef },
-  options?: PlakyRequestOverrides,
+  options?: ResourceRequestOverrides,
 ): Promise<{ space: WithId; board: WithId }> {
   const space = await resolveSpace(client, params.space, options);
   const match = asId(params.board);
@@ -100,17 +100,17 @@ export async function resolveSpaceAndBoard(
   return { space, board: pick(boards as WithId[], match, "board") };
 }
 
-export async function resolveBoard(client: PlakyClient, params: { space: EntityRef; board: EntityRef }, options?: PlakyRequestOverrides): Promise<WithId> {
+export async function resolveBoard(client: PlakyClient, params: { space: EntityRef; board: EntityRef }, options?: ResourceRequestOverrides): Promise<WithId> {
   return (await resolveSpaceAndBoard(client, params, options)).board;
 }
 
-export async function resolveUser(client: PlakyClient, ref: EntityRef, options?: PlakyRequestOverrides): Promise<WithId> {
+export async function resolveUser(client: PlakyClient, ref: EntityRef, options?: ResourceRequestOverrides): Promise<WithId> {
   const match = asId(ref);
   const all = await client.users.listAll({}, options);
   return pick(all as WithId[], match, "user");
 }
 
-export async function resolveTeam(client: PlakyClient, ref: EntityRef, options?: PlakyRequestOverrides): Promise<WithId> {
+export async function resolveTeam(client: PlakyClient, ref: EntityRef, options?: ResourceRequestOverrides): Promise<WithId> {
   const match = asId(ref);
   if (match.id !== undefined) {
     return getById(() => client.teams.get(match.id!, options), match.id, "team");
@@ -119,7 +119,7 @@ export async function resolveTeam(client: PlakyClient, ref: EntityRef, options?:
   return pick(all as WithId[], match, "team");
 }
 
-export async function resolveItem(client: PlakyClient, params: { space: EntityRef; board: EntityRef; item: EntityRef }, options?: PlakyRequestOverrides): Promise<WithId> {
+export async function resolveItem(client: PlakyClient, params: { space: EntityRef; board: EntityRef; item: EntityRef }, options?: ResourceRequestOverrides): Promise<WithId> {
   const { space, board } = await resolveSpaceAndBoard(client, { space: params.space, board: params.board }, options);
   const match = asId(params.item);
   if (match.id !== undefined) {
@@ -140,7 +140,7 @@ export async function resolveItem(client: PlakyClient, params: { space: EntityRe
 export async function resolveItemsInBoard(
   client: PlakyClient,
   params: { spaceId: number | string; boardId: number | string; items: EntityRef[] },
-  options?: PlakyRequestOverrides,
+  options?: ResourceRequestOverrides,
 ): Promise<WithId[]> {
   const refs = params.items.map(asId);
   if (refs.length === 1 && refs[0]?.id !== undefined) {
@@ -157,7 +157,7 @@ export async function resolveItemsInBoard(
 export async function resolveItemGroupInBoard(
   client: PlakyClient,
   params: { spaceId: number | string; boardId: number | string; itemGroup: EntityRef },
-  options?: PlakyRequestOverrides,
+  options?: ResourceRequestOverrides,
 ): Promise<WithId> {
   const match = asId(params.itemGroup);
   if (match.id !== undefined) {
@@ -174,7 +174,7 @@ export async function resolveItemGroupInBoard(
 export async function resolveItemFileOnItem(
   client: PlakyClient,
   params: { spaceId: number | string; boardId: number | string; itemId: number | string; itemFile: EntityRef },
-  options?: PlakyRequestOverrides,
+  options?: ResourceRequestOverrides,
 ): Promise<WithId> {
   const match = asId(params.itemFile);
   if (match.id !== undefined) {

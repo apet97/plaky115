@@ -53,6 +53,18 @@ export class PlakyDecodeError extends PlakyError {
   }
 }
 
+/** Thrown when a successful response violates its documented root contract. */
+export class PlakyResponseContractError extends PlakyDecodeError {
+  readonly operationId: string;
+  readonly pointer: string;
+
+  constructor(operationId: string, pointer: string, options?: { cause?: unknown; status?: number; requestId?: string }) {
+    super(`Invalid ${operationId} response at ${pointer}.`, options);
+    this.operationId = operationId;
+    this.pointer = pointer;
+  }
+}
+
 /** Thrown before a non-streaming response body can exceed its configured limit. */
 export class PlakyResponseTooLargeError extends PlakyError {
   constructor(readonly limit: number) {

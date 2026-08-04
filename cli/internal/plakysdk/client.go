@@ -438,7 +438,7 @@ func normalizeSafeJSONNumberValue(value any) any {
 		if parsed, err := typed.Int64(); err == nil && parsed > -(1<<53) && parsed < 1<<53 {
 			return float64(parsed)
 		}
-		return typed
+		return typed.String()
 	case map[string]any:
 		for key, child := range typed {
 			typed[key] = normalizeSafeJSONNumberValue(child)

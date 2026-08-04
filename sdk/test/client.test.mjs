@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, beforeEach } from "node:test";
-import { PlakyClient, PlakyTimeoutError, SpaceId, redact, redactRecord } from "../esm/index.js";
+import { PlakyClient, PlakyResponseContractError, PlakyTimeoutError, SpaceId, redact, redactRecord } from "../esm/index.js";
 
 beforeEach(() => {
   globalThis.fetch = async (url) => {
@@ -31,6 +31,20 @@ test("client.spaces.list returns paged data", async () => {
   const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://example.test" });
   const page = await client.spaces.list({ page: 1, pageSize: 10 });
   assert.deepEqual(page.data?.[0]?.title, "Ops");
+});
+
+test("typed paged resources fail closed on malformed success roots", async () => {
+  for (const body of [
+    {},
+    { data: null, hasMore: false },
+    { data: [], hasMore: null },
+    { data: [], hasMore: true },
+    [],
+  ]) {
+    globalThis.fetch = async () => new Response(JSON.stringify(body), { status: 200 });
+    const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://example.test" });
+    await assert.rejects(client.spaces.list(), PlakyResponseContractError);
+  }
 });
 
 test("client.spaces.list serializes expand array query values", async () => {

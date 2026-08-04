@@ -1,10 +1,10 @@
 import type { PlakyClient } from "./client.js";
 import { idPathSegment } from "./path.js";
-import { paginate, type PaginatedIterator } from "../runtime/pagination.js";
+import { assertArrayResult, paginate, type PaginatedIterator } from "../runtime/pagination.js";
 import { resolveExplicitIdempotencyKey } from "../runtime/idempotency.js";
-import type { PlakyRequestOverrides } from "../runtime/types.js";
+import type { ResourceRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId, ItemId, CommentId } from "../runtime/ids.js";
-import type { PagedResult, CommentShape } from "./shapes.js";
+import type { StrictPagedResult, CommentShape } from "./shapes.js";
 import type { components } from "../generated/types.js";
 
 export type CommentScopeParams = {
@@ -27,34 +27,26 @@ export class ItemCommentsResource {
   /**
    * List the comments on an item. The `listItemComments` endpoint is
    * non-paginated and returns a bare JSON array (live-confirmed); this method
-   * normalizes that array into the standard {@link PagedResult} envelope
+   * normalizes that array into the validated {@link StrictPagedResult} envelope
    * (`hasMore` is always `false`) so `iterate`/`listAll` work consistently with
-   * the other list resources. `page`/`pageSize` are accepted for signature
-   * symmetry but the endpoint ignores them.
+   * the other list resources.
    *
-   * @param params - `spaceId`, `boardId`, `itemId`, optional `page`/`pageSize`.
+   * @param params - `spaceId`, `boardId`, and `itemId`.
    * @param options - Per-request overrides.
    * @returns A single page of comments. Each comment exposes `content` (API
    *   field) and `text` (kept for compatibility).
    */
-  async list(params: CommentScopeParams & { page?: number; pageSize?: number }, options?: PlakyRequestOverrides): Promise<PagedResult<CommentShape>> {
-    const { spaceId, boardId, itemId, ...query } = params;
-    const res = await this.client.request<PagedResult<CommentShape> | CommentShape[]>(
+  async list(params: CommentScopeParams, options?: ResourceRequestOverrides): Promise<StrictPagedResult<CommentShape>> {
+    const { spaceId, boardId, itemId } = params;
+    const res = await this.client.request<unknown>(
       {
         method: "GET",
         path: `/v1/public/spaces/${idPathSegment(spaceId)}/boards/${idPathSegment(boardId)}/items/${idPathSegment(itemId)}/comments`,
-        query,
         operationId: "listItemComments",
       },
       options,
     );
-    if (Array.isArray(res)) return { data: res, hasMore: false };
-    return {
-      data: res?.data ?? [],
-      hasMore: res?.hasMore === true,
-      ...(res?.page !== undefined ? { page: res.page } : {}),
-      ...(res?.pageSize !== undefined ? { pageSize: res.pageSize } : {}),
-    };
+    return { data: assertArrayResult<CommentShape>(res, "listItemComments"), hasMore: false };
   }
 
   /**
@@ -70,7 +62,7 @@ export class ItemCommentsResource {
    * await client.comments.create({ spaceId, boardId, itemId, body: { text: "Note" } });
    * ```
    */
-  async create(params: CommentScopeParams & { body: CommentWriteBody; idempotencyKey?: string }, options?: PlakyRequestOverrides): Promise<CommentShape> {
+  async create(params: CommentScopeParams & { body: CommentWriteBody; idempotencyKey?: string }, options?: ResourceRequestOverrides): Promise<CommentShape> {
     const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     return this.client.request<CommentShape>(
       {
@@ -93,7 +85,7 @@ export class ItemCommentsResource {
    */
   async update(
     params: CommentScopeParams & { itemCommentId: CommentId | string | number; body: CommentWriteBody; idempotencyKey?: string },
-    options?: PlakyRequestOverrides,
+    options?: ResourceRequestOverrides,
   ): Promise<CommentShape> {
     const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     return this.client.request<CommentShape>(
@@ -114,7 +106,7 @@ export class ItemCommentsResource {
    * @param options - Per-request overrides.
    * @returns Nothing; resolves once the API confirms deletion.
    */
-  async delete(params: CommentScopeParams & { itemCommentId: CommentId | string | number; idempotencyKey?: string }, options?: PlakyRequestOverrides): Promise<void> {
+  async delete(params: CommentScopeParams & { itemCommentId: CommentId | string | number; idempotencyKey?: string }, options?: ResourceRequestOverrides): Promise<void> {
     const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     await this.client.request<void>(
       {
@@ -130,28 +122,28 @@ export class ItemCommentsResource {
   /**
    * Lazily iterate comments on an item across pages. `limit` is a client-side cap.
    *
-   * @param params - `spaceId`, `boardId`, `itemId`, optional `pageSize`/`limit`.
+   * @param params - `spaceId`, `boardId`, `itemId`, and optional client-side `limit`.
    * @param options - Per-request overrides applied to every page request.
    * @returns An async iterator with `firstPage()` and `toArray()` helpers.
    */
-  iterate(params: CommentScopeParams & { pageSize?: number; limit?: number }, options?: PlakyRequestOverrides): PaginatedIterator<CommentShape> {
+  iterate(params: CommentScopeParams & { limit?: number }, options?: ResourceRequestOverrides): PaginatedIterator<CommentShape> {
     return paginate<CommentShape>(
-      async ({ page, pageSize }) => {
-        const res = await this.list({ ...params, page, pageSize }, options);
-        return { data: (res.data ?? []) as CommentShape[], hasMore: res.hasMore === true, raw: res };
+      async () => {
+        const res = await this.list(params, options);
+        return { data: res.data, hasMore: res.hasMore, raw: res };
       },
-      { pageSize: params.pageSize, limit: params.limit },
+      { limit: params.limit },
     );
   }
 
   /**
    * Collect all comments on an item into an array, walking every page.
    *
-   * @param params - `spaceId`, `boardId`, `itemId`, optional `pageSize`/`limit`.
+   * @param params - `spaceId`, `boardId`, `itemId`, and optional client-side `limit`.
    * @param options - Per-request overrides applied to every page request.
    * @returns Every comment on the item.
    */
-  async listAll(params: CommentScopeParams & { pageSize?: number; limit?: number }, options?: PlakyRequestOverrides): Promise<CommentShape[]> {
+  async listAll(params: CommentScopeParams & { limit?: number }, options?: ResourceRequestOverrides): Promise<CommentShape[]> {
     const out: CommentShape[] = [];
     for await (const c of this.iterate(params, options)) out.push(c);
     return out;

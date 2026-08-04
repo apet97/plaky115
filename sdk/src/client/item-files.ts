@@ -1,7 +1,8 @@
 import type { PlakyClient } from "./client.js";
 import { idPathSegment } from "./path.js";
 import { resolveExplicitIdempotencyKey } from "../runtime/idempotency.js";
-import type { PlakyRequestOverrides } from "../runtime/types.js";
+import { assertArrayResult } from "../runtime/pagination.js";
+import type { ResourceRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId, ItemId, ItemFileId } from "../runtime/ids.js";
 import type { ItemFileDownloadShape, ItemFileShape } from "./shapes.js";
 import type { components } from "../generated/types.js";
@@ -37,8 +38,8 @@ export type ItemFileDeleteParams = ItemFileGetParams & {
 export class ItemFilesResource {
   constructor(private readonly client: PlakyClient) {}
 
-  list(params: ItemFileListParams, options?: PlakyRequestOverrides): Promise<ItemFileShape[]> {
-    return this.client.request<ItemFileShape[]>(
+  async list(params: ItemFileListParams, options?: ResourceRequestOverrides): Promise<ItemFileShape[]> {
+    const response = await this.client.request<unknown>(
       {
         method: "GET",
         path: itemFilesPath(params),
@@ -46,9 +47,10 @@ export class ItemFilesResource {
       },
       options,
     );
+    return assertArrayResult<ItemFileShape>(response, "listItemFiles");
   }
 
-  upload(params: ItemFileUploadParams, options?: PlakyRequestOverrides): Promise<ItemFileShape> {
+  upload(params: ItemFileUploadParams, options?: ResourceRequestOverrides): Promise<ItemFileShape> {
     const body = new FormData();
     if (params.fileName === undefined) body.append("file", params.file);
     else body.append("file", params.file, params.fileName);
@@ -65,7 +67,7 @@ export class ItemFilesResource {
     );
   }
 
-  get(params: ItemFileGetParams, options?: PlakyRequestOverrides): Promise<ItemFileShape> {
+  get(params: ItemFileGetParams, options?: ResourceRequestOverrides): Promise<ItemFileShape> {
     return this.client.request<ItemFileShape>(
       {
         method: "GET",
@@ -76,7 +78,7 @@ export class ItemFilesResource {
     );
   }
 
-  async getDownload(params: ItemFileGetParams, options?: PlakyRequestOverrides): Promise<ItemFileDownloadShape> {
+  async getDownload(params: ItemFileGetParams, options?: ResourceRequestOverrides): Promise<ItemFileDownloadShape> {
     const result = await this.client.request<ItemFileDownloadShape>(
       {
         method: "GET",
@@ -91,7 +93,7 @@ export class ItemFilesResource {
     };
   }
 
-  update(params: ItemFileUpdateParams, options?: PlakyRequestOverrides): Promise<ItemFileShape> {
+  update(params: ItemFileUpdateParams, options?: ResourceRequestOverrides): Promise<ItemFileShape> {
     const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     return this.client.request<ItemFileShape>(
       {
@@ -104,7 +106,7 @@ export class ItemFilesResource {
     );
   }
 
-  async delete(params: ItemFileDeleteParams, options?: PlakyRequestOverrides): Promise<void> {
+  async delete(params: ItemFileDeleteParams, options?: ResourceRequestOverrides): Promise<void> {
     const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     await this.client.request<void>(
       {

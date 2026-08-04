@@ -5,11 +5,14 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
 )
+
+var jsonNumberPattern = regexp.MustCompile(`^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$`)
 
 type csvFieldDescriptor struct {
 	identity     string
@@ -219,15 +222,10 @@ func writeCanonicalJSON(buffer *bytes.Buffer, value any) error {
 			buffer.WriteString("false")
 		}
 	case json.Number:
-		number, err := typed.Float64()
-		if err != nil {
-			return fmt.Errorf("invalid JSON number %q: %w", typed, err)
+		if !jsonNumberPattern.MatchString(typed.String()) {
+			return fmt.Errorf("invalid JSON number %q", typed)
 		}
-		encoded, err := json.Marshal(number)
-		if err != nil {
-			return err
-		}
-		buffer.Write(encoded)
+		buffer.WriteString(typed.String())
 	case float64, float32, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		encoded, err := json.Marshal(typed)
 		if err != nil {

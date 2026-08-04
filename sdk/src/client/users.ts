@@ -1,7 +1,7 @@
 import type { PlakyClient } from "./client.js";
-import { paginate, type PaginatedIterator } from "../runtime/pagination.js";
-import type { PlakyRequestOverrides } from "../runtime/types.js";
-import type { PagedResult, UserShape } from "./shapes.js";
+import { assertPagedResult, paginate, type PaginatedIterator } from "../runtime/pagination.js";
+import type { ResourceRequestOverrides } from "../runtime/types.js";
+import type { StrictPagedResult, UserShape } from "./shapes.js";
 
 export type UserStatus = "ACTIVE" | "PENDING" | "INACTIVE";
 export type UserType = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
@@ -29,8 +29,8 @@ export class UsersResource {
    * @param options - Per-request overrides.
    * @returns A page of users with `data` and `hasMore`.
    */
-  list(query?: UserListParams, options?: PlakyRequestOverrides): Promise<PagedResult<UserShape>> {
-    return this.client.request<PagedResult<UserShape>>(
+  async list(query?: UserListParams, options?: ResourceRequestOverrides): Promise<StrictPagedResult<UserShape>> {
+    const response = await this.client.request<unknown>(
       {
         method: "GET",
         path: "/v1/public/users",
@@ -39,6 +39,7 @@ export class UsersResource {
       },
       options,
     );
+    return assertPagedResult<UserShape>(response, "listUsers");
   }
 
   /**
@@ -49,7 +50,7 @@ export class UsersResource {
    * @returns The current user.
    * @throws {import("../runtime/errors.js").PlakyAuthError} If the key is invalid.
    */
-  me(options?: PlakyRequestOverrides): Promise<UserShape> {
+  me(options?: ResourceRequestOverrides): Promise<UserShape> {
     return this.client.request<UserShape>(
       {
         method: "GET",
@@ -67,12 +68,12 @@ export class UsersResource {
    * @param options - Per-request overrides applied to every page request.
    * @returns An async iterator with `firstPage()` and `toArray()` helpers.
    */
-  iterate(opts: UserIteratorParams = {}, options?: PlakyRequestOverrides): PaginatedIterator<UserShape> {
+  iterate(opts: UserIteratorParams = {}, options?: ResourceRequestOverrides): PaginatedIterator<UserShape> {
     const { limit, pageSize, ...query } = opts;
     return paginate<UserShape>(
       async ({ page, pageSize }) => {
         const res = await this.list({ ...query, page, pageSize }, options);
-        return { data: (res.data ?? []) as UserShape[], hasMore: res.hasMore === true, raw: res };
+        return { data: res.data, hasMore: res.hasMore, raw: res };
       },
       { pageSize, limit },
     );
@@ -85,7 +86,7 @@ export class UsersResource {
    * @param options - Per-request overrides applied to every page request.
    * @returns Every matching user.
    */
-  async listAll(opts: UserIteratorParams = {}, options?: PlakyRequestOverrides): Promise<UserShape[]> {
+  async listAll(opts: UserIteratorParams = {}, options?: ResourceRequestOverrides): Promise<UserShape[]> {
     const out: UserShape[] = [];
     for await (const u of this.iterate(opts, options)) out.push(u);
     return out;

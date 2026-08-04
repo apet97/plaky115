@@ -1,7 +1,7 @@
 import type { PlakyClient } from "../client/client.js";
 import { resolveSpaceAndBoard, type EntityRef } from "../resolvers/index.js";
 import { asSpaceId, asBoardId, asItemId } from "../runtime/ids.js";
-import type { PlakyRequestOverrides } from "../runtime/types.js";
+import type { ResourceRequestOverrides } from "../runtime/types.js";
 import type { ItemShape } from "../client/shapes.js";
 import { renderItemsCsv, type CsvSafety } from "./internal/csv.js";
 
@@ -12,7 +12,7 @@ type WithIdTitle = {
   boards?: WithIdTitle[] | undefined;
 };
 
-export async function workspaceMap(client: PlakyClient, options?: PlakyRequestOverrides): Promise<Array<{ id: number | string | undefined; title: string | undefined; boards: WithIdTitle[] }>> {
+export async function workspaceMap(client: PlakyClient, options?: ResourceRequestOverrides): Promise<Array<{ id: number | string | undefined; title: string | undefined; boards: WithIdTitle[] }>> {
   const spaces = (await client.spaces.listAll({ expand: ["board"] }, options)) as WithIdTitle[];
   const out = [];
   for (const space of spaces) {
@@ -62,14 +62,14 @@ export async function searchItemsDetailed(client: PlakyClient, params: SearchIte
       page,
       pageSize: Math.min(100, limit - scanned),
     }, params.signal ? { signal: params.signal } : undefined);
-    const items = (response.data ?? []) as ItemShape[];
+    const items = response.data;
     for (const item of items.slice(0, limit - scanned)) {
       scanned++;
       if (itemMatchesSearch(item, needle)) data.push(item);
     }
     await params.onProgress?.(scanned, limit);
 
-    if (response.hasMore !== true) {
+    if (!response.hasMore) {
       return { data, scanned, matched: data.length, truncated: false };
     }
     if (scanned >= limit) {

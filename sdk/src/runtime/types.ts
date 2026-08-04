@@ -41,6 +41,9 @@ export type PlakyRequestOverrides = {
   responseType?: ResponseType | undefined;
 };
 
+/** Overrides safe for typed resource methods; response parsing stays typed. */
+export type ResourceRequestOverrides = Omit<PlakyRequestOverrides, "responseType">;
+
 /**
  * Full response envelope returned by `requestWithResponse` and
  * `client.requestWithResponse`: the parsed `data` plus transport metadata.

@@ -1,4 +1,4 @@
-import { expectAssignable, expectType } from "tsd";
+import { expectAssignable, expectError, expectType } from "tsd";
 import {
   FolderId,
   ItemFileId,
@@ -40,6 +40,9 @@ import {
   type PlakyApiResponse,
   type PlakyClientOptions,
   type PlakyRequestOverrides,
+  type PagedResult,
+  type ResourceRequestOverrides,
+  type StrictPagedResult,
   type SpaceExpand,
   type SpaceIdType,
   type SpaceShape,
@@ -74,6 +77,15 @@ const requestOverrides = {
   responseType: "json",
 } satisfies PlakyRequestOverrides;
 expectAssignable<PlakyRequestOverrides>(requestOverrides);
+
+const resourceOverrides = { timeoutMs: 5_000, maxRetries: 1 } satisfies ResourceRequestOverrides;
+expectAssignable<ResourceRequestOverrides>(resourceOverrides);
+const legacyPage: PagedResult<SpaceShape> = {};
+expectAssignable<PagedResult<SpaceShape>>(legacyPage);
+expectType<StrictPagedResult<SpaceShape>>(await client.spaces.list());
+expectError(client.spaces.get(1, { responseType: "text" }));
+expectError(client.items.get({ spaceId: 1, boardId: 2, itemId: 3 }, { responseType: "stream" }));
+expectType<Promise<string>>(client.request({ method: "GET", path: "/v1/public/status", responseType: "text" }));
 
 const response = await client.requestWithResponse<{ ok: boolean }>({
   method: "GET",

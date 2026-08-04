@@ -88,7 +88,7 @@ export function buildRawToolModule(op) {
   if (isVoid) {
     lines.push(`    return ctx.respond({ ok: true }, { compactKind: ${JSON.stringify(op.compactKind)} });`);
   } else if (isArray) {
-    lines.push(`    return ctx.respond({ data: result }, { compactKind: ${JSON.stringify(op.compactKind)} });`);
+    lines.push(`    return ctx.respond(result, { compactKind: ${JSON.stringify(op.compactKind)} });`);
   } else {
     lines.push(`    return ctx.respond(result, { compactKind: ${JSON.stringify(op.compactKind)} });`);
   }

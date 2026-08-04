@@ -34,6 +34,6 @@ export const listItemCommentsTool: McpToolDefinition = {
       operationId: "listItemComments",
     }, ctx.requestOptions);
     rawOutput.parse(result);
-    return ctx.respond({ data: result }, { compactKind: "comment" });
+    return ctx.respond(result, { compactKind: "comment" });
   },
 };

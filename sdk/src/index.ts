@@ -53,6 +53,7 @@ export {
   PlakyTimeoutError,
   PlakyAbortError,
   PlakyDecodeError,
+  PlakyResponseContractError,
   PlakyResponseTooLargeError,
   PlakyApiError,
   PlakyAuthError,
@@ -72,6 +73,7 @@ export type {
   HeaderProvider,
   PlakyApiResponse,
   PlakyRequestOverrides,
+  ResourceRequestOverrides,
   QueryParams,
   ResponseType,
 } from "./runtime/types.js";
@@ -131,6 +133,7 @@ export type {
 
 export type {
   PagedResult,
+  StrictPagedResult,
   FieldShape,
   ItemFieldShape,
   ItemGroupShape,

@@ -1,10 +1,10 @@
 import type { PlakyClient } from "./client.js";
 import { idPathSegment, pathSegment } from "./path.js";
-import { paginate, type PaginatedIterator } from "../runtime/pagination.js";
+import { assertPagedResult, paginate, type PaginatedIterator } from "../runtime/pagination.js";
 import { resolveExplicitIdempotencyKey } from "../runtime/idempotency.js";
-import type { PlakyRequestOverrides } from "../runtime/types.js";
+import type { ResourceRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId, ItemId, FieldKey } from "../runtime/ids.js";
-import type { PagedResult, ItemShape } from "./shapes.js";
+import type { StrictPagedResult, ItemShape } from "./shapes.js";
 import type { components } from "../generated/types.js";
 
 /** Request body for creating an item, derived from the generated `ItemCreateRequest`. */
@@ -111,9 +111,9 @@ export class ItemsResource {
    * @returns A page of items with `data` and `hasMore`.
    * @throws {import("../runtime/errors.js").PlakyApiError} On API errors.
    */
-  list(params: ItemListParams, options?: PlakyRequestOverrides): Promise<PagedResult<ItemShape>> {
+  async list(params: ItemListParams, options?: ResourceRequestOverrides): Promise<StrictPagedResult<ItemShape>> {
     const { spaceId, boardId, ...query } = params;
-    return this.client.request<PagedResult<ItemShape>>(
+    const response = await this.client.request<unknown>(
       {
         method: "GET",
         path: `/v1/public/spaces/${idPathSegment(spaceId)}/boards/${idPathSegment(boardId)}/items`,
@@ -122,6 +122,7 @@ export class ItemsResource {
       },
       options,
     );
+    return assertPagedResult<ItemShape>(response, "listItems");
   }
 
   /**
@@ -134,7 +135,7 @@ export class ItemsResource {
    * @returns The item.
    * @throws {import("../runtime/errors.js").PlakyNotFoundError} If the item does not exist.
    */
-  get(params: ItemGetParams, options?: PlakyRequestOverrides): Promise<ItemShape> {
+  get(params: ItemGetParams, options?: ResourceRequestOverrides): Promise<ItemShape> {
     const { spaceId, boardId, itemId, ...query } = params;
     return this.client.request<ItemShape>(
       {
@@ -156,10 +157,10 @@ export class ItemsResource {
    */
   listSubitems(
     params: ItemListSubitemsParams,
-    options?: PlakyRequestOverrides,
-  ): Promise<PagedResult<ItemShape>> {
+    options?: ResourceRequestOverrides,
+  ): Promise<StrictPagedResult<ItemShape>> {
     const { spaceId, boardId, itemId, ...query } = params;
-    return this.client.request<PagedResult<ItemShape>>(
+    return this.client.request<unknown>(
       {
         method: "GET",
         path: `/v1/public/spaces/${idPathSegment(spaceId)}/boards/${idPathSegment(boardId)}/items/${idPathSegment(itemId)}/sub-items`,
@@ -167,7 +168,7 @@ export class ItemsResource {
         operationId: "listSubitems",
       },
       options,
-    );
+    ).then((response) => assertPagedResult<ItemShape>(response, "listSubitems"));
   }
 
   /**
@@ -188,7 +189,7 @@ export class ItemsResource {
    * });
    * ```
    */
-  async create(params: ItemCreateParams, options?: PlakyRequestOverrides): Promise<ItemShape | DryRunPlan> {
+  async create(params: ItemCreateParams, options?: ResourceRequestOverrides): Promise<ItemShape | DryRunPlan> {
     if (params.dryRun === true) {
       return planMutation("createItem", { spaceId: params.spaceId, boardId: params.boardId, body: params.body });
     }
@@ -212,7 +213,7 @@ export class ItemsResource {
    * @returns Nothing; resolves once the API confirms deletion.
    * @throws {import("../runtime/errors.js").PlakyNotFoundError} If the item does not exist.
    */
-  async delete(params: ItemDeleteParams, options?: PlakyRequestOverrides): Promise<void> {
+  async delete(params: ItemDeleteParams, options?: ResourceRequestOverrides): Promise<void> {
     const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     await this.client.request<void>(
       {
@@ -234,7 +235,7 @@ export class ItemsResource {
    * @param options - Per-request overrides.
    * @returns The updated {@link ItemShape}.
    */
-  async updateField(params: ItemUpdateFieldParams, options?: PlakyRequestOverrides): Promise<ItemShape> {
+  async updateField(params: ItemUpdateFieldParams, options?: ResourceRequestOverrides): Promise<ItemShape> {
     const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     return this.client.request<ItemShape>(
       {
@@ -257,7 +258,7 @@ export class ItemsResource {
    * @param options - Per-request overrides.
    * @returns The updated {@link ItemShape}, or a {@link DryRunPlan} when `dryRun` is true.
    */
-  async updateFields(params: ItemUpdateFieldsParams, options?: PlakyRequestOverrides): Promise<ItemShape | DryRunPlan> {
+  async updateFields(params: ItemUpdateFieldsParams, options?: ResourceRequestOverrides): Promise<ItemShape | DryRunPlan> {
     if (params.dryRun === true) {
       return planMutation("updateItemFields", { spaceId: params.spaceId, boardId: params.boardId, itemId: params.itemId, body: params.body });
     }
@@ -281,12 +282,12 @@ export class ItemsResource {
    * @param options - Per-request overrides applied to every page request.
    * @returns An async iterator with `firstPage()` and `toArray()` helpers.
    */
-  iterate(params: ItemIteratorParams, options?: PlakyRequestOverrides): PaginatedIterator<ItemShape> {
+  iterate(params: ItemIteratorParams, options?: ResourceRequestOverrides): PaginatedIterator<ItemShape> {
     const { limit, pageSize, ...query } = params;
     return paginate<ItemShape>(
       async ({ page, pageSize }) => {
         const res = await this.list({ ...query, page, pageSize }, options);
-        return { data: (res.data ?? []) as ItemShape[], hasMore: res.hasMore === true, raw: res };
+        return { data: res.data, hasMore: res.hasMore, raw: res };
       },
       { pageSize, limit },
     );
@@ -299,7 +300,7 @@ export class ItemsResource {
    * @param options - Per-request overrides applied to every page request.
    * @returns Every matching item.
    */
-  async listAll(params: ItemIteratorParams, options?: PlakyRequestOverrides): Promise<ItemShape[]> {
+  async listAll(params: ItemIteratorParams, options?: ResourceRequestOverrides): Promise<ItemShape[]> {
     const out: ItemShape[] = [];
     for await (const i of this.iterate(params, options)) out.push(i);
     return out;

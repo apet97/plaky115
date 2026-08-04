@@ -1,4 +1,5 @@
 import { redact } from "plaky115";
+import { assertPagedResult } from "plaky115/runtime/pagination.js";
 import type { CompactKind, McpRespondOptions } from "./types.js";
 
 type Record_ = Record<string, unknown>;
@@ -91,12 +92,11 @@ export function compactDownloadLink(value: unknown, options: McpRespondOptions =
 }
 
 export function compactList(value: unknown, kind: CompactKind, options: McpRespondOptions = {}): Record_ {
-  const r = asRecord(value);
-  const items = readArray(r, "data");
-  const compactItems = items.map((it) => compactByKind(it, kind, withoutRaw(options)));
+  const page = assertPagedResult(value, `mcp.compact.${kind}`);
+  const compactItems = page.data.map((it) => compactByKind(it, kind, withoutRaw(options)));
   return {
     data: compactItems,
-    hasMore: r["hasMore"] === true,
+    hasMore: page.hasMore,
     ...(options.includeRaw === true ? { raw: value } : {}),
   };
 }
@@ -112,7 +112,7 @@ export function compactByKind(value: unknown, kind: CompactKind, options: McpRes
       ...(options.includeRaw === true ? { raw: value } : {}),
     };
   }
-  if (value !== null && typeof value === "object" && "data" in value && Array.isArray((value as Record_)["data"])) {
+  if (isPageLike(value)) {
     return compactList(value, kind, options);
   }
   if (kind === "item") return compactItem(value, options);
@@ -123,6 +123,11 @@ export function compactByKind(value: unknown, kind: CompactKind, options: McpRes
   if (kind === "itemFile") return compactItemFile(value, options);
   if (kind === "downloadLink") return compactDownloadLink(value, options);
   return value;
+}
+
+function isPageLike(value: unknown): value is Record_ {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  return Object.prototype.hasOwnProperty.call(value, "data") || Object.prototype.hasOwnProperty.call(value, "hasMore");
 }
 
 function withoutRaw(options: McpRespondOptions): McpRespondOptions {

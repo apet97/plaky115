@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { compactByKind, structuredForMcp } from "../esm/runtime/compaction.js";
+import { PlakyResponseContractError } from "plaky115";
 
 test("compactByKind preserves paged data for typed lists", () => {
   const compacted = compactByKind(
@@ -12,6 +13,20 @@ test("compactByKind preserves paged data for typed lists", () => {
     data: [{ id: 1, title: "A" }],
     hasMore: false,
   });
+});
+
+test("compactByKind rejects malformed paged success envelopes", () => {
+  for (const value of [
+    { data: [], hasMore: true },
+    { data: null, hasMore: false },
+    { data: [] },
+    { data: [], hasMore: "false" },
+  ]) {
+    assert.throws(
+      () => compactByKind(value, "item"),
+      (error) => error instanceof PlakyResponseContractError,
+    );
+  }
 });
 
 test("compactByKind keeps the comment body and author id (content/createdBy)", () => {

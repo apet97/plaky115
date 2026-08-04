@@ -24,9 +24,21 @@ import type {
 type Schemas = components["schemas"];
 type WithBrandedId<T, Id> = Omit<T, "id"> & { id?: Id | undefined };
 
+/**
+ * @deprecated Use {@link StrictPagedResult}. Kept as an optional-field bridge
+ * for consumers compiled against the legacy page shape.
+ */
 export type PagedResult<T> = {
   data?: T[] | undefined;
   hasMore?: boolean | undefined;
+  page?: number | undefined;
+  pageSize?: number | undefined;
+};
+
+/** A validated page returned by typed list resources. */
+export type StrictPagedResult<T> = {
+  data: T[];
+  hasMore: boolean;
   page?: number | undefined;
   pageSize?: number | undefined;
 };

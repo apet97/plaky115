@@ -34,6 +34,6 @@ export const listItemFilesTool: McpToolDefinition = {
       operationId: "listItemFiles",
     }, ctx.requestOptions);
     rawOutput.parse(result);
-    return ctx.respond({ data: result }, { compactKind: "itemFile" });
+    return ctx.respond(result, { compactKind: "itemFile" });
   },
 };

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { paginate } from "../esm/runtime/pagination.js";
+import { PlakyResponseContractError } from "../esm/runtime/errors.js";
 
 test("paginated iterator yields across pages", async () => {
   const iterator = paginate(
@@ -56,15 +57,22 @@ test("iterator limit caps items yielded by for-await and stops fetching", async 
   assert.ok(calls <= 2, `fetched ${calls} pages; should stop once the limit is reached`);
 });
 
-test("empty page with hasMore true stops instead of looping forever", async () => {
+test("empty page with hasMore true is a response contract error", async () => {
   let calls = 0;
   const iterator = paginate(async () => {
     calls++;
     return { data: [], hasMore: true, raw: {} };
   });
 
-  assert.deepEqual(await iterator.toArray(), []);
+  await assert.rejects(iterator.toArray(), PlakyResponseContractError);
   assert.equal(calls, 1);
+});
+
+test("page validation rejects missing, null, and wrong roots before iteration", async () => {
+  for (const value of [null, [], new Date(), {}, { data: null, hasMore: false }, { data: [], hasMore: null }]) {
+    const iterator = paginate(async () => value);
+    await assert.rejects(iterator.firstPage(), PlakyResponseContractError);
+  }
 });
 
 test("iterator and page iterators retry the same page after a fetcher failure", async () => {

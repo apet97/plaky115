@@ -4,7 +4,7 @@ import { PlakyClient, RateLimitSink } from "../esm/index.js";
 
 test("RateLimitSink captures X-RateLimit-* headers after request", async () => {
   globalThis.fetch = async () =>
-    new Response(JSON.stringify({ data: [] }), {
+    new Response(JSON.stringify({ data: [], hasMore: false }), {
       status: 200,
       headers: {
         "content-type": "application/json",
@@ -22,7 +22,7 @@ test("RateLimitSink captures X-RateLimit-* headers after request", async () => {
 
 test("RateLimitSink leaves unknown headers as undefined", async () => {
   globalThis.fetch = async () =>
-    new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+    new Response(JSON.stringify({ data: [], hasMore: false }), { status: 200, headers: { "content-type": "application/json" } });
   const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   await client.spaces.list();
   assert.equal(client.rateLimit.last.limit, undefined);
@@ -31,7 +31,7 @@ test("RateLimitSink leaves unknown headers as undefined", async () => {
 
 test("estimatedRemaining falls back to client-side rolling window", async () => {
   globalThis.fetch = async () =>
-    new Response(JSON.stringify({ data: [] }), { status: 200, headers: { "content-type": "application/json" } });
+    new Response(JSON.stringify({ data: [], hasMore: false }), { status: 200, headers: { "content-type": "application/json" } });
   const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   assert.equal(client.rateLimit.estimatedRemaining(), 200);
   await client.spaces.list();
@@ -63,7 +63,7 @@ test("msUntilNextSlot computes wait until oldest entry expires", () => {
 
 test("when server reports remaining, that takes precedence over rolling window", async () => {
   globalThis.fetch = async () =>
-    new Response(JSON.stringify({ data: [] }), {
+    new Response(JSON.stringify({ data: [], hasMore: false }), {
       status: 200,
       headers: { "content-type": "application/json", "x-ratelimit-remaining": "42" },
     });
