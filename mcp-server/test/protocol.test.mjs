@@ -327,8 +327,8 @@ test("every mutation workflow and mutation plan resolves exact targets without w
       { workflowId: "items.create", input: { spaceId: "Space", boardId: "Board", body: { title: "New" } } },
       { workflowId: "items.updateFields", input: { spaceId: "Space", boardId: "Board", updates: [{ itemId: "Item", body: { Status: "Done" } }] } },
       { workflowId: "comments.add", input: { spaceId: "Space", boardId: "Board", itemId: "Item", text: "Note" } },
-      { workflowId: "itemGroups.create", input: { spaceId: "Space", boardId: "Board", body: { title: "New group" } } },
-      { workflowId: "itemGroups.update", input: { spaceId: "Space", boardId: "Board", itemGroupId: "Group", body: { title: "Group", ranking: "m" } } },
+      { workflowId: "itemGroups.create", input: { spaceId: "Space", boardId: "Board", body: { title: "New group", color: "#123456" } } },
+      { workflowId: "itemGroups.update", input: { spaceId: "Space", boardId: "Board", itemGroupId: "Group", body: { title: "Group", ranking: "m", color: "#654321" } } },
       { workflowId: "itemFiles.upload", input: { spaceId: "Space", boardId: "Board", itemId: "Item", fileBase64: "aGk=", fileName: "note.txt", contentType: "text/plain" } },
       { workflowId: "itemFiles.update", input: { spaceId: "Space", boardId: "Board", itemId: "Item", itemFileId: "old.txt", body: { name: "new.txt" } } },
     ];
@@ -376,8 +376,8 @@ test("new mutation workflows return completed receipts with exact target IDs", a
   const { client, server } = await connectedPair({ mode: "curated", scopes: ["read", "write"], serverURL: "https://example.test" });
   try {
     const inputs = [
-      { workflowId: "itemGroups.create", input: { spaceId: "Space", boardId: "Board", body: { title: "New group" } } },
-      { workflowId: "itemGroups.update", input: { spaceId: "Space", boardId: "Board", itemGroupId: "Group", body: { title: "Group", ranking: "m" } } },
+      { workflowId: "itemGroups.create", input: { spaceId: "Space", boardId: "Board", body: { title: "New group", color: "#123456" } } },
+      { workflowId: "itemGroups.update", input: { spaceId: "Space", boardId: "Board", itemGroupId: "Group", body: { title: "Group", ranking: "m", color: "#654321" } } },
       { workflowId: "itemFiles.upload", input: { spaceId: "Space", boardId: "Board", itemId: "Item", fileBase64: "aGk=", fileName: "note.txt" } },
       { workflowId: "itemFiles.update", input: { spaceId: "Space", boardId: "Board", itemId: "Item", itemFileId: "old.txt", body: { name: "new.txt" } } },
     ];

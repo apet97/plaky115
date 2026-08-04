@@ -32,9 +32,18 @@ export function describeOperation(operation) {
   return Object.freeze({
     pathParameters: Object.freeze([...pathParameters]),
     queryParameters: Object.freeze(queryParameters),
+    pagination: operation.pagination ?? null,
     requestKind: operation.request?.kind,
+    requestRootKind: operation.request?.rootKind,
+    requestRequiredProperties: Object.freeze([...(operation.request?.requiredProperties ?? [])]),
+    allowEmptyObject: operation.request?.allowEmptyObject,
     isVoid: operation.success?.kind === "void",
     isArray: operation.success?.kind === "json-array",
+    isPaged: operation.success?.kind === "paged-object",
+    successRootKind: operation.success?.rootKind,
+    successRequiredProperties: Object.freeze([...(operation.success?.requiredProperties ?? [])]),
+    createdIdPointer: operation.success?.createdIdPointer,
+    sensitiveLink: operation.success?.sensitiveLink === true,
     acceptsIdempotencyKey: operation.mutation === true && operation.request?.kind !== "none",
   });
 }
@@ -43,13 +52,14 @@ function mergeParameters(parameters, operationId) {
   const merged = [];
   const seen = new Map();
   for (const parameter of parameters) {
-    const prior = seen.get(parameter.name);
+    const identity = `${parameter.in}:${parameter.name}`;
+    const prior = seen.get(identity);
     if (!prior) {
-      seen.set(parameter.name, parameter);
+      seen.set(identity, parameter);
       merged.push(parameter);
       continue;
     }
-    for (const key of ["in", "required", "explode"]) {
+    for (const key of ["in", "required", "style", "explode"]) {
       if (prior[key] !== parameter[key]) throw new Error(`${operationId}: contradictory parameter ${parameter.name}`);
     }
     if (JSON.stringify(prior.schema) !== JSON.stringify(parameter.schema)) {

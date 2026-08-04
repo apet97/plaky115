@@ -114,7 +114,7 @@ export async function executeWorkflow(
     case "itemGroups.create": {
       const result = await ctx.client.itemGroups.create({
         spaceId: asSpaceId(readRef(resolvedArgs, "space")), boardId: asBoardId(readRef(resolvedArgs, "board")),
-        body: resolvedArgs["body"] as { title: string; color?: string; ranking?: string },
+        body: resolvedArgs["body"] as { title: string; color: string; ranking?: string },
       }, { signal: ctx.signal });
       return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result, "itemGroupId"));
     }
@@ -122,7 +122,7 @@ export async function executeWorkflow(
       const result = await ctx.client.itemGroups.update({
         spaceId: asSpaceId(readRef(resolvedArgs, "space")), boardId: asBoardId(readRef(resolvedArgs, "board")),
         itemGroupId: readRef(resolvedArgs, "itemGroup"),
-        body: resolvedArgs["body"] as { title: string; ranking: string; color?: string },
+        body: resolvedArgs["body"] as { title: string; ranking: string; color: string },
       }, { signal: ctx.signal });
       return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result));
     }

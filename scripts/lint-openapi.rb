@@ -150,8 +150,9 @@ def lint_plaky_metadata(operation, location, errors)
 
   pagination = operation["x-plaky115-pagination"]
   if pagination
-    unless pagination.is_a?(Hash) && pagination["type"].to_s != "" && pagination.dig("outputs", "results").to_s != ""
-      errors << "#{location}: x-plaky115-pagination must include type and outputs.results"
+    required = %w[kind pageParameter sizeParameter resultsPointer hasMorePointer]
+    unless pagination.is_a?(Hash) && pagination["kind"] == "pageNumber" && required.all? { |key| pagination[key].is_a?(String) && !pagination[key].empty? }
+      errors << "#{location}: x-plaky115-pagination must include page-number references and result pointers"
     end
   end
 

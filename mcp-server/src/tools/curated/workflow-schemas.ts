@@ -71,7 +71,7 @@ const exportItemsInputSchema = entityInput(["space", "board"], {
 });
 const itemGroupBodyBase = {
   title: z.string().min(1).describe("Item Group title."),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).describe("RGB hexadecimal color.").optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).describe("RGB hexadecimal color."),
   ranking: z.string().min(1).describe("Lexicographical ranking value.").optional(),
 };
 const itemGroupCreateInputSchema = entityInput(["space", "board"], {

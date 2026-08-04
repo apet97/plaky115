@@ -25,16 +25,11 @@ actions:
         description: Discover spaces before resolving boards or items.
         position: 1
       x-plaky115-pagination:
-        type: offsetLimit
-        inputs:
-          - name: page
-            in: parameters
-            type: page
-          - name: pageSize
-            in: parameters
-            type: limit
-        outputs:
-          results: $.data
+        kind: pageNumber
+        pageParameter: page
+        sizeParameter: pageSize
+        resultsPointer: $.data
+        hasMorePointer: $.hasMore
       x-plaky115-mcp:
         name: plaky_list_spaces
         title: List spaces
@@ -80,16 +75,11 @@ actions:
         description: Discover boards in a space before reading or mutating items.
         position: 3
       x-plaky115-pagination:
-        type: offsetLimit
-        inputs:
-          - name: page
-            in: parameters
-            type: page
-          - name: pageSize
-            in: parameters
-            type: limit
-        outputs:
-          results: $.data
+        kind: pageNumber
+        pageParameter: page
+        sizeParameter: pageSize
+        resultsPointer: $.data
+        hasMorePointer: $.hasMore
       x-plaky115-mcp:
         name: plaky_list_boards
         title: List boards
@@ -135,16 +125,11 @@ actions:
         description: Read board items with fields when preparing searches or exports.
         position: 5
       x-plaky115-pagination:
-        type: offsetLimit
-        inputs:
-          - name: page
-            in: parameters
-            type: page
-          - name: pageSize
-            in: parameters
-            type: limit
-        outputs:
-          results: $.data
+        kind: pageNumber
+        pageParameter: page
+        sizeParameter: pageSize
+        resultsPointer: $.data
+        hasMorePointer: $.hasMore
       x-plaky115-mcp:
         name: plaky_list_items
         title: List board items
@@ -261,16 +246,11 @@ actions:
         description: Read child items under a parent item.
         position: 9
       x-plaky115-pagination:
-        type: offsetLimit
-        inputs:
-          - name: page
-            in: parameters
-            type: page
-          - name: pageSize
-            in: parameters
-            type: limit
-        outputs:
-          results: $.data
+        kind: pageNumber
+        pageParameter: page
+        sizeParameter: pageSize
+        resultsPointer: $.data
+        hasMorePointer: $.hasMore
       x-plaky115-mcp:
         name: plaky_list_subitems
         title: List subitems
@@ -358,16 +338,11 @@ actions:
         description: Resolve users before assigning people fields.
         position: 12
       x-plaky115-pagination:
-        type: offsetLimit
-        inputs:
-          - name: page
-            in: parameters
-            type: page
-          - name: pageSize
-            in: parameters
-            type: limit
-        outputs:
-          results: $.data
+        kind: pageNumber
+        pageParameter: page
+        sizeParameter: pageSize
+        resultsPointer: $.data
+        hasMorePointer: $.hasMore
       x-plaky115-mcp:
         name: plaky_list_users
         title: List users
@@ -413,16 +388,11 @@ actions:
         description: Resolve teams before assigning person/team fields.
         position: 14
       x-plaky115-pagination:
-        type: offsetLimit
-        inputs:
-          - name: page
-            in: parameters
-            type: page
-          - name: pageSize
-            in: parameters
-            type: limit
-        outputs:
-          results: $.data
+        kind: pageNumber
+        pageParameter: page
+        sizeParameter: pageSize
+        resultsPointer: $.data
+        hasMorePointer: $.hasMore
       x-plaky115-mcp:
         name: plaky_list_teams
         title: List teams
@@ -617,16 +587,11 @@ actions:
               ranking: "0|hzzzzz:"
           hasMore: false
       x-plaky115-pagination:
-        type: offsetLimit
-        inputs:
-          - name: page
-            in: parameters
-            type: page
-          - name: pageSize
-            in: parameters
-            type: limit
-        outputs:
-          results: $.data
+        kind: pageNumber
+        pageParameter: page
+        sizeParameter: pageSize
+        resultsPointer: $.data
+        hasMorePointer: $.hasMore
       x-plaky115-mcp:
         name: plaky_list_item_groups
         title: List item groups
