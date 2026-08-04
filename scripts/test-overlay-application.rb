@@ -43,6 +43,7 @@ class OverlayApplicationTest < Minitest::Test
       source = write_yaml(dir, "source.yaml", base_spec)
       overlay = write_yaml(dir, "overlay.yaml", {
         "overlay" => "1.0.0",
+        "info" => { "title" => "Fixture", "version" => "1.0.0" },
         "actions" => [
           { "target" => "$.info", "update" => { "title" => "Plaky115 Public API" } },
           {
@@ -72,6 +73,7 @@ class OverlayApplicationTest < Minitest::Test
       source = write_yaml(dir, "source.yaml", base_spec)
       overlay = write_yaml(dir, "overlay.yaml", {
         "overlay" => "1.0.0",
+        "info" => { "title" => "Fixture", "version" => "1.0.0" },
         "actions" => [
           { "target" => "$.paths[\"/v1/public/missing\"].get", "update" => { "operationId" => "missing" } }
         ]
@@ -81,6 +83,43 @@ class OverlayApplicationTest < Minitest::Test
 
       refute status.success?
       assert_match(/unmatched target/i, stderr)
+    end
+  end
+
+  def test_rejects_unsupported_target_with_action_index_without_partial_output
+    Dir.mktmpdir do |dir|
+      source = write_yaml(dir, "source.yaml", base_spec)
+      overlay = write_yaml(dir, "overlay.yaml", {
+        "overlay" => "1.0.0",
+        "info" => { "title" => "Fixture", "version" => "1.0.0" },
+        "actions" => [
+          { "target" => "$.info", "update" => { "title" => "Changed" } },
+          { "target" => "$.paths[*].get", "update" => { "summary" => "Unsupported" } },
+        ]
+      })
+      out = File.join(dir, "out.yaml")
+
+      _stdout, stderr, status = run_script("--source", source, "--overlay", overlay, "--out", out)
+
+      refute status.success?
+      assert_match(/action 2.*\$\.paths\[\*\]\.get/i, stderr)
+      refute File.exist?(out)
+    end
+  end
+
+  def test_rejects_invalid_remove_rules_before_applying
+    Dir.mktmpdir do |dir|
+      source = write_yaml(dir, "source.yaml", base_spec)
+      overlay = write_yaml(dir, "overlay.yaml", {
+        "overlay" => "1.0.0",
+        "info" => { "title" => "Fixture", "version" => "1.0.0" },
+        "actions" => [{ "target" => "$.info", "remove" => false }]
+      })
+
+      _stdout, stderr, status = run_script("--source", source, "--overlay", overlay, "--check")
+
+      refute status.success?
+      assert_match(/remove: false requires update/i, stderr)
     end
   end
 
@@ -104,11 +143,29 @@ class OverlayApplicationTest < Minitest::Test
     end
   end
 
+  def test_rejects_openapi_root_key_from_overlay_document
+    Dir.mktmpdir do |dir|
+      source = write_yaml(dir, "source.yaml", base_spec)
+      overlay = write_yaml(dir, "overlay.yaml", {
+        "openapi" => "3.1.0",
+        "overlay" => "1.0.0",
+        "info" => { "title" => "Fixture", "version" => "1.0.0" },
+        "actions" => [],
+      })
+
+      _stdout, stderr, status = run_script("--source", source, "--overlay", overlay, "--check")
+
+      refute status.success?
+      assert_match(/overlay root|unsupported root key|openapi/i, stderr)
+    end
+  end
+
   def test_deep_merges_nested_hashes_without_dropping_sibling_keys
     Dir.mktmpdir do |dir|
       source = write_yaml(dir, "source.yaml", base_spec)
       overlay = write_yaml(dir, "overlay.yaml", {
         "overlay" => "1.0.0",
+        "info" => { "title" => "Fixture", "version" => "1.0.0" },
         "actions" => [
           {
             "target" => "$.paths[\"/v1/public/spaces\"].get",

@@ -16,7 +16,7 @@
     "contract:manifest:check": "node scripts/check-upstream-manifest.mjs",
     "contract:accept-candidate": "node scripts/accept-openapi-candidate.mjs",
     "lint:openapi": "ruby scripts/lint-openapi.rb api-1.yaml openapi/plaky115-dx.openapi.yaml",
-    "openapi:test": "ruby scripts/test-overlay-application.rb && ruby scripts/test-openapi-lint.rb",
+    "openapi:test": "ruby scripts/test-overlay-application.rb && ruby scripts/test-openapi-lint.rb && node scripts/validate-openapi.mjs openapi/plaky115-dx.openapi.yaml && node --test scripts/test-openapi-validation.mjs",
     "secret:scan": "node scripts/secret-scan.mjs",
     "secret:scan:test": "node --test scripts/test-secret-scan.mjs sdk/test/redact.test.mjs",
     "goreleaser:check": "cd cli && goreleaser check --config .goreleaser.yaml",

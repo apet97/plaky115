@@ -69,8 +69,53 @@ def deep_merge!(target, update)
   target
 end
 
-def resolve_targets(spec, target)
-  return [spec.fetch("info")] if target == "$.info"
+def validate_overlay!(overlay)
+  raise ArgumentError, "overlay document must be an object" unless overlay.is_a?(Hash)
+
+  unexpected = overlay.keys - %w[overlay info actions]
+  raise ArgumentError, "unsupported overlay root key: #{unexpected.first.inspect}" unless unexpected.empty?
+  version = overlay["overlay"]
+  raise ArgumentError, "overlay root must declare overlay: 1.0.0" unless version == "1.0.0"
+
+  info = overlay["info"]
+  raise ArgumentError, "overlay info must be an object" unless info.is_a?(Hash)
+  %w[title version].each do |key|
+    value = info[key]
+    raise ArgumentError, "overlay info #{key} is required" unless value.is_a?(String) && !value.strip.empty?
+  end
+
+  actions = overlay["actions"]
+  raise ArgumentError, "overlay actions must be an array" unless actions.is_a?(Array)
+  actions.each_with_index do |action, index|
+    raise ArgumentError, "action #{index + 1} must be an object" unless action.is_a?(Hash)
+
+    target = action["target"]
+    raise ArgumentError, "action #{index + 1} target must be a non-empty string" unless target.is_a?(String) && !target.strip.empty?
+    unexpected_action_keys = action.keys - %w[target update remove]
+    unless unexpected_action_keys.empty?
+      raise ArgumentError, "action #{index + 1} has unsupported key #{unexpected_action_keys.first.inspect}"
+    end
+
+    has_update = action.key?("update")
+    has_remove = action.key?("remove")
+    raise ArgumentError, "action #{index + 1} must define update or remove" unless has_update || has_remove
+    if has_update && !action["update"].is_a?(Hash)
+      raise ArgumentError, "action #{index + 1} update must be an object"
+    end
+    if has_remove && ![true, false].include?(action["remove"])
+      raise ArgumentError, "action #{index + 1} remove must be boolean"
+    end
+    if action["remove"] == true && has_update
+      raise ArgumentError, "action #{index + 1} cannot combine remove: true with update"
+    end
+    if action["remove"] == false && !has_update
+      raise ArgumentError, "action #{index + 1} remove: false requires update"
+    end
+  end
+end
+
+def resolve_target_refs(spec, target)
+  return [{ parent: spec, key: "info", value: spec.fetch("info") }] if target == "$.info"
 
   exact = target.match(/\A\$\.(paths)\["([^"]+)"\]\.(#{HTTP_METHODS.join("|")})\z/)
   if exact
@@ -79,16 +124,20 @@ def resolve_targets(spec, target)
     path_item = spec.fetch("paths", {})[path]
     return [] unless path_item.is_a?(Hash) && path_item[method].is_a?(Hash)
 
-    return [path_item.fetch(method)]
+    return [{ parent: path_item, key: method, value: path_item.fetch(method) }]
   end
 
   wildcard = target.match(/\A\$\.paths\.\*\[((?:"#{HTTP_METHODS.join('")|(?:"')}")(?:,"(?:#{HTTP_METHODS.join('|')})")*)\]\z/)
   if wildcard
     methods = wildcard[1].scan(/"([^"]+)"/).flatten
-    return spec.fetch("paths", {}).values.flat_map do |path_item|
+    return spec.fetch("paths", {}).flat_map do |_path, path_item|
       next [] unless path_item.is_a?(Hash)
 
-      methods.filter_map { |method| path_item[method] if path_item[method].is_a?(Hash) }
+      methods.filter_map do |method|
+        next unless path_item[method].is_a?(Hash)
+
+        { parent: path_item, key: method, value: path_item.fetch(method) }
+      end
     end
   end
 
@@ -96,21 +145,33 @@ def resolve_targets(spec, target)
 end
 
 def apply_overlay!(spec, overlay)
+  validate_overlay!(overlay)
   actions = overlay.fetch("actions")
-  raise ArgumentError, "overlay actions must be an array" unless actions.is_a?(Array)
-
-  actions.each_with_index do |action, index|
+  prepared = actions.each_with_index.map do |action, index|
     target = action.fetch("target")
-    update = action.fetch("update")
-    raise ArgumentError, "action #{index + 1} update must be an object" unless update.is_a?(Hash)
+    refs = begin
+      resolve_target_refs(spec, target)
+    rescue ArgumentError => error
+      raise ArgumentError, "action #{index + 1} target #{target.inspect}: #{error.message}"
+    end
+    raise ArgumentError, "action #{index + 1} unmatched target: #{target}" if refs.empty?
 
-    targets = resolve_targets(spec, target)
-    raise ArgumentError, "unmatched target: #{target}" if targets.empty?
+    { action: action, refs: refs }
+  end
 
-    targets.each do |resolved|
+  prepared.each do |prepared_action|
+    action = prepared_action.fetch(:action)
+    target = action.fetch("target")
+    prepared_action.fetch(:refs).each do |reference|
+      if action["remove"] == true
+        reference.fetch(:parent).delete(reference.fetch(:key))
+        next
+      end
+
+      resolved = reference.fetch(:value)
       raise ArgumentError, "target is not an object: #{target}" unless resolved.is_a?(Hash)
 
-      deep_merge!(resolved, update)
+      deep_merge!(resolved, action.fetch("update"))
     end
   end
 end
