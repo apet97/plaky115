@@ -6,6 +6,9 @@
   "additionalProperties": false,
   "required": [
     "sourceUrl",
+    "requestedUrl",
+    "finalUrl",
+    "redirectChain",
     "fetchedAt",
     "httpStatus",
     "contentType",
@@ -19,6 +22,21 @@
   ],
   "properties": {
     "sourceUrl": { "type": "string", "minLength": 1 },
+    "requestedUrl": { "type": "string", "minLength": 1 },
+    "finalUrl": { "type": "string", "minLength": 1 },
+    "redirectChain": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from", "to", "status"],
+        "properties": {
+          "from": { "type": "string", "minLength": 1 },
+          "to": { "type": "string", "minLength": 1 },
+          "status": { "type": "integer", "minimum": 300, "maximum": 399 }
+        }
+      }
+    },
     "fetchedAt": { "type": "string", "format": "date-time" },
     "httpStatus": { "type": "integer", "minimum": 200, "maximum": 299 },
     "contentType": { "type": "string", "minLength": 1 },

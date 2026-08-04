@@ -1,5 +1,8 @@
 {
   "sourceUrl": "https://docs.plaky.com/",
+  "requestedUrl": "https://docs.plaky.com/",
+  "finalUrl": "https://docs.plaky.com/",
+  "redirectChain": [],
   "fetchedAt": "2026-07-26T22:46:49.352Z",
   "httpStatus": 200,
   "contentType": "text/html; charset=utf-8",
