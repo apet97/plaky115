@@ -34,13 +34,20 @@ export const uploadWidgetFileTool: McpToolDefinition = {
       fileName: parsed.fileName,
       ...(parsed.contentType !== undefined ? { contentType: parsed.contentType } : {}),
     });
-    const result = await request<Record<string, unknown>>({
-      method: "POST",
-      path: `/v1/widgets/${encodeURIComponent(String(parsed.widgetId))}/files`,
-      body,
-      operationId: "uploadWidgetFile",
-    }, ctx.requestOptions);
-    rawOutput.parse(result);
+    const result = await ctx.attempt.mutate({
+      operation: "uploadWidgetFile",
+      targetIds: { widgetId: String(parsed.widgetId) },
+      run: async () => {
+        const result = await request<Record<string, unknown>>({
+          method: "POST",
+          path: `/v1/widgets/${encodeURIComponent(String(parsed.widgetId))}/files`,
+          body,
+          operationId: "uploadWidgetFile",
+        }, ctx.requestOptions);
+        rawOutput.parse(result);
+        return result;
+      },
+    });
     return ctx.respond(result, { compactKind: "itemFile" });
   },
 };

@@ -84,17 +84,24 @@ export async function executeWorkflow(
       });
       return ctx.respond(result);
     }
-    case "items.create":
-      return ctx.respond(await ctx.client.items.create({
-        spaceId: asSpaceId(readRef(resolvedArgs, "space")),
-        boardId: asBoardId(readRef(resolvedArgs, "board")),
-        body: resolvedArgs["body"] as ItemCreateBody,
-      }, { signal: ctx.signal }), { compactKind: "item" });
+    case "items.create": {
+      const result = await ctx.attempt.mutate({
+        operation: workflowId,
+        targetIds: mutationTargetIds(resolvedArgs, "spaceId", "boardId"),
+        createdIdKey: "itemId",
+        run: () => ctx.client.items.create({
+          spaceId: asSpaceId(readRef(resolvedArgs, "space")),
+          boardId: asBoardId(readRef(resolvedArgs, "board")),
+          body: resolvedArgs["body"] as ItemCreateBody,
+        }, { signal: ctx.signal }),
+      });
+      return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result, ctx));
+    }
     case "items.updateFields":
       {
       const updates = resolvedArgs["updates"] as Array<{ itemId: string | number; body: Record<string, unknown> }>;
       const progress = createProgressReporter(ctx.progress, updates.length, "items updated");
-      return ctx.respond(await bulkUpdateItems(ctx.client, {
+      const receipts = await bulkUpdateItems(ctx.client, {
         space: readRef(resolvedArgs, "space") as EntityRef,
         board: readRef(resolvedArgs, "board") as EntityRef,
         updates,
@@ -102,29 +109,53 @@ export async function executeWorkflow(
         throwOnError: true,
         signal: ctx.signal,
         onProgress: (completed) => progress(completed),
-      }));
+      });
+      ctx.attempt.record(receipts);
+      return ctx.respond({
+        workflowId,
+        status: "completed",
+        targetIds: mutationTargetIds(resolvedArgs, "spaceId", "boardId"),
+        receipts,
+        result: receipts,
+      });
       }
-    case "comments.add":
-      return ctx.respond(await ctx.client.comments.create({
-        spaceId: asSpaceId(readRef(resolvedArgs, "space")),
-        boardId: asBoardId(readRef(resolvedArgs, "board")),
-        itemId: asItemId(readRef(resolvedArgs, "item")),
-        body: { text: resolvedArgs["text"] as string },
-      }, { signal: ctx.signal }), { compactKind: "comment" });
+    case "comments.add": {
+      const result = await ctx.attempt.mutate({
+        operation: workflowId,
+        targetIds: mutationTargetIds(resolvedArgs, "spaceId", "boardId", "itemId"),
+        createdIdKey: "commentId",
+        run: () => ctx.client.comments.create({
+          spaceId: asSpaceId(readRef(resolvedArgs, "space")),
+          boardId: asBoardId(readRef(resolvedArgs, "board")),
+          itemId: asItemId(readRef(resolvedArgs, "item")),
+          body: { text: resolvedArgs["text"] as string },
+        }, { signal: ctx.signal }),
+      });
+      return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result, ctx));
+    }
     case "itemGroups.create": {
-      const result = await ctx.client.itemGroups.create({
-        spaceId: asSpaceId(readRef(resolvedArgs, "space")), boardId: asBoardId(readRef(resolvedArgs, "board")),
-        body: resolvedArgs["body"] as { title: string; color: string; ranking?: string },
-      }, { signal: ctx.signal });
-      return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result, "itemGroupId"));
+      const result = await ctx.attempt.mutate({
+        operation: workflowId,
+        targetIds: mutationTargetIds(resolvedArgs, "spaceId", "boardId"),
+        createdIdKey: "itemGroupId",
+        run: () => ctx.client.itemGroups.create({
+          spaceId: asSpaceId(readRef(resolvedArgs, "space")), boardId: asBoardId(readRef(resolvedArgs, "board")),
+          body: resolvedArgs["body"] as { title: string; color: string; ranking?: string },
+        }, { signal: ctx.signal }),
+      });
+      return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result, ctx));
     }
     case "itemGroups.update": {
-      const result = await ctx.client.itemGroups.update({
-        spaceId: asSpaceId(readRef(resolvedArgs, "space")), boardId: asBoardId(readRef(resolvedArgs, "board")),
-        itemGroupId: readRef(resolvedArgs, "itemGroup"),
-        body: resolvedArgs["body"] as { title: string; ranking: string; color: string },
-      }, { signal: ctx.signal });
-      return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result));
+      const result = await ctx.attempt.mutate({
+        operation: workflowId,
+        targetIds: mutationTargetIds(resolvedArgs, "spaceId", "boardId", "itemGroupId"),
+        run: () => ctx.client.itemGroups.update({
+          spaceId: asSpaceId(readRef(resolvedArgs, "space")), boardId: asBoardId(readRef(resolvedArgs, "board")),
+          itemGroupId: readRef(resolvedArgs, "itemGroup"),
+          body: resolvedArgs["body"] as { title: string; ranking: string; color: string },
+        }, { signal: ctx.signal }),
+      });
+      return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result, ctx));
     }
     case "itemFiles.upload": {
       const form = buildFileUploadFormData({
@@ -134,19 +165,28 @@ export async function executeWorkflow(
       });
       const file = form.get("file");
       if (!(file instanceof Blob)) throw new Error("validated upload did not produce a file");
-      const result = await ctx.client.itemFiles.upload({
-        spaceId: asSpaceId(readRef(resolvedArgs, "space")), boardId: asBoardId(readRef(resolvedArgs, "board")),
-        itemId: asItemId(readRef(resolvedArgs, "item")), file, fileName: resolvedArgs["fileName"] as string,
-      }, { signal: ctx.signal });
-      return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result, "itemFileId"));
+      const result = await ctx.attempt.mutate({
+        operation: workflowId,
+        targetIds: mutationTargetIds(resolvedArgs, "spaceId", "boardId", "itemId"),
+        createdIdKey: "itemFileId",
+        run: () => ctx.client.itemFiles.upload({
+          spaceId: asSpaceId(readRef(resolvedArgs, "space")), boardId: asBoardId(readRef(resolvedArgs, "board")),
+          itemId: asItemId(readRef(resolvedArgs, "item")), file, fileName: resolvedArgs["fileName"] as string,
+        }, { signal: ctx.signal }),
+      });
+      return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result, ctx));
     }
     case "itemFiles.update": {
-      const result = await ctx.client.itemFiles.update({
-        spaceId: asSpaceId(readRef(resolvedArgs, "space")), boardId: asBoardId(readRef(resolvedArgs, "board")),
-        itemId: asItemId(readRef(resolvedArgs, "item")), itemFileId: readRef(resolvedArgs, "itemFile"),
-        body: resolvedArgs["body"] as { name: string; description?: string },
-      }, { signal: ctx.signal });
-      return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result));
+      const result = await ctx.attempt.mutate({
+        operation: workflowId,
+        targetIds: mutationTargetIds(resolvedArgs, "spaceId", "boardId", "itemId", "itemFileId"),
+        run: () => ctx.client.itemFiles.update({
+          spaceId: asSpaceId(readRef(resolvedArgs, "space")), boardId: asBoardId(readRef(resolvedArgs, "board")),
+          itemId: asItemId(readRef(resolvedArgs, "item")), itemFileId: readRef(resolvedArgs, "itemFile"),
+          body: resolvedArgs["body"] as { name: string; description?: string },
+        }, { signal: ctx.signal }),
+      });
+      return ctx.respond(mutationReceipt(workflowId, resolvedArgs, result, ctx));
     }
     case "comments.thread": {
       const resolved = await resolveEntityPath(args, true, ctx);
@@ -255,16 +295,26 @@ function exactId(value: { id?: string | number | undefined } | undefined, label:
 function mutationReceipt(
   workflowId: MutationWorkflowId,
   resolved: Record<string, unknown>,
-  result: { id?: string | number | undefined },
-  createdId?: "itemGroupId" | "itemFileId",
+  result: unknown,
+  ctx: McpToolContext,
 ): Record<string, unknown> {
-  const targetIds = Object.fromEntries(
-    ["spaceId", "boardId", "itemId", "itemGroupId", "itemFileId"]
+  const receipts = ctx.attempt.snapshot().receipts;
+  const receipt = receipts[0];
+  return {
+    workflowId,
+    status: receipt?.status ?? "completed",
+    targetIds: receipt?.targetIds ?? mutationTargetIds(resolved, "spaceId", "boardId", "itemId", "itemGroupId", "itemFileId"),
+    receipts,
+    result,
+  };
+}
+
+function mutationTargetIds(resolved: Record<string, unknown>, ...keys: string[]): Record<string, string> {
+  return Object.fromEntries(
+    keys
       .filter((key) => resolved[key] !== undefined)
-      .map((key) => [key, resolved[key]]),
+      .map((key) => [key, String(resolved[key])]),
   );
-  if (createdId && result.id !== undefined) targetIds[createdId] = String(result.id);
-  return { workflowId, status: "completed", targetIds, result };
 }
 
 function readRef(args: Record<string, unknown>, name: EntityName): string | number {

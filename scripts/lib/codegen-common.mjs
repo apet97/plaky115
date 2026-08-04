@@ -37,6 +37,7 @@ export function describeOperation(operation) {
     requestRootKind: operation.request?.rootKind,
     requestRequiredProperties: Object.freeze([...(operation.request?.requiredProperties ?? [])]),
     allowEmptyObject: operation.request?.allowEmptyObject,
+    mutation: operation.mutation === true,
     isVoid: operation.success?.kind === "void",
     isArray: operation.success?.kind === "json-array",
     isPaged: operation.success?.kind === "paged-object",

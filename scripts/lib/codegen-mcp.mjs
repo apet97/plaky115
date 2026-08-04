@@ -8,7 +8,10 @@ export function buildRawToolModule(op) {
   const hasQuery = queryParameters.length > 0;
   const isVoid = descriptor.isVoid;
   const isArray = descriptor.isArray;
+  const isMutation = descriptor.mutation;
   const camelOp = op.operationId;
+  const targetParameters = pathParameters.filter((parameter) => parameter.name.endsWith("Id"));
+  const createdIdKey = descriptor.createdIdPointer !== undefined ? createdIdKeyFor(camelOp) : undefined;
   const needsInt64Id = [...pathParameters, ...queryParameters].some((parameter) => usesInt64(parameter.schema));
   const lines = [];
   lines.push(`// AUTO-GENERATED. Source: openapi/plaky115-operation-metadata.json operationId=${camelOp}`);
@@ -75,16 +78,38 @@ export function buildRawToolModule(op) {
     lines.push(`    });`);
   }
   const requestType = isArray ? "<unknown[]>" : isVoid ? "<void>" : "<Record<string, unknown>>";
-  lines.push(isVoid ? `    await request${requestType}({` : `    const result = await request${requestType}({`);
-  lines.push(`      method: "${op.method}",`);
-  lines.push(`      path: ${formatTsPath(op.path, pathParameters)},`);
-  if (hasQuery) lines.push(`      query,`);
-  if (hasJsonBody) lines.push(`      body: parsed.body,`);
-  if (hasMultipartBody) lines.push(`      body,`);
-  if (isVoid) lines.push(`      responseType: "void",`);
-  lines.push(`      operationId: "${camelOp}",`);
-  lines.push(`    }, ctx.requestOptions);`);
-  if (rawOutputSchema) lines.push(`    rawOutput.parse(result);`);
+  if (isMutation) {
+    lines.push(isVoid ? `    await ctx.attempt.mutate({` : `    const result = await ctx.attempt.mutate({`);
+    lines.push(`      operation: "${camelOp}",`);
+    const targetEntries = targetParameters.map((parameter) => `${propertyKey(parameter.name)}: String(${propertyAccess("parsed", parameter.name)})`);
+    lines.push(`      targetIds: ${targetEntries.length === 0 ? "{}" : `{ ${targetEntries.join(", ")} }`},`);
+    if (createdIdKey !== undefined) lines.push(`      createdIdKey: "${createdIdKey}",`);
+    lines.push(`      run: async () => {`);
+    lines.push(isVoid ? `        await request${requestType}({` : `        const result = await request${requestType}({`);
+    lines.push(`          method: "${op.method}",`);
+    lines.push(`          path: ${formatTsPath(op.path, pathParameters)},`);
+    if (hasQuery) lines.push(`          query,`);
+    if (hasJsonBody) lines.push(`          body: parsed.body,`);
+    if (hasMultipartBody) lines.push(`          body,`);
+    if (isVoid) lines.push(`          responseType: "void",`);
+    lines.push(`          operationId: "${camelOp}",`);
+    lines.push(`        }, ctx.requestOptions);`);
+    if (rawOutputSchema) lines.push(`        rawOutput.parse(result);`);
+    if (!isVoid) lines.push(`        return result;`);
+    lines.push(`      },`);
+    lines.push(`    });`);
+  } else {
+    lines.push(isVoid ? `    await request${requestType}({` : `    const result = await request${requestType}({`);
+    lines.push(`      method: "${op.method}",`);
+    lines.push(`      path: ${formatTsPath(op.path, pathParameters)},`);
+    if (hasQuery) lines.push(`      query,`);
+    if (hasJsonBody) lines.push(`      body: parsed.body,`);
+    if (hasMultipartBody) lines.push(`      body,`);
+    if (isVoid) lines.push(`      responseType: "void",`);
+    lines.push(`      operationId: "${camelOp}",`);
+    lines.push(`    }, ctx.requestOptions);`);
+    if (rawOutputSchema) lines.push(`    rawOutput.parse(result);`);
+  }
   if (isVoid) {
     lines.push(`    return ctx.respond({ ok: true }, { compactKind: ${JSON.stringify(op.compactKind)} });`);
   } else if (isArray) {
@@ -220,4 +245,16 @@ export function buildRawToolIndex(ops) {
   lines.push(`export const rawTools: McpToolDefinition[] = [${ops.map((o) => `${o.operationId}Tool`).join(", ")}];`);
   lines.push(``);
   return lines.join("\n");
+}
+
+function createdIdKeyFor(operationId) {
+  const keys = {
+    createItem: "itemId",
+    createItemComment: "itemCommentId",
+    createItemGroup: "itemGroupId",
+    uploadItemFile: "itemFileId",
+  };
+  const key = keys[operationId];
+  if (key === undefined) throw new Error(`${operationId}: created ID metadata has no receipt target key`);
+  return key;
 }

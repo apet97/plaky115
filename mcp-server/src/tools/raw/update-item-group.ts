@@ -29,13 +29,20 @@ export const updateItemGroupTool: McpToolDefinition = {
   outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
-    const result = await request<Record<string, unknown>>({
-      method: "PUT",
-      path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/item-groups/${encodeURIComponent(String(parsed.itemGroupId))}`,
-      body: parsed.body,
-      operationId: "updateItemGroup",
-    }, ctx.requestOptions);
-    rawOutput.parse(result);
+    const result = await ctx.attempt.mutate({
+      operation: "updateItemGroup",
+      targetIds: { spaceId: String(parsed.spaceId), boardId: String(parsed.boardId), itemGroupId: String(parsed.itemGroupId) },
+      run: async () => {
+        const result = await request<Record<string, unknown>>({
+          method: "PUT",
+          path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/item-groups/${encodeURIComponent(String(parsed.itemGroupId))}`,
+          body: parsed.body,
+          operationId: "updateItemGroup",
+        }, ctx.requestOptions);
+        rawOutput.parse(result);
+        return result;
+      },
+    });
     return ctx.respond(result, { compactKind: "itemGroup" });
   },
 };

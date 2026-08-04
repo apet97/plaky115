@@ -399,6 +399,162 @@ test("new mutation workflows return completed receipts with exact target IDs", a
   }
 });
 
+test("curated mutation errors are ambiguous, non-retryable, and retain receipts", async () => {
+  let writeCalls = 0;
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    const method = init?.method ?? "GET";
+    const path = new URL(url).pathname;
+    if (method !== "GET") {
+      writeCalls++;
+      return Response.json({ message: "mutation failed" }, { status: 500 });
+    }
+    if (path.endsWith("/spaces")) return Response.json({ data: [{ id: "1", title: "Space" }], hasMore: false });
+    if (path.endsWith("/boards")) return Response.json({ data: [{ id: "2", title: "Board" }], hasMore: false });
+    throw new Error(`unexpected mutation failure path: ${path}`);
+  };
+  const { client, server } = await connectedPair({ mode: "curated", scopes: ["read", "write"], serverURL: "https://example.test" });
+  try {
+    const response = await client.callTool({
+      name: "plaky_execute_mutation_workflow",
+      arguments: {
+        workflowId: "itemGroups.create",
+        input: { spaceId: "Space", boardId: "Board", body: { title: "New group", color: "#123456" } },
+        dryRun: false,
+      },
+    });
+    assert.equal(response.isError, true);
+    const error = response.structuredContent.error;
+    assert.equal(error.category, "api");
+    assert.equal(error.retryable, false);
+    assert.equal(error.attempted, true);
+    assert.equal(error.mayHaveCommitted, true);
+    assert.equal(error.phase, "response");
+    assert.equal(error.receipts[0].status, "ambiguous");
+    assert.equal(error.receipts[0].targetIds.spaceId, "1");
+    assert.equal(error.receipts[0].targetIds.boardId, "2");
+    assert.equal(writeCalls, 1);
+  } finally {
+    await server.close();
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("curated create without a canonical ID returns an ambiguous receipt", async () => {
+  let writeCalls = 0;
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    const method = init?.method ?? "GET";
+    const path = new URL(url).pathname;
+    if (method !== "GET") {
+      writeCalls++;
+      return Response.json({ title: "created without id" });
+    }
+    if (path.endsWith("/spaces")) return Response.json({ data: [{ id: "1", title: "Space" }], hasMore: false });
+    if (path.endsWith("/boards")) return Response.json({ data: [{ id: "2", title: "Board" }], hasMore: false });
+    throw new Error(`unexpected missing-id path: ${path}`);
+  };
+  const { client, server } = await connectedPair({ mode: "curated", scopes: ["read", "write"], serverURL: "https://example.test" });
+  try {
+    const response = await client.callTool({
+      name: "plaky_execute_mutation_workflow",
+      arguments: {
+        workflowId: "itemGroups.create",
+        input: { spaceId: "Space", boardId: "Board", body: { title: "New group", color: "#123456" } },
+        dryRun: false,
+      },
+    });
+    assert.equal(response.isError, true);
+    const error = response.structuredContent.error;
+    assert.equal(error.name, "McpMutationAttemptError");
+    assert.equal(error.retryable, false);
+    assert.equal(error.attempted, true);
+    assert.equal(error.mayHaveCommitted, true);
+    assert.equal(error.receipts[0].status, "ambiguous");
+    assert.equal(writeCalls, 1);
+  } finally {
+    await server.close();
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("every generated mutation operation makes at most one transport attempt", async () => {
+  const mutationCases = [
+    ["plaky_create_item", { spaceId: 1, boardId: 2, body: {} }],
+    ["plaky_update_item_field", { spaceId: 1, boardId: 2, itemId: 3, itemFieldKey: "Status", body: {} }],
+    ["plaky_update_item_fields", { spaceId: 1, boardId: 2, itemId: 3, body: {} }],
+    ["plaky_delete_item", { spaceId: 1, boardId: 2, itemId: 3 }],
+    ["plaky_create_item_comment", { spaceId: 1, boardId: 2, itemId: 3, body: { text: "Note" } }],
+    ["plaky_update_item_comment", { spaceId: 1, boardId: 2, itemId: 3, itemCommentId: 4, body: { text: "Note" } }],
+    ["plaky_delete_item_comment", { spaceId: 1, boardId: 2, itemId: 3, itemCommentId: 4 }],
+    ["plaky_replace_comment_reactions", { spaceId: 1, boardId: 2, itemId: 3, itemCommentId: 4, body: { reactions: [] } }],
+    ["plaky_create_item_group", { spaceId: 1, boardId: 2, body: { title: "Group", color: "#123456" } }],
+    ["plaky_update_item_group", { spaceId: 1, boardId: 2, itemGroupId: 4, body: { title: "Group", ranking: "m", color: "#123456" } }],
+    ["plaky_delete_item_group", { spaceId: 1, boardId: 2, itemGroupId: 4 }],
+    ["plaky_archive_item_group", { spaceId: 1, boardId: 2, itemGroupId: 4 }],
+    ["plaky_upload_item_file", { spaceId: 1, boardId: 2, itemId: 3, fileBase64: "aGk=", fileName: "note.txt" }],
+    ["plaky_update_item_file", { spaceId: 1, boardId: 2, itemId: 3, itemFileId: 5, body: { name: "note.txt" } }],
+    ["plaky_delete_item_file", { spaceId: 1, boardId: 2, itemId: 3, itemFileId: 5 }],
+  ];
+  const previousFetch = globalThis.fetch;
+  const { client, server } = await connectedPair({ mode: "generated", scopes: ["read", "write", "destructive"], serverURL: "https://example.test" });
+  try {
+    for (const [name, arguments_] of mutationCases) {
+      let calls = 0;
+      globalThis.fetch = async () => {
+        calls++;
+        throw new TypeError("synthetic transport failure");
+      };
+      const response = await client.callTool({ name, arguments: arguments_ });
+      assert.equal(response.isError, true, `${name} should fail in-band`);
+      const error = response.structuredContent.error;
+      assert.equal(error.retryable, false, `${name} must not be retryable after request start`);
+      assert.equal(error.attempted, true, `${name} must record an attempt`);
+      assert.equal(error.mayHaveCommitted, true, `${name} must retain ambiguity`);
+      assert.equal(error.receipts.length, 1, `${name} must retain one receipt`);
+      assert.equal(error.receipts[0].status, "ambiguous", `${name} must classify transport uncertainty`);
+      assert.equal(calls, 1, `${name} must make one transport call`);
+    }
+  } finally {
+    await server.close();
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("generated mutation response failures remain ambiguous after headers and validation", async () => {
+  const previousFetch = globalThis.fetch;
+  const { client, server } = await connectedPair({ mode: "generated", scopes: ["read", "write"], serverURL: "https://example.test" });
+  try {
+    const cases = [
+      ["HTTP failure", async () => Response.json({ message: "server failure" }, { status: 500 }), "api"],
+      ["decode failure", async () => new Response("{", { status: 200, headers: { "content-type": "application/json" } }), "decode"],
+      ["success validation failure", async () => Response.json({ title: "missing id" }, { status: 201 }), "plaky"],
+    ];
+    for (const [label, responseFactory, category] of cases) {
+      let calls = 0;
+      globalThis.fetch = async () => {
+        calls++;
+        return responseFactory();
+      };
+      const response = await client.callTool({
+        name: "plaky_create_item",
+        arguments: { spaceId: 1, boardId: 2, body: {} },
+      });
+      assert.equal(response.isError, true, label);
+      const error = response.structuredContent.error;
+      assert.equal(error.category, category, label);
+      assert.equal(error.retryable, false, label);
+      assert.equal(error.attempted, true, label);
+      assert.equal(error.mayHaveCommitted, true, label);
+      assert.equal(error.receipts[0].status, "ambiguous", label);
+      assert.equal(calls, 1, label);
+    }
+  } finally {
+    await server.close();
+    globalThis.fetch = previousFetch;
+  }
+});
+
 test("direct item and comment workflows forward the MCP cancellation signal", async () => {
   const signals = [];
   const previousFetch = globalThis.fetch;

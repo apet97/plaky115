@@ -30,13 +30,20 @@ export const updateItemFileTool: McpToolDefinition = {
   outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
-    const result = await request<Record<string, unknown>>({
-      method: "PUT",
-      path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/files/${encodeURIComponent(String(parsed.itemFileId))}`,
-      body: parsed.body,
-      operationId: "updateItemFile",
-    }, ctx.requestOptions);
-    rawOutput.parse(result);
+    const result = await ctx.attempt.mutate({
+      operation: "updateItemFile",
+      targetIds: { spaceId: String(parsed.spaceId), boardId: String(parsed.boardId), itemId: String(parsed.itemId), itemFileId: String(parsed.itemFileId) },
+      run: async () => {
+        const result = await request<Record<string, unknown>>({
+          method: "PUT",
+          path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/files/${encodeURIComponent(String(parsed.itemFileId))}`,
+          body: parsed.body,
+          operationId: "updateItemFile",
+        }, ctx.requestOptions);
+        rawOutput.parse(result);
+        return result;
+      },
+    });
     return ctx.respond(result, { compactKind: "itemFile" });
   },
 };

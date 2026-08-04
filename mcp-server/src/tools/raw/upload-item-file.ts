@@ -37,13 +37,21 @@ export const uploadItemFileTool: McpToolDefinition = {
       fileName: parsed.fileName,
       ...(parsed.contentType !== undefined ? { contentType: parsed.contentType } : {}),
     });
-    const result = await request<Record<string, unknown>>({
-      method: "POST",
-      path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/files`,
-      body,
-      operationId: "uploadItemFile",
-    }, ctx.requestOptions);
-    rawOutput.parse(result);
+    const result = await ctx.attempt.mutate({
+      operation: "uploadItemFile",
+      targetIds: { spaceId: String(parsed.spaceId), boardId: String(parsed.boardId), itemId: String(parsed.itemId) },
+      createdIdKey: "itemFileId",
+      run: async () => {
+        const result = await request<Record<string, unknown>>({
+          method: "POST",
+          path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/files`,
+          body,
+          operationId: "uploadItemFile",
+        }, ctx.requestOptions);
+        rawOutput.parse(result);
+        return result;
+      },
+    });
     return ctx.respond(result, { compactKind: "itemFile" });
   },
 };

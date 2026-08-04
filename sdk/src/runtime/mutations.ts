@@ -80,6 +80,12 @@ export function mutationErrorSummary(error: unknown): MutationErrorSummary {
 }
 
 function boundMutationText(value: string, limit = MAX_MUTATION_TEXT_LENGTH): string {
-  const safe = redact(value).replace(/[\u0000-\u001f\u007f]/g, " ");
+  const redacted = redact(value);
+  let safe = "";
+  for (let index = 0; index < redacted.length; index++) {
+    const character = redacted[index]!;
+    const code = redacted.charCodeAt(index);
+    safe += code < 0x20 || code === 0x7f ? " " : character;
+  }
   return safe.length <= limit ? safe : `${safe.slice(0, limit - 1)}…`;
 }

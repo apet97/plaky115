@@ -1,5 +1,6 @@
 import type { ZodTypeAny } from "zod/v3";
-import type { PlakyClient, PlakyRequestOptions } from "plaky115";
+import type { MutationPhase, MutationReceipt, PlakyClient, PlakyRequestOptions } from "plaky115";
+import type { McpMutationAttempt } from "./attempts.js";
 
 export type McpScope = "read" | "write" | "destructive";
 export type CompactKind = "raw" | "item" | "board" | "space" | "comment" | "itemGroup" | "itemFile" | "downloadLink";
@@ -26,6 +27,10 @@ export type McpToolError = {
   code?: string | number;
   requestId?: string;
   retryAfterMs?: number;
+  attempted?: boolean;
+  mayHaveCommitted?: boolean;
+  phase?: MutationPhase;
+  receipts?: readonly MutationReceipt[];
 };
 
 export type McpToolErrorEnvelope = {
@@ -38,6 +43,8 @@ export type McpToolContext = {
   signal: AbortSignal;
   respond(value: unknown, opts?: McpRespondOptions): McpToolResponse;
   progress(progress: number, total: number, message: string): Promise<void>;
+  /** Invocation-local mutation state; never shared or serialized directly. */
+  attempt: McpMutationAttempt;
 };
 
 export type McpToolAnnotations = {

@@ -28,13 +28,21 @@ export const createItemGroupTool: McpToolDefinition = {
   outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
-    const result = await request<Record<string, unknown>>({
-      method: "POST",
-      path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/item-groups`,
-      body: parsed.body,
-      operationId: "createItemGroup",
-    }, ctx.requestOptions);
-    rawOutput.parse(result);
+    const result = await ctx.attempt.mutate({
+      operation: "createItemGroup",
+      targetIds: { spaceId: String(parsed.spaceId), boardId: String(parsed.boardId) },
+      createdIdKey: "itemGroupId",
+      run: async () => {
+        const result = await request<Record<string, unknown>>({
+          method: "POST",
+          path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/item-groups`,
+          body: parsed.body,
+          operationId: "createItemGroup",
+        }, ctx.requestOptions);
+        rawOutput.parse(result);
+        return result;
+      },
+    });
     return ctx.respond(result, { compactKind: "itemGroup" });
   },
 };

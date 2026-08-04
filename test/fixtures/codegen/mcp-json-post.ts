@@ -25,13 +25,20 @@ export const createWidgetTool: McpToolDefinition = {
   outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
-    const result = await request<Record<string, unknown>>({
-      method: "POST",
-      path: "/v1/widgets",
-      body: parsed.body,
-      operationId: "createWidget",
-    }, ctx.requestOptions);
-    rawOutput.parse(result);
+    const result = await ctx.attempt.mutate({
+      operation: "createWidget",
+      targetIds: {},
+      run: async () => {
+        const result = await request<Record<string, unknown>>({
+          method: "POST",
+          path: "/v1/widgets",
+          body: parsed.body,
+          operationId: "createWidget",
+        }, ctx.requestOptions);
+        rawOutput.parse(result);
+        return result;
+      },
+    });
     return ctx.respond(result, { compactKind: "raw" });
   },
 };

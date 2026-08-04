@@ -10,13 +10,16 @@ import {
   PlakyConnectionError,
   PlakyDecodeError,
   PlakyError,
+  PlakyPartialMutationError,
   PlakyTimeoutError,
   redact,
 } from "plaky115";
+import type { MutationReceipt } from "plaky115";
 import { ZodError } from "zod/v3";
 import { selectTools, UsageError, type Mode } from "./modes.js";
 import { filterByScopes } from "./scopes.js";
 import { compactByKind, serializeForMcp, structuredForMcp } from "../runtime/compaction.js";
+import { createMutationAttempt, McpMutationAttemptError, type McpAttemptSnapshot } from "../runtime/attempts.js";
 import type {
   McpScope,
   McpToolContext,
@@ -63,6 +66,7 @@ export function buildServer(opts: ServerOptions): { server: McpServer; tools: Mc
     client,
     requestOptions: client.requestOptions({ signal: extra.signal }),
     signal: extra.signal,
+    attempt: createMutationAttempt(),
     respond(value, ro): McpToolResponse {
       const compacted = ro?.compactKind
         ? compactByKind(value, ro.compactKind, { includeRaw: ro.includeRaw === true })
@@ -108,7 +112,7 @@ export function buildServer(opts: ServerOptions): { server: McpServer; tools: Mc
     try {
       input = await tool.inputSchema.parseAsync(request.params.arguments ?? {});
     } catch (error) {
-      return toToolErrorResponse(error, tool.name);
+      return toToolErrorResponse(error, tool.name, undefined, tool, request.params.arguments);
     }
     return invokeTool(tool, input, createContext(extra));
   });
@@ -129,7 +133,10 @@ async function invokeTool(tool: McpToolDefinition, input: unknown, ctx: McpToolC
     }
     return response;
   } catch (error) {
-    return toToolErrorResponse(error, tool.name);
+    if (error instanceof PlakyPartialMutationError || error instanceof McpMutationAttemptError) {
+      ctx.attempt.record(error.receipts);
+    }
+    return toToolErrorResponse(error, tool.name, ctx.attempt.snapshot(), tool, input);
   }
 }
 
@@ -137,8 +144,14 @@ function isMcpResponse(value: unknown): value is McpToolResponse {
   return typeof value === "object" && value !== null && "content" in value && Array.isArray((value as McpToolResponse).content);
 }
 
-export function toToolErrorResponse(error: unknown, toolName?: string): McpToolResponse {
-  const detail = classifyToolError(error, toolName);
+export function toToolErrorResponse(
+  error: unknown,
+  toolName?: string,
+  attempt?: McpAttemptSnapshot,
+  tool?: McpToolDefinition,
+  input?: unknown,
+): McpToolResponse {
+  const detail = classifyToolError(error, toolName, attempt, tool, input);
   if (detail === undefined) throw redactedError(error);
   const payload: McpToolErrorEnvelope = { error: detail };
   const structuredContent = structuredForMcp(payload) as McpToolErrorEnvelope;
@@ -149,33 +162,49 @@ export function toToolErrorResponse(error: unknown, toolName?: string): McpToolR
   };
 }
 
-function classifyToolError(error: unknown, toolName?: string): McpToolError | undefined {
+function classifyToolError(
+  error: unknown,
+  toolName?: string,
+  attempt?: McpAttemptSnapshot,
+  tool?: McpToolDefinition,
+  input?: unknown,
+): McpToolError | undefined {
+  const state = resolveAttemptState(error, attempt, tool, input);
+  const mayHaveCommitted = state?.mayHaveCommitted === true;
+  if (error instanceof PlakyPartialMutationError || error instanceof McpMutationAttemptError) {
+    return withAttemptDetails({
+      category: "plaky",
+      name: error.name,
+      message: redact(error.message),
+      retryable: false,
+    }, state);
+  }
   if (error instanceof PlakyApiError) {
     return withApiDetails(error, {
       category: "api",
       name: error.name,
       message: redact(error.message),
-      retryable: error.status === 429 || error.status >= 500,
-    });
+      retryable: !mayHaveCommitted && (error.status === 429 || error.status >= 500),
+    }, state);
   }
-  if (error instanceof PlakyTimeoutError) return plakyDetail("timeout", error, true);
-  if (error instanceof PlakyConnectionError) return plakyDetail("connection", error, true);
+  if (error instanceof PlakyTimeoutError) return plakyDetail("timeout", error, !mayHaveCommitted, state);
+  if (error instanceof PlakyConnectionError) return plakyDetail("connection", error, !mayHaveCommitted, state);
   if (error instanceof PlakyDecodeError) {
-    return {
+    return withAttemptDetails({
       ...plakyDetail("decode", error, false),
       ...(error.status !== undefined ? { status: error.status } : {}),
       ...(error.requestId !== undefined ? { requestId: error.requestId } : {}),
-    };
+    }, state);
   }
-  if (error instanceof PlakyAbortError) return plakyDetail("abort", error, false);
-  if (error instanceof PlakyError) return plakyDetail("plaky", error, false);
+  if (error instanceof PlakyAbortError) return plakyDetail("abort", error, false, state);
+  if (error instanceof PlakyError) return plakyDetail("plaky", error, false, state);
   if (error instanceof ZodError) {
-    return {
+    return withAttemptDetails({
       category: "validation",
       name: error.name,
       message: redact(formatZodError(error)),
       retryable: false,
-    };
+    }, state);
   }
   if (error instanceof UsageError) {
     return { category: "usage", name: error.name, message: redact(error.message), retryable: false };
@@ -191,18 +220,85 @@ function classifyToolError(error: unknown, toolName?: string): McpToolError | un
   return undefined;
 }
 
-function plakyDetail(category: McpToolError["category"], error: PlakyError, retryable: boolean): McpToolError {
-  return { category, name: error.name, message: redact(error.message), retryable };
+function plakyDetail(category: McpToolError["category"], error: PlakyError, retryable: boolean, state?: McpAttemptSnapshot): McpToolError {
+  return withAttemptDetails({ category, name: error.name, message: redact(error.message), retryable }, state);
 }
 
-function withApiDetails(error: PlakyApiError, detail: McpToolError): McpToolError {
-  return {
+function withApiDetails(error: PlakyApiError, detail: McpToolError, state?: McpAttemptSnapshot): McpToolError {
+  return withAttemptDetails({
     ...detail,
     status: error.status,
     ...(error.code !== undefined ? { code: error.code } : {}),
     ...(error.requestId !== undefined ? { requestId: error.requestId } : {}),
     ...(error.retryAfterMs !== undefined ? { retryAfterMs: error.retryAfterMs } : {}),
+  }, state);
+}
+
+function withAttemptDetails(detail: McpToolError, state: McpAttemptSnapshot | undefined): McpToolError {
+  if (state === undefined) return detail;
+  return {
+    ...detail,
+    attempted: state.attempted,
+    mayHaveCommitted: state.mayHaveCommitted,
+    phase: state.phase,
+    ...(state.receipts.length > 0 ? { receipts: state.receipts } : {}),
   };
+}
+
+function resolveAttemptState(
+  error: unknown,
+  attempt: McpAttemptSnapshot | undefined,
+  tool: McpToolDefinition | undefined,
+  input: unknown,
+): McpAttemptSnapshot | undefined {
+  if (attempt !== undefined && (attempt.attempted || attempt.receipts.length > 0)) return attempt;
+  if (error instanceof PlakyPartialMutationError || error instanceof McpMutationAttemptError) {
+    return snapshotFromReceipts(error.receipts);
+  }
+  // Generated mutation tools do not use the curated helper yet. Treat a known
+  // post-call transport/API failure conservatively until their generated
+  // wrappers carry the same invocation-local state.
+  if (isMutationInvocation(tool, input) && isPostRequestFailure(error)) {
+    return { attempted: true, mayHaveCommitted: true, phase: "response", receipts: Object.freeze([]) };
+  }
+  return undefined;
+}
+
+function snapshotFromReceipts(receipts: readonly MutationReceipt[]): McpAttemptSnapshot {
+  return {
+    attempted: receipts.some((receipt) => receipt.attempted),
+    mayHaveCommitted: receipts.some((receipt) => receipt.mayHaveCommitted),
+    phase: receipts.some((receipt) => receipt.status === "ambiguous" || receipt.status === "failed")
+      ? "response"
+      : receipts.some((receipt) => receipt.status === "request-started")
+        ? "request"
+        : receipts.some((receipt) => receipt.status === "completed")
+          ? "completed"
+          : "preflight",
+    receipts,
+  };
+}
+
+function isPostRequestFailure(error: unknown): boolean {
+  return error instanceof PlakyApiError || error instanceof PlakyTimeoutError || error instanceof PlakyConnectionError
+    || error instanceof PlakyDecodeError || error instanceof PlakyAbortError;
+}
+
+function isMutationInvocation(tool: McpToolDefinition | undefined, input: unknown): boolean {
+  if (tool === undefined) return false;
+  if (tool.name === "plaky_execute_mutation_workflow") return true;
+  if (tool.name === "plaky_execute_workflow") {
+    const workflowId = input !== null && typeof input === "object" ? (input as { workflowId?: unknown }).workflowId : undefined;
+    return typeof workflowId === "string" && [
+      "items.create", "items.updateFields", "comments.add", "itemGroups.create", "itemGroups.update", "itemFiles.upload", "itemFiles.update",
+    ].includes(workflowId);
+  }
+  return [
+    "plaky_create_item", "plaky_update_item_field", "plaky_update_item_fields", "plaky_delete_item",
+    "plaky_create_item_comment", "plaky_update_item_comment", "plaky_delete_item_comment", "plaky_replace_comment_reactions",
+    "plaky_create_item_group", "plaky_update_item_group", "plaky_delete_item_group", "plaky_archive_item_group",
+    "plaky_upload_item_file", "plaky_update_item_file", "plaky_delete_item_file",
+  ].includes(tool.name);
 }
 
 function formatZodError(error: ZodError): string {

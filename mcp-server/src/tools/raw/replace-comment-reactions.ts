@@ -30,13 +30,20 @@ export const replaceCommentReactionsTool: McpToolDefinition = {
   outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
-    const result = await request<Record<string, unknown>>({
-      method: "PUT",
-      path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/comments/${encodeURIComponent(String(parsed.itemCommentId))}/reactions`,
-      body: parsed.body,
-      operationId: "replaceCommentReactions",
-    }, ctx.requestOptions);
-    rawOutput.parse(result);
+    const result = await ctx.attempt.mutate({
+      operation: "replaceCommentReactions",
+      targetIds: { spaceId: String(parsed.spaceId), boardId: String(parsed.boardId), itemId: String(parsed.itemId), itemCommentId: String(parsed.itemCommentId) },
+      run: async () => {
+        const result = await request<Record<string, unknown>>({
+          method: "PUT",
+          path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/comments/${encodeURIComponent(String(parsed.itemCommentId))}/reactions`,
+          body: parsed.body,
+          operationId: "replaceCommentReactions",
+        }, ctx.requestOptions);
+        rawOutput.parse(result);
+        return result;
+      },
+    });
     return ctx.respond(result, { compactKind: "raw" });
   },
 };
