@@ -52,7 +52,7 @@
     "generate:cli": "node scripts/generate-cli.mjs",
     "generate:docs-index": "node scripts/generate-docs-index.mjs",
     "generate:all": "node scripts/generate-all.mjs",
-    "codegen:test": "node --test scripts/test-codegen-determinism.mjs scripts/test-codegen-descriptor.mjs scripts/test-codegen-cli-v2.mjs scripts/test-codegen-mcp-v2.mjs scripts/test-postgen-determinism.mjs",
+    "codegen:test": "node --test scripts/test-codegen-determinism.mjs scripts/test-codegen-descriptor.mjs scripts/test-codegen-cli-v2.mjs scripts/test-codegen-mcp-v2.mjs scripts/test-generated-drift.mjs scripts/test-postgen-determinism.mjs",
     "parity:test": "node --test scripts/test-cross-surface-parity.mjs"
   }
 }

@@ -3,6 +3,7 @@
 
 require "json"
 require "optparse"
+require "fileutils"
 require "yaml"
 
 ROOT = File.expand_path("..", __dir__)
@@ -316,7 +317,7 @@ def validate_unique_metadata!(operations)
   end
 end
 
-def generate_metadata(source)
+def generate_metadata(source, source_label = nil)
   spec = load_yaml(source)
   operations = []
   examples = {}
@@ -375,7 +376,7 @@ def generate_metadata(source)
 
   {
     "generatedAt" => "deterministic",
-    "source" => source == SOURCE ? "openapi/plaky115-dx.openapi.yaml" : source,
+    "source" => source_label || (source == SOURCE ? "openapi/plaky115-dx.openapi.yaml" : source),
     "operations" => operations,
     "paths" => operations.map { |operation| operation.slice("method", "path", "operationId") },
     "scopes" => operations.each_with_object({}) { |operation, out| out[operation.fetch("operationId")] = operation.fetch("scopes") },
@@ -387,10 +388,11 @@ def generate_metadata(source)
 end
 
 def parse_options(argv)
-  options = { source: SOURCE, out: OUT }
+  options = { source: SOURCE, out: OUT, source_label: nil }
   OptionParser.new do |parser|
     parser.on("--source PATH") { |path| options[:source] = path }
     parser.on("--out PATH") { |path| options[:out] = path }
+    parser.on("--source-label LABEL") { |label| options[:source_label] = label }
   end.parse!(argv)
   options
 end
@@ -398,8 +400,9 @@ end
 if $PROGRAM_NAME == __FILE__
   begin
     options = parse_options(ARGV)
-    payload = generate_metadata(options.fetch(:source))
+    payload = generate_metadata(options.fetch(:source), options[:source_label])
     formatted = JSON.pretty_generate(payload).gsub(/\[\s*\]/, "[]")
+    FileUtils.mkdir_p(File.dirname(options.fetch(:out)))
     File.write(options.fetch(:out), "#{formatted}\n")
   rescue StandardError => e
     warn "generate-operation-metadata: #{e.message}"

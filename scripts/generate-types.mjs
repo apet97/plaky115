@@ -3,10 +3,12 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseGenerationOptions } from "./lib/generation-options.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
-const input = join(root, "openapi/plaky115-dx.openapi.yaml");
-const output = join(root, "sdk/src/generated/types.ts");
+const options = parseGenerationOptions(process.argv.slice(2), root);
+const input = join(options.outputRoot, "openapi/plaky115-dx.openapi.yaml");
+const output = join(options.outputRoot, "sdk/src/generated/types.ts");
 
 mkdirSync(dirname(output), { recursive: true });
 

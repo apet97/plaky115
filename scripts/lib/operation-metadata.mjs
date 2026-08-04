@@ -40,8 +40,7 @@ const PARAMETER_TYPES = ["string", "integer", "number", "boolean", "array"];
 const PART_TYPES = ["string", "integer", "number", "boolean"];
 
 export function loadOperationMetadata(root, relativePath = "openapi/plaky115-operation-metadata.json") {
-  const configuredPath = process.env.PLAKY115_METADATA_PATH || relativePath;
-  const path = isAbsolute(configuredPath) ? configuredPath : join(root, configuredPath);
+  const path = isAbsolute(relativePath) ? relativePath : join(root, relativePath);
   return validateOperationMetadata(JSON.parse(readFileSync(path, "utf8")));
 }
 

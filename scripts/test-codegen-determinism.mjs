@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
+  copyFileSync,
   existsSync,
   mkdtempSync,
   mkdirSync,
@@ -34,11 +35,10 @@ function snapshotDirectory(directory) {
     .join("\n---\n");
 }
 
-function run(command, args, options = {}) {
+function run(command, args) {
   const result = spawnSync(command, args, {
     cwd: root,
     encoding: "utf8",
-    env: { ...process.env, ...options.env },
   });
   if (result.status !== 0) {
     throw new Error(`${command} ${args.join(" ")} failed: ${result.stderr ?? ""}`);
@@ -55,31 +55,33 @@ test("generate-types is deterministic", () => {
 
 test("generate-mcp deletes only marked stale files and is deterministic", () => {
   withGeneratedRoot((generatedRoot) => {
+    seedMetadata(generatedRoot);
     const rawDir = join(generatedRoot, "mcp-server/src/tools/raw");
     mkdirSync(rawDir, { recursive: true });
     writeFileSync(join(rawDir, "stale.ts"), `${generatedHeader} operationId=stale\n`);
     writeFileSync(join(rawDir, "handwritten.ts"), "export const handwritten = true;\n");
 
-    run("node", ["scripts/generate-mcp.mjs"], { env: { PLAKY115_GENERATED_ROOT: generatedRoot } });
+    run("node", ["scripts/generate-mcp.mjs", "--source-root", root, "--output-root", generatedRoot]);
     assert.equal(existsSync(join(rawDir, "stale.ts")), false);
     assert.equal(readFileSync(join(rawDir, "handwritten.ts"), "utf8"), "export const handwritten = true;\n");
     const generatedFiles = readdirSync(rawDir).filter((file) => file.endsWith(".ts") && file !== "handwritten.ts");
     assert.deepEqual(generatedFiles.sort(), [...operationSlugs.map((value) => `${value}.ts`), "index.ts"].sort());
 
     const first = snapshotDirectory(rawDir);
-    run("node", ["scripts/generate-mcp.mjs"], { env: { PLAKY115_GENERATED_ROOT: generatedRoot } });
+    run("node", ["scripts/generate-mcp.mjs", "--source-root", root, "--output-root", generatedRoot]);
     assert.equal(snapshotDirectory(rawDir), first);
   });
 });
 
 test("generate-cli deletes only marked stale files, owns runners, and is deterministic", () => {
   withGeneratedRoot((generatedRoot) => {
+    seedMetadata(generatedRoot);
     const rawDir = join(generatedRoot, "cli/internal/cli/raw");
     mkdirSync(rawDir, { recursive: true });
     writeFileSync(join(rawDir, "stale.go"), `${generatedHeader} operationId=stale\npackage raw\n`);
     writeFileSync(join(rawDir, "handwritten.go"), "package raw\n\nconst handwritten = true\n");
 
-    run("node", ["scripts/generate-cli.mjs"], { env: { PLAKY115_GENERATED_ROOT: generatedRoot } });
+    run("node", ["scripts/generate-cli.mjs", "--source-root", root, "--output-root", generatedRoot]);
     assert.equal(existsSync(join(rawDir, "stale.go")), false);
     assert.equal(readFileSync(join(rawDir, "handwritten.go"), "utf8"), "package raw\n\nconst handwritten = true\n");
     const generatedFiles = readdirSync(rawDir).filter((file) => file.endsWith(".go") && file !== "handwritten.go");
@@ -88,7 +90,7 @@ test("generate-cli deletes only marked stale files, owns runners, and is determi
     assert.equal(existsSync(join(generatedRoot, "cli/internal/plakydx/runners_generated.go")), true);
 
     const first = snapshotDirectory(join(generatedRoot, "cli"));
-    run("node", ["scripts/generate-cli.mjs"], { env: { PLAKY115_GENERATED_ROOT: generatedRoot } });
+    run("node", ["scripts/generate-cli.mjs", "--source-root", root, "--output-root", generatedRoot]);
     assert.equal(snapshotDirectory(join(generatedRoot, "cli")), first);
   });
 });
@@ -117,6 +119,15 @@ function withGeneratedRoot(callback) {
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+}
+
+function seedMetadata(generatedRoot) {
+  const metadataDirectory = join(generatedRoot, "openapi");
+  mkdirSync(metadataDirectory, { recursive: true });
+  copyFileSync(
+    join(root, "openapi/plaky115-operation-metadata.json"),
+    join(metadataDirectory, "plaky115-operation-metadata.json"),
+  );
 }
 
 function slug(operationId) {

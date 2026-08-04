@@ -3,11 +3,13 @@
 // metadata is sourced from the package.json files directly; this script
 // just enforces a few invariants (description, license, repository,
 // exports) so they stay consistent across releases.
-import { readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseGenerationOptions } from "./lib/generation-options.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
+const options = parseGenerationOptions(process.argv.slice(2), root);
 const publicRuntimeModules = [
   "errors",
   "http",
@@ -30,15 +32,18 @@ function runtimeExport(name) {
   };
 }
 
-function syncPackageMetadata(file, mutate) {
+function syncPackageMetadata(file, mutate, outputFile = file) {
   const before = readFileSync(file, "utf8");
   const pkg = JSON.parse(before);
   mutate(pkg);
   const after = `${JSON.stringify(pkg, null, 2)}\n`;
-  if (before !== after) writeFileSync(file, after);
+  if (outputFile !== file || before !== after) {
+    mkdirSync(dirname(outputFile), { recursive: true });
+    writeFileSync(outputFile, after);
+  }
 }
 
-syncPackageMetadata(join(root, "sdk/package.json"), (pkg) => {
+syncPackageMetadata(join(options.sourceRoot, "sdk/package.json"), (pkg) => {
   pkg.description = "Hand-crafted TypeScript SDK for the Plaky public API. Unofficial.";
   pkg.license = "MIT";
   pkg.repository = pkg.repository ?? { type: "git", url: "https://github.com/apet97/plaky115" };
@@ -52,9 +57,9 @@ syncPackageMetadata(join(root, "sdk/package.json"), (pkg) => {
     ...Object.fromEntries(publicRuntimeModules.map((name) => [`./runtime/${name}.js`, runtimeExport(name)])),
     "./package.json": "./package.json",
   };
-});
+}, join(options.outputRoot, "sdk/package.json"));
 
-syncPackageMetadata(join(root, "mcp-server/package.json"), (pkg) => {
+syncPackageMetadata(join(options.sourceRoot, "mcp-server/package.json"), (pkg) => {
   pkg.description = "Hand-crafted MCP server for the Plaky public API. Unofficial.";
   pkg.license = "MIT";
   pkg.repository = pkg.repository ?? { type: "git", url: "https://github.com/apet97/plaky115" };
@@ -66,6 +71,6 @@ syncPackageMetadata(join(root, "mcp-server/package.json"), (pkg) => {
     },
     "./package.json": "./package.json",
   };
-});
+}, join(options.outputRoot, "mcp-server/package.json"));
 
 console.log("postgen-dx: package metadata synced");

@@ -4,6 +4,7 @@
 require "optparse"
 require "psych"
 require "json"
+require "fileutils"
 require "yaml"
 
 HTTP_METHODS = %w[get post put patch delete head options trace].freeze
@@ -169,7 +170,10 @@ begin
   spec = load_yaml(options.fetch(:source))
   overlay = load_yaml(options.fetch(:overlay))
   apply_overlay!(spec, overlay)
-  File.write(options.fetch(:out), deterministic_yaml(spec)) if options[:out]
+  if options[:out]
+    FileUtils.mkdir_p(File.dirname(options.fetch(:out)))
+    File.write(options.fetch(:out), deterministic_yaml(spec))
+  end
   puts "overlay-apply: OK"
 rescue KeyError, Psych::Exception, ArgumentError => e
   warn "apply-overlay: #{e.message}"

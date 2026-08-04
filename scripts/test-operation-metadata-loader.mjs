@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { test } from "node:test";
 
@@ -12,6 +13,8 @@ import {
   SUCCESS_KINDS,
   validateOperationMetadata,
 } from "./lib/operation-metadata.mjs";
+
+const root = fileURLToPath(new URL("..", import.meta.url));
 
 test("valid metadata loads without mutation or operation reordering", () => {
   const input = metadata([operation("second"), operation("first")]);
@@ -75,18 +78,42 @@ test("invalid parameter schemas fail with operation and property path", () => {
 test("all JavaScript generator entry points use the same validator", async () => {
   const directory = await mkdtemp(join(tmpdir(), "plaky115-loader-test-"));
   const invalidPath = join(directory, "invalid.json");
+  const outputRoot = join(directory, "output");
+  await mkdir(join(outputRoot, "openapi"), { recursive: true });
   const invalid = metadata([operation("fixture")]);
   invalid.operations[0].request.kind = "invalid";
   await writeFile(invalidPath, JSON.stringify(invalid));
+  await copyFile(invalidPath, join(outputRoot, "openapi/plaky115-operation-metadata.json"));
   for (const script of ["generate-mcp.mjs", "generate-cli.mjs", "generate-docs-index.mjs"]) {
-    const result = spawnSync(process.execPath, [`scripts/${script}`], {
-      cwd: new URL("..", import.meta.url),
-      env: { ...process.env, PLAKY115_METADATA_PATH: invalidPath },
+    const result = spawnSync(process.execPath, [`scripts/${script}`, "--source-root", root, "--output-root", outputRoot], {
+      cwd: root,
+      env: { ...process.env, PLAKY115_METADATA_PATH: join(directory, "ignored.json") },
       encoding: "utf8",
     });
     assert.notEqual(result.status, 0, script);
     assert.match(result.stderr, /operation fixture at request\.kind: unsupported value invalid/, script);
   }
+  await rm(directory, { recursive: true, force: true });
+});
+
+test("canonical generators ignore hidden metadata path overrides", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "plaky115-loader-source-test-"));
+  const outputRoot = join(directory, "output");
+  await mkdir(join(outputRoot, "openapi"), { recursive: true });
+  await copyFile(
+    join(root, "openapi/plaky115-operation-metadata.json"),
+    join(outputRoot, "openapi/plaky115-operation-metadata.json"),
+  );
+  const result = spawnSync(process.execPath, [
+    "scripts/generate-mcp.mjs",
+    "--source-root", root,
+    "--output-root", outputRoot,
+  ], {
+    cwd: root,
+    env: { ...process.env, PLAKY115_METADATA_PATH: join(directory, "missing.json") },
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 0, result.stderr);
   await rm(directory, { recursive: true, force: true });
 });
 
