@@ -1,16 +1,25 @@
 import { z } from "zod/v3";
 import { int64Id } from "../../runtime/ids.js";
+import { workflowDefinition, workflowRegistry, type WorkflowId as RegistryWorkflowId } from "./workflow-registry.js";
 
-export const READ_WORKFLOW_IDS = ["workspace.map", "items.search", "comments.thread", "export.items"] as const;
-export const MUTATION_WORKFLOW_IDS = [
-  "items.create", "items.updateFields", "comments.add",
-  "itemGroups.create", "itemGroups.update", "itemFiles.upload", "itemFiles.update",
-] as const;
-export const WORKFLOW_IDS = [...READ_WORKFLOW_IDS, ...MUTATION_WORKFLOW_IDS] as const;
+function nonEmptyWorkflowIds(ids: readonly RegistryWorkflowId[]): [RegistryWorkflowId, ...RegistryWorkflowId[]] {
+  if (ids.length === 0) throw new Error("curated workflow registry must not be empty");
+  return ids as [RegistryWorkflowId, ...RegistryWorkflowId[]];
+}
 
-export type ReadWorkflowId = (typeof READ_WORKFLOW_IDS)[number];
-export type MutationWorkflowId = (typeof MUTATION_WORKFLOW_IDS)[number];
-export type WorkflowId = (typeof WORKFLOW_IDS)[number];
+export const READ_WORKFLOW_IDS = nonEmptyWorkflowIds(workflowRegistry.filter((workflow) => !workflow.mutation).map((workflow) => workflow.id));
+export const MUTATION_WORKFLOW_IDS = nonEmptyWorkflowIds(workflowRegistry.filter((workflow) => workflow.mutation).map((workflow) => workflow.id));
+export const WORKFLOW_IDS = nonEmptyWorkflowIds(workflowRegistry.map((workflow) => workflow.id));
+
+type ReadWorkflowDefinition = Extract<(typeof workflowRegistry)[number], { mutation: false }>;
+type MutationWorkflowDefinition = Extract<(typeof workflowRegistry)[number], { mutation: true }>;
+export type ReadWorkflowId = ReadWorkflowDefinition["id"];
+export type MutationWorkflowId = MutationWorkflowDefinition["id"];
+export type WorkflowId = RegistryWorkflowId;
+
+function workflowLiteral<const T extends RegistryWorkflowId>(id: T) {
+  return z.literal(id).describe(workflowDefinition(id).description);
+}
 
 const titleRef = z.string().min(1).refine((value) => !/^\d+$/.test(value), "numeric identifiers must be canonical signed int64 values");
 const selectorObject = z.object({
@@ -111,40 +120,40 @@ const itemFileUpdateInputSchema = entityInput(["space", "board", "item", "itemFi
 });
 
 const workspaceMapVariant = z.object({
-  workflowId: z.literal("workspace.map").describe("Map the workspace."),
+  workflowId: workflowLiteral("workspace.map"),
   input: workspaceMapInputSchema.describe("No workflow-specific fields.").optional(),
 }).strict();
 const itemSearchVariant = z.object({
-  workflowId: z.literal("items.search").describe("Search items."),
+  workflowId: workflowLiteral("items.search"),
   input: itemSearchInputSchema.describe("Exact item-search input."),
 }).strict();
 const commentThreadVariant = z.object({
-  workflowId: z.literal("comments.thread").describe("Read an item comment thread."),
+  workflowId: workflowLiteral("comments.thread"),
   input: commentThreadInputSchema.describe("Exact comment-thread input."),
 }).strict();
 const exportItemsVariant = z.object({
-  workflowId: z.literal("export.items").describe("Export board items."),
+  workflowId: workflowLiteral("export.items"),
   input: exportItemsInputSchema.describe("Exact export input."),
 }).strict();
 const itemCreateVariant = z.object({
-  workflowId: z.literal("items.create").describe("Create an item."),
+  workflowId: workflowLiteral("items.create"),
   input: itemCreateInputSchema.describe("Exact item-create input."),
   dryRun: z.boolean().describe("Preview unless explicitly false.").optional(),
 }).strict();
 const itemUpdateFieldsVariant = z.object({
-  workflowId: z.literal("items.updateFields").describe("Update fields on multiple items."),
+  workflowId: workflowLiteral("items.updateFields"),
   input: itemUpdateFieldsInputSchema.describe("Exact bulk-update input."),
   dryRun: z.boolean().describe("Preview unless explicitly false.").optional(),
 }).strict();
 const commentAddVariant = z.object({
-  workflowId: z.literal("comments.add").describe("Add an item comment."),
+  workflowId: workflowLiteral("comments.add"),
   input: commentAddInputSchema.describe("Exact comment-add input."),
   dryRun: z.boolean().describe("Preview unless explicitly false.").optional(),
 }).strict();
-const itemGroupCreateVariant = z.object({ workflowId: z.literal("itemGroups.create"), input: itemGroupCreateInputSchema, dryRun: z.boolean().optional() }).strict();
-const itemGroupUpdateVariant = z.object({ workflowId: z.literal("itemGroups.update"), input: itemGroupUpdateInputSchema, dryRun: z.boolean().optional() }).strict();
-const itemFileUploadVariant = z.object({ workflowId: z.literal("itemFiles.upload"), input: itemFileUploadInputSchema, dryRun: z.boolean().optional() }).strict();
-const itemFileUpdateVariant = z.object({ workflowId: z.literal("itemFiles.update"), input: itemFileUpdateInputSchema, dryRun: z.boolean().optional() }).strict();
+const itemGroupCreateVariant = z.object({ workflowId: workflowLiteral("itemGroups.create"), input: itemGroupCreateInputSchema, dryRun: z.boolean().optional() }).strict();
+const itemGroupUpdateVariant = z.object({ workflowId: workflowLiteral("itemGroups.update"), input: itemGroupUpdateInputSchema, dryRun: z.boolean().optional() }).strict();
+const itemFileUploadVariant = z.object({ workflowId: workflowLiteral("itemFiles.upload"), input: itemFileUploadInputSchema, dryRun: z.boolean().optional() }).strict();
+const itemFileUpdateVariant = z.object({ workflowId: workflowLiteral("itemFiles.update"), input: itemFileUpdateInputSchema, dryRun: z.boolean().optional() }).strict();
 
 const itemCreatePlanVariant = itemCreateVariant.omit({ dryRun: true });
 const itemUpdateFieldsPlanVariant = itemUpdateFieldsVariant.omit({ dryRun: true });

@@ -11,7 +11,7 @@ export const workspaceContextTool: McpToolDefinition = {
     readOnlyHint: true,
     destructiveHint: false,
     idempotentHint: true,
-    openWorldHint: false,
+    openWorldHint: true,
   },
   inputSchema: z.object({
     includeRaw: z.boolean().describe("Include raw payloads when they fit the independent raw-response bound.").optional(),

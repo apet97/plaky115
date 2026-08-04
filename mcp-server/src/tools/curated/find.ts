@@ -11,7 +11,7 @@ export const findTool: McpToolDefinition = {
     readOnlyHint: true,
     destructiveHint: false,
     idempotentHint: true,
-    openWorldHint: false,
+    openWorldHint: true,
   },
   inputSchema: z.object({
     type: z.enum(["space", "board", "item"]).describe("Record type to search."),

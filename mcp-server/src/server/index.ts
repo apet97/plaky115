@@ -55,7 +55,7 @@ export function buildServer(opts: ServerOptions): { server: McpServer; tools: Mc
   resolveMaxUploadBytes();
   const client = new PlakyClient({
     apiKey: opts.apiKey,
-    ...(opts.serverURL ? { serverURL: opts.serverURL } : {}),
+    ...(opts.serverURL === undefined ? {} : { serverURL: opts.serverURL }),
   });
   const tools = filterByScopes(selectTools(opts.mode), new Set(opts.scopes));
   const server = new McpServer(

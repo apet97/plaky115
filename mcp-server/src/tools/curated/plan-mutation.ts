@@ -13,7 +13,7 @@ export const planMutationTool: McpToolDefinition = {
     readOnlyHint: true,
     destructiveHint: false,
     idempotentHint: true,
-    openWorldHint: false,
+    openWorldHint: true,
   },
   inputSchema: mutationPlanInputSchema,
   outputSchema: z.object({

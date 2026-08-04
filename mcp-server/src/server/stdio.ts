@@ -4,6 +4,7 @@ import { buildServer } from "./index.js";
 import { parseMode, UsageError } from "./modes.js";
 import { formatStartupError } from "./presentation.js";
 import { parseScopes } from "./scopes.js";
+import { resolveServerURL } from "./config.js";
 
 async function main(): Promise<void> {
   let values: ReturnType<typeof parseArgs>["values"];
@@ -24,7 +25,10 @@ async function main(): Promise<void> {
 
   const mode = parseMode(values["mode"] as string | undefined);
   const scopes = parseScopes(values["scope"] as string[]);
-  const serverURL = values["server-url"] as string | undefined;
+  const serverURL = resolveServerURL(
+    values["server-url"] as string | undefined,
+    process.env,
+  );
 
   if (values["help"] === true) {
     process.stdout.write(helpText());
@@ -41,7 +45,7 @@ async function main(): Promise<void> {
     apiKey,
     mode,
     scopes,
-    ...(serverURL ? { serverURL } : {}),
+    ...(serverURL === undefined ? {} : { serverURL }),
   });
 
   await server.connect(new StdioServerTransport());
@@ -57,6 +61,9 @@ function helpText(): string {
     "Environment:",
     "  PLAKY115_API_KEY        Plaky API key (preferred)",
     "  PLAKY115_API_KEY_AUTH   Legacy fallback",
+    "  PLAKY115_BASE_URL       API origin when --server-url is omitted",
+    "",
+    "Server URL precedence: --server-url > PLAKY115_BASE_URL > SDK default",
     "",
     "Modes:",
     "  curated    Curated workflow tools only",

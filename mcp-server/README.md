@@ -18,8 +18,10 @@ npx --yes plaky115-mcp
 Requires Node.js `>=22.12`.
 
 Real Plaky workspaces are account-prefixed. If the default `https://api.plaky.com`
-host does not route for your workspace, set `PLAKY115_BASE_URL` (or pass
-`--server-url`) to `https://<account>.api.plaky.com`.
+host does not route for your workspace, set `PLAKY115_BASE_URL` or pass
+`--server-url` to `https://<account>.api.plaky.com`. The precedence is
+`--server-url` > `PLAKY115_BASE_URL` > the SDK default. An invalid explicit
+origin fails closed; it never falls back to the generic host.
 
 Use `--mode curated`, `--mode generated`, or `--mode all` to choose the tool
 surface. Use repeated `--scope read`, `--scope write`, or `--scope destructive`
@@ -58,13 +60,19 @@ prevents later writes from being scheduled; completed writes are never retried.
 Without a progress token, no notification is sent.
 
 Curated responses are compact by default. Pass `includeRaw: true` when a client
-needs the original Plaky API payload.
+needs the original Plaky API payload; raw inclusion has its own byte bound and
+is omitted when it would exceed that bound. Workspace context returns bounded
+`data`, `complete`, and `truncated` fields plus the deprecated `value` alias.
+Export responses contain one bounded chunk and expose a continuation cursor when
+more items remain.
 
-Tool results include both redacted JSON text in `content[0].text` and the same
-machine-readable object in `structuredContent`. Known Plaky API failures are
-returned as tool errors with `isError: true` and structured error details, so
-clients can recover from 404s, rate limits, and validation errors without
-treating them as MCP protocol failures.
+Ordinary tool results include redacted JSON text in `content[0].text` and the
+same machine-readable object in `structuredContent`. Bounded export results use
+a short summary in `content[0].text`; the bounded chunk is available in
+`structuredContent`. Known Plaky API failures are returned as tool errors with
+`isError: true` and structured error details, so clients can recover from 404s,
+rate limits, and validation errors without treating them as MCP protocol
+failures.
 
 ## Raw Tools
 

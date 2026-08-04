@@ -7,6 +7,11 @@ export type PlakyDocsEntry = {
   title: string;
   text: string;
   operationId?: string;
+  workflowId?: string;
+  mutation?: boolean;
+  destructive?: boolean;
+  openWorld?: boolean;
+  schemaKey?: string;
   scopes: Array<"read" | "write" | "destructive">;
 };
 
@@ -338,65 +343,163 @@ export const docsIndex: PlakyDocsEntry[] = [
   },
   {
     "id": "wf:workspace.map",
-    "title": "Workspace map",
-    "text": "Discover spaces and boards before calling item workflows. Returns compact tree by default.",
     "kind": "workflow",
+    "title": "Map Plaky workspace",
+    "text": "Discover spaces and boards before calling item workflows.\nReturns a bounded compact workspace tree with space and board identifiers, titles, and counts.",
+    "workflowId": "workspace.map",
+    "mutation": false,
+    "destructive": false,
+    "openWorld": true,
+    "schemaKey": "workspaceMap",
     "scopes": [
       "read"
     ]
   },
   {
     "id": "wf:items.search",
-    "title": "Search items",
-    "text": "Find items across boards by title fragment, status, person, or tag.",
     "kind": "workflow",
-    "scopes": [
-      "read"
-    ]
-  },
-  {
-    "id": "wf:items.create",
-    "title": "Create item",
-    "text": "Create an item with title and optional field values. Supports dry-run.",
-    "kind": "workflow",
-    "scopes": [
-      "read"
-    ]
-  },
-  {
-    "id": "wf:items.updateFields",
-    "title": "Bulk update item fields",
-    "text": "Update many field values on one item in one call. Dry-run by default.",
-    "kind": "workflow",
-    "scopes": [
-      "read"
-    ]
-  },
-  {
-    "id": "wf:comments.add",
-    "title": "Add comment",
-    "text": "Append a comment to an item.",
-    "kind": "workflow",
+    "title": "Search Plaky items",
+    "text": "Search item titles and field values with exact continuation metadata.\nScans a bounded item window and reports matches, completeness, and a resumable page/index cursor.",
+    "workflowId": "items.search",
+    "mutation": false,
+    "destructive": false,
+    "openWorld": true,
+    "schemaKey": "itemsSearch",
     "scopes": [
       "read"
     ]
   },
   {
     "id": "wf:comments.thread",
-    "title": "Comment thread",
-    "text": "Read a comment thread compactly.",
     "kind": "workflow",
+    "title": "Read an item comment thread",
+    "text": "Read a bounded comment thread for one item.\nReturns compact comment records for the selected item.",
+    "workflowId": "comments.thread",
+    "mutation": false,
+    "destructive": false,
+    "openWorld": true,
+    "schemaKey": "commentsThread",
     "scopes": [
       "read"
     ]
   },
   {
     "id": "wf:export.items",
-    "title": "Export items",
-    "text": "Export board items as JSONL or CSV.",
     "kind": "workflow",
+    "title": "Export Plaky items",
+    "text": "Return one bounded JSONL or CSV item export chunk.\nExports one bounded chunk with UTF-8 byte counts and an exact continuation cursor when more items remain.",
+    "workflowId": "export.items",
+    "mutation": false,
+    "destructive": false,
+    "openWorld": true,
+    "schemaKey": "exportItems",
     "scopes": [
       "read"
+    ]
+  },
+  {
+    "id": "wf:items.create",
+    "kind": "workflow",
+    "title": "Create a Plaky item",
+    "text": "Create an item after exact target and body validation; dry-run is the default.\nCreates one item or returns a validated dry-run plan without writing.",
+    "workflowId": "items.create",
+    "mutation": true,
+    "destructive": false,
+    "openWorld": true,
+    "schemaKey": "itemsCreate",
+    "scopes": [
+      "read",
+      "write"
+    ]
+  },
+  {
+    "id": "wf:items.updateFields",
+    "kind": "workflow",
+    "title": "Update Plaky item fields",
+    "text": "Update field values on one or more items with durable per-item receipts.\nUpdates item fields at most once per item and retains completed receipts on partial failure.",
+    "workflowId": "items.updateFields",
+    "mutation": true,
+    "destructive": false,
+    "openWorld": true,
+    "schemaKey": "itemsUpdateFields",
+    "scopes": [
+      "read",
+      "write"
+    ]
+  },
+  {
+    "id": "wf:comments.add",
+    "kind": "workflow",
+    "title": "Add a Plaky comment",
+    "text": "Append one comment after exact target and body validation; dry-run is the default.\nAdds one comment or returns a validated dry-run plan without writing.",
+    "workflowId": "comments.add",
+    "mutation": true,
+    "destructive": false,
+    "openWorld": true,
+    "schemaKey": "commentsAdd",
+    "scopes": [
+      "read",
+      "write"
+    ]
+  },
+  {
+    "id": "wf:itemGroups.create",
+    "kind": "workflow",
+    "title": "Create a Plaky item group",
+    "text": "Create an item group with required title and color; dry-run is the default.\nCreates one item group with local required-field validation.",
+    "workflowId": "itemGroups.create",
+    "mutation": true,
+    "destructive": false,
+    "openWorld": true,
+    "schemaKey": "itemGroupsCreate",
+    "scopes": [
+      "read",
+      "write"
+    ]
+  },
+  {
+    "id": "wf:itemGroups.update",
+    "kind": "workflow",
+    "title": "Update a Plaky item group",
+    "text": "Update an item group with required title, ranking, and color; dry-run is the default.\nUpdates one item group only after all required fields are validated locally.",
+    "workflowId": "itemGroups.update",
+    "mutation": true,
+    "destructive": false,
+    "openWorld": true,
+    "schemaKey": "itemGroupsUpdate",
+    "scopes": [
+      "read",
+      "write"
+    ]
+  },
+  {
+    "id": "wf:itemFiles.upload",
+    "kind": "workflow",
+    "title": "Upload a Plaky item file",
+    "text": "Upload one canonical base64 file after bounded metadata and content validation; dry-run is the default.\nUploads one in-memory file; local paths are never accepted by the MCP surface.",
+    "workflowId": "itemFiles.upload",
+    "mutation": true,
+    "destructive": false,
+    "openWorld": true,
+    "schemaKey": "itemFilesUpload",
+    "scopes": [
+      "read",
+      "write"
+    ]
+  },
+  {
+    "id": "wf:itemFiles.update",
+    "kind": "workflow",
+    "title": "Update a Plaky item file",
+    "text": "Update one item-file name or description after exact target validation; dry-run is the default.\nUpdates one item-file record or returns a validated dry-run plan without writing.",
+    "workflowId": "itemFiles.update",
+    "mutation": true,
+    "destructive": false,
+    "openWorld": true,
+    "schemaKey": "itemFilesUpdate",
+    "scopes": [
+      "read",
+      "write"
     ]
   },
   {

@@ -11,7 +11,7 @@ export const executeReadWorkflowTool: McpToolDefinition = {
     readOnlyHint: true,
     destructiveHint: false,
     idempotentHint: true,
-    openWorldHint: false,
+    openWorldHint: true,
   },
   inputSchema: readWorkflowInputSchema,
   outputSchema: z.object({}).passthrough(),
