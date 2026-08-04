@@ -78,8 +78,9 @@ change it, regenerate, and review the complete drift.
 - Item-file listing stays a bare array in SDK/CLI and a documented `data`
   envelope at the MCP boundary.
 - MCP defaults are `--mode curated --scope read`; invalid flags fail closed.
-- MCP uploads take `fileBase64`/filename/media type, with a 10 MiB default and
-  25 MiB hard limit. They never accept arbitrary filesystem paths.
+- MCP uploads take `fileBase64`/filename/media type, with a 25 MiB default and
+  25 MiB hard limit. They reject path traversal/separators and never accept
+  arbitrary filesystem paths.
 - `searchItemsDetailed` exposes scan/truncation metadata; deprecated
   `searchItems` remains the array-returning compatibility wrapper.
 - SDK and Go CSV exports are deterministic and spreadsheet-safe by default.

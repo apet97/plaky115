@@ -1,6 +1,6 @@
 const MEBIBYTE = 1024 * 1024;
-const DEFAULT_MAX_UPLOAD_BYTES = 10 * MEBIBYTE;
 export const MAX_UPLOAD_BYTES_HARD_CEILING = 25 * MEBIBYTE;
+const DEFAULT_MAX_UPLOAD_BYTES = MAX_UPLOAD_BYTES_HARD_CEILING;
 
 const CANONICAL_BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 const SAFE_CONTENT_TYPE = /^[A-Za-z0-9!#$&^_.+-]+\/[A-Za-z0-9!#$&^_.+-]+$/;
@@ -74,6 +74,7 @@ export function buildFileUploadFormData(
 
 function isSafeFileName(value: unknown): value is string {
   if (typeof value !== "string" || value.length === 0) return false;
+  if (value.includes("..") || value.includes("/") || value.includes("\\")) return false;
   for (const character of value) {
     const codePoint = character.codePointAt(0);
     if (codePoint === undefined || codePoint < 0x20 || codePoint === 0x7f) return false;

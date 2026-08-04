@@ -23,7 +23,7 @@ test("invalid alphabet, whitespace, length, and padding are rejected", () => {
 });
 
 test("configured upload limit is a positive integer with a 25 MiB hard ceiling", () => {
-  assert.equal(resolveMaxUploadBytes(undefined), 10 * 1024 * 1024);
+  assert.equal(resolveMaxUploadBytes(undefined), 25 * 1024 * 1024);
   assert.equal(resolveMaxUploadBytes("1024"), 1024);
   for (const value of ["0", "-1", "1.5", "nope", `${MAX_UPLOAD_BYTES_HARD_CEILING + 1}`]) {
     assert.throws(() => resolveMaxUploadBytes(value), /PLAKY115_MCP_MAX_UPLOAD_BYTES/);
@@ -69,6 +69,13 @@ test("filename and content type are validated", () => {
     () => buildFileUploadFormData({ fileBase64: "", fileName: "bad\tname", contentType: "text/plain" }),
     /fileName/,
   );
+  for (const fileName of ["../escape.txt", "nested/file.txt", "nested\\file.txt", "double..dot.txt"]) {
+    assert.throws(
+      () => buildFileUploadFormData({ fileBase64: "", fileName, contentType: "text/plain" }),
+      /fileName/,
+      fileName,
+    );
+  }
   assert.throws(
     () => buildFileUploadFormData({ fileBase64: "", fileName: "file", contentType: "bad\r\ntype" }),
     /contentType/,

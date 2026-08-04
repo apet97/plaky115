@@ -84,8 +84,10 @@ The Item Group raw tools are `plaky_list_item_groups`,
 
 `plaky_upload_item_file` accepts canonical `fileBase64`, `fileName`, and an
 optional `contentType`; it never accepts an arbitrary local filesystem path.
-Decoded content defaults to a 10 MiB limit, configurable only up to the 25 MiB
-hard ceiling. File listing returns the documented structured `data` envelope.
+Decoded content defaults to the 25 MiB limit. File names cannot contain path
+traversal or path separators, and content is size-checked before decoding.
+The limit is configurable only up to the 25 MiB hard ceiling. File listing
+returns the documented structured `data` envelope.
 The download tool returns a short-lived signed URL only in the requested result;
 the server does not follow, persist, or log it.
 

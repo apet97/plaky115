@@ -129,7 +129,7 @@ test("stable docs describe the exact public surfaces and safe defaults", () => {
 
   assert.match(mcpReadme, /defaults to `curated` and scope defaults to `read`/);
   assert.match(mcpReadme, /fileBase64/);
-  assert.match(mcpReadme, /10 MiB/);
+  assert.match(mcpReadme, /defaults to the 25 MiB limit/);
   assert.match(mcpReadme, /25 MiB/);
   assert.match(sdkReadme, /SDK does not accept filesystem paths/);
   assert.match(cliReadme, /streams a path or stdin/);
