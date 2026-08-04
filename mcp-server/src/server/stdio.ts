@@ -2,6 +2,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { parseArgs } from "node:util";
 import { buildServer } from "./index.js";
 import { parseMode, UsageError } from "./modes.js";
+import { formatStartupError } from "./presentation.js";
 import { parseScopes } from "./scopes.js";
 
 async function main(): Promise<void> {
@@ -70,10 +71,11 @@ function helpText(): string {
 
 main().catch((err) => {
   const error = err instanceof Error ? err : new Error(String(err));
+  const message = formatStartupError(error);
   if (error instanceof UsageError) {
-    process.stderr.write(`${error.message}\nRun with --help for usage.\n`);
+    process.stderr.write(`${message}\nRun with --help for usage.\n`);
     process.exit(error.exitCode);
   }
-  process.stderr.write(`mcp-server failed: ${error.message}\n`);
+  process.stderr.write(`mcp-server failed: ${message}\n`);
   process.exit(1);
 });

@@ -217,10 +217,14 @@ test("constructor rejects negative or NaN timeoutMs/maxRetries", () => {
   assert.throws(() => new PlakyClient({ apiKey: "test-api-key", maxRetries: 1.5 }), /maxRetries must be a non-negative integer/);
 });
 
-test("constructor accepts maxRetries:0 and large finite timeouts without clamping", () => {
+test("constructor accepts maxRetries:0 and large finite timeouts within the timer bound", () => {
   const client = new PlakyClient({ apiKey: "test-api-key", maxRetries: 0, timeoutMs: 3_600_000.5 });
   assert.equal(client.options.maxRetries, 0);
   assert.equal(client.options.timeoutMs, 3_600_000.5);
+  assert.throws(
+    () => new PlakyClient({ apiKey: "test-api-key", timeoutMs: 2_147_483_648 }),
+    /timeoutMs must be a non-negative number no greater than 2147483647 milliseconds/,
+  );
 });
 
 test("redact handles API-key-shaped tokens with separators", () => {

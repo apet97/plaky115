@@ -239,6 +239,50 @@ test("error exposes method url headers body requestId and nested code", async ()
   );
 });
 
+test("normalizes RFC, validation, and legacy problem envelopes without changing raw body", async () => {
+  const cases = [
+    {
+      status: 422,
+      body: { type: "https://example.test/problem", title: "Invalid input", detail: "bad field", instance: "/requests/1" },
+      check: (err) => err.problem?.family === "rfc7807" && err.problem.detail === "bad field" && err.message === "bad field",
+    },
+    {
+      status: 400,
+      body: { errorCode: 17, errorLabel: "VALIDATION_FAILED", violations: [{ fieldName: "title", message: "required" }] },
+      check: (err) => err.problem?.family === "validation" && err.problem.code === 17 && err.problem.label === "VALIDATION_FAILED" && err.message === "VALIDATION_FAILED",
+    },
+    {
+      status: 500,
+      body: { message: "top-level", error: { message: "nested" } },
+      check: (err) => err.problem?.family === "legacy" && err.message === "top-level",
+    },
+  ];
+
+  for (const testCase of cases) {
+    globalThis.fetch = async () => new Response(JSON.stringify(testCase.body), { status: testCase.status });
+    await assert.rejects(
+      request({ method: "GET", path: "/v1/problem", operationId: "problem" }, { apiKey: "test-api-key", serverURL: "https://example.test" }),
+      (err) => err instanceof PlakyApiError && testCase.check(err) && assert.deepEqual(err.body, testCase.body) === undefined,
+    );
+  }
+});
+
+test("error presentation is redacted and bounded while raw body remains available", async () => {
+  const secret = "plk_abcdefghijklmnopqrstuvwxyz";
+  const detail = `${secret}${"x".repeat(2_000)}`;
+  const body = { detail };
+  globalThis.fetch = async () => new Response(JSON.stringify(body), { status: 500 });
+
+  await assert.rejects(
+    request({ method: "GET", path: "/v1/problem", operationId: "problem" }, { apiKey: "test-api-key", serverURL: "https://example.test" }),
+    (err) => err instanceof PlakyServerError
+      && !err.message.includes(secret)
+      && err.message.length <= 1_024
+      && err.body?.detail === detail
+      && err.problem?.detail !== detail,
+  );
+});
+
 test("custom fetch is used instead of global fetch", async () => {
   globalThis.fetch = async () => {
     throw new Error("global fetch should not be used");
@@ -398,6 +442,67 @@ test("timeout throws PlakyTimeoutError", async () => {
   );
 });
 
+test("timeout governs a success body that stalls after response headers", async () => {
+  let cancelled = false;
+  const body = new ReadableStream({
+    pull() { return new Promise(() => {}); },
+    cancel() { cancelled = true; },
+  });
+
+  await assert.rejects(
+    request(
+      { method: "GET", path: "/v1/stalled-body", operationId: "stalledBody" },
+      { apiKey: "test-api-key", serverURL: "https://example.test", timeoutMs: 5, fetch: async () => new Response(body) },
+    ),
+    (err) => err instanceof PlakyTimeoutError,
+  );
+  assert.equal(cancelled, true);
+});
+
+test("timeout governs an error body and response interceptor", async () => {
+  let cancelled = false;
+  const body = new ReadableStream({
+    pull() { return new Promise(() => {}); },
+    cancel() { cancelled = true; },
+  });
+
+  await assert.rejects(
+    request(
+      { method: "GET", path: "/v1/stalled-error", operationId: "stalledError" },
+      { apiKey: "test-api-key", serverURL: "https://example.test", timeoutMs: 5, fetch: async () => new Response(body, { status: 500 }) },
+    ),
+    (err) => err instanceof PlakyTimeoutError,
+  );
+  assert.equal(cancelled, true);
+
+  await assert.rejects(
+    request(
+      { method: "GET", path: "/v1/stalled-interceptor", operationId: "stalledInterceptor" },
+      {
+        apiKey: "test-api-key",
+        serverURL: "https://example.test",
+        timeoutMs: 5,
+        fetch: async () => new Response("{}"),
+        interceptors: { response: async () => new Promise(() => {}) },
+      },
+    ),
+    (err) => err instanceof PlakyTimeoutError,
+  );
+});
+
+test("caller abort governs a body read after response headers", async () => {
+  const controller = new AbortController();
+  const body = new ReadableStream({ pull() { return new Promise(() => {}); } });
+
+  const pending = request(
+    { method: "GET", path: "/v1/aborted-body", operationId: "abortedBody" },
+    { apiKey: "test-api-key", serverURL: "https://example.test", signal: controller.signal, timeoutMs: 1_000, fetch: async () => new Response(body) },
+  );
+  setTimeout(() => controller.abort(), 5);
+
+  await assert.rejects(pending, (err) => err instanceof PlakyAbortError);
+});
+
 test("external abort throws PlakyAbortError", async () => {
   const controller = new AbortController();
   controller.abort();
@@ -467,6 +572,29 @@ test("maxRetries retries a retryable GET once before succeeding", async () => {
   );
 
   assert.deepEqual(result, { ok: true });
+  assert.equal(calls, 2);
+});
+
+test("retry cancels the previous response body before the next GET attempt", async () => {
+  let calls = 0;
+  let cancelled = false;
+  globalThis.fetch = async () => {
+    calls++;
+    if (calls === 1) {
+      const body = new ReadableStream({
+        start(controller) { controller.enqueue(new TextEncoder().encode("temporary")); },
+        cancel() { cancelled = true; },
+      });
+      return new Response(body, { status: 500 });
+    }
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  };
+
+  await request(
+    { method: "GET", path: "/v1/retry-body", operationId: "retryBody" },
+    { apiKey: "test-api-key", serverURL: "https://example.test", maxRetries: 1 },
+  );
+  assert.equal(cancelled, true);
   assert.equal(calls, 2);
 });
 

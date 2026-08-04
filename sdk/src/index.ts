@@ -53,6 +53,7 @@ export {
   PlakyTimeoutError,
   PlakyAbortError,
   PlakyDecodeError,
+  PlakyResponseTooLargeError,
   PlakyApiError,
   PlakyAuthError,
   PlakyPermissionError,
@@ -64,6 +65,7 @@ export {
   PlakyServerError,
   PlakyAmbiguousMatchError,
 } from "./runtime/errors.js";
+export type { NormalizedProblem, NormalizedProblemFamily, PlakyProblem } from "./runtime/errors.js";
 export type {
   ApiKeyProvider,
   FetchLike,

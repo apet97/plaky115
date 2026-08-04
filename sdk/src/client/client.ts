@@ -104,9 +104,9 @@ export class PlakyClient {
   /**
    * @param opts - See {@link PlakyClientOptions}.
    * @throws {Error} If a literal `apiKey` is blank, `serverURL` is unsafe or
-   *   malformed, `timeoutMs` is not a finite non-negative number, or
+   *   malformed, `timeoutMs` is not between 0 and 2,147,483,647 milliseconds, or
    *   `maxRetries` is not a finite non-negative integer. `maxRetries: 0` and
-   *   large finite timeouts are accepted (no clamping).
+   *   a timeout above the platform timer limit is rejected.
    */
   constructor(opts: PlakyClientOptions) {
     if (typeof opts.apiKey === "string") assertApiKey(opts.apiKey);

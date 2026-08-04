@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -145,6 +146,22 @@ func TestPrintErrorTextModeUnchanged(t *testing.T) {
 	}
 	if strings.Contains(out, "SECRET_ABCDEFGH") || !strings.Contains(out, "[REDACTED_PLAKY_API_KEY]") {
 		t.Fatalf("text mode redaction broken: %s", out)
+	}
+}
+
+func TestPrintErrorPresentationIsControlSafeAndBounded(t *testing.T) {
+	var buf bytes.Buffer
+	PrintError(&buf, errors.New("prefix\x00\x1b[31m"+strings.Repeat("x", 10_000)), false)
+	out := buf.String()
+	line := strings.TrimSuffix(out, "\n")
+	if strings.ContainsAny(line, "\x00\x1b\n\r") {
+		t.Fatalf("text output contains raw terminal controls: %q", out)
+	}
+	if len(out) > plakysdk.MaxErrorDisplayBytes+1 { // newline added by Fprintln
+		t.Fatalf("text output exceeded cap: %d", len(out))
+	}
+	if !strings.Contains(out, `\u0000`) || !strings.Contains(out, `\u001B`) {
+		t.Fatalf("text output did not escape controls: %q", out[:min(len(out), 100)])
 	}
 }
 

@@ -1,16 +1,16 @@
 import type { PlakyRequestOptions } from "../http.js";
 
 export const DEFAULT_MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
+export const MAX_TIMEOUT_MS = 2_147_483_647;
 const MAX_RESPONSE_BYTES = 64 * 1024 * 1024;
 
 export function validateTimeout(value: number, name = "timeoutMs"): void {
-  if (!Number.isFinite(value) || value < 0) {
-    throw new Error(`PlakyClient: ${name} must be a non-negative number`);
-  }
+  if (!Number.isFinite(value) || value < 0) throw new Error(`PlakyClient: ${name} must be a non-negative number`);
+  if (value > MAX_TIMEOUT_MS) throw new Error(`PlakyClient: ${name} must be a non-negative number no greater than ${MAX_TIMEOUT_MS} milliseconds`);
 }
 
 export function validateRetries(value: number, name = "maxRetries"): void {
-  validateTimeout(value, name);
+  if (!Number.isFinite(value) || value < 0) throw new Error(`PlakyClient: ${name} must be a non-negative number`);
   if (!Number.isInteger(value)) {
     throw new Error(`PlakyClient: ${name} must be a non-negative integer`);
   }

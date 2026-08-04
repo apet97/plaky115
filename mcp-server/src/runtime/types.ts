@@ -23,7 +23,7 @@ export type McpToolError = {
   message: string;
   retryable: boolean;
   status?: number;
-  code?: string;
+  code?: string | number;
   requestId?: string;
   retryAfterMs?: number;
 };
