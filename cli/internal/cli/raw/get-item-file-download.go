@@ -10,6 +10,7 @@ func newGetItemFileDownloadCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get-item-file-download",
 		Short: "Get an item file download link",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := getClient(cmd)
 			if err != nil {

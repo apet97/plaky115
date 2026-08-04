@@ -8,8 +8,9 @@ const args = z.object({
   spaceId: int64Id.describe("Represents unique space identifier across the system."),
   boardId: int64Id.describe("Represents unique board identifier across the system."),
   itemId: int64Id.describe("Represents unique item identifier across the system."),
-});
+}).strict();
 const output = z.object({ data: z.array(z.unknown()) });
+const rawOutput = z.array(z.unknown());
 
 export const listItemCommentsTool: McpToolDefinition = {
   name: "plaky_list_item_comments",
@@ -32,6 +33,7 @@ export const listItemCommentsTool: McpToolDefinition = {
       path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/comments`,
       operationId: "listItemComments",
     }, ctx.requestOptions);
+    rawOutput.parse(result);
     return ctx.respond({ data: result }, { compactKind: "comment" });
   },
 };

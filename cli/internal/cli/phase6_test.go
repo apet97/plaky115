@@ -208,7 +208,7 @@ func TestItemGroupsCreateDryRunAndWrite(t *testing.T) {
 		defer server.Close()
 		out, err := executeRoot(t,
 			"--api-key", "from-flag", "--server-url", server.URL,
-			"item-groups-create", "--space-id", "1", "--board-id", "2", "--title", "Backlog", "--idempotency-key", "create-group-1",
+			"item-groups-create", "--space-id", "1", "--board-id", "2", "--title", "Backlog", "--color", "#123456", "--idempotency-key", "create-group-1",
 		)
 		if err != nil {
 			t.Fatal(err)
@@ -216,7 +216,7 @@ func TestItemGroupsCreateDryRunAndWrite(t *testing.T) {
 		if rec.method != http.MethodPost || rec.escapedPath != "/v1/public/spaces/1/boards/2/item-groups" {
 			t.Fatalf("request = %s %s", rec.method, rec.escapedPath)
 		}
-		if rec.body["title"] != "Backlog" || len(rec.body) != 1 || rec.idempotency != "create-group-1" {
+		if rec.body["title"] != "Backlog" || rec.body["color"] != "#123456" || len(rec.body) != 2 || rec.idempotency != "create-group-1" {
 			t.Fatalf("body/header = %#v / %q", rec.body, rec.idempotency)
 		}
 		if !json.Valid([]byte(out)) {

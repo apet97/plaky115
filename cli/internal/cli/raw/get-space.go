@@ -10,6 +10,7 @@ func newGetSpaceCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get-space",
 		Short: "Retrieve a space",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := getClient(cmd)
 			if err != nil {

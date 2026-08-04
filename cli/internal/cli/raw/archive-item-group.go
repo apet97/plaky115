@@ -10,6 +10,7 @@ func newArchiveItemGroupCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "archive-item-group",
 		Short: "Archive an item group",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := getClient(cmd)
 			if err != nil {

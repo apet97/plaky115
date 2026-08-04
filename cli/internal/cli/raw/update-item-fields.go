@@ -10,6 +10,7 @@ func newUpdateItemFieldsCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update-item-fields",
 		Short: "Update item fields",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := getClient(cmd)
 			if err != nil {

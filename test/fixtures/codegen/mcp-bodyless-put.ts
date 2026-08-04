@@ -5,7 +5,7 @@ import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
   widgetId: z.string().describe("Widget identifier."),
-});
+}).strict();
 const output = z.object({ ok: z.boolean() });
 
 export const archiveWidgetTool: McpToolDefinition = {

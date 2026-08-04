@@ -127,6 +127,31 @@ test("MCP multipart generation rejects every shape except one required binary fi
   }
 });
 
+test("MCP generator emits descriptor-driven request and success guards", () => {
+  const source = buildRawToolModule(operation({
+    operationId: "listPagedWidgets",
+    parameters: [parameter("page", "query", { type: "integer", minimum: 1, maximum: 10 }, false, "Page.")],
+    request: {
+      kind: "json",
+      required: true,
+      rootKind: "object",
+      requiredProperties: ["title", "color"],
+    },
+    success: {
+      status: 200,
+      kind: "paged-object",
+      rootKind: "object",
+      requiredProperties: ["data", "hasMore"],
+    },
+  }));
+  assert.match(source, /page: z\.number\(\)\.int\(\)\.min\(1\)\.max\(10\)/);
+  assert.match(source, /\}\)\.strict\(\);/);
+  assert.match(source, /hasOwnProperty\.call\(body, "title"\)/);
+  assert.match(source, /hasOwnProperty\.call\(body, "color"\)/);
+  assert.match(source, /data: z\.array\(z\.unknown\(\)\), hasMore: z\.boolean\(\)/);
+  assert.match(source, /rawOutput\.parse\(result\)/);
+});
+
 function operation(overrides = {}) {
   const operationId = overrides.operationId ?? "getWidget";
   return {

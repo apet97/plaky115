@@ -10,6 +10,7 @@ func newDeleteItemCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete-item",
 		Short: "Delete an item",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := getClient(cmd)
 			if err != nil {

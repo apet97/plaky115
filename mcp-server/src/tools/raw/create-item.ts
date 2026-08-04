@@ -8,8 +8,9 @@ const args = z.object({
   spaceId: int64Id.describe("Represents unique space identifier across the system."),
   boardId: int64Id.describe("Represents unique board identifier across the system."),
   body: z.record(z.unknown()).describe("JSON request body for Create an item."),
-});
-const output = z.object({}).passthrough();
+}).strict();
+const output = z.object({ id: z.unknown() }).passthrough();
+const rawOutput = z.object({ id: z.unknown() }).passthrough();
 
 export const createItemTool: McpToolDefinition = {
   name: "plaky_create_item",
@@ -33,6 +34,7 @@ export const createItemTool: McpToolDefinition = {
       body: parsed.body,
       operationId: "createItem",
     }, ctx.requestOptions);
+    rawOutput.parse(result);
     return ctx.respond(result, { compactKind: "item" });
   },
 };

@@ -75,11 +75,11 @@ func newItemGroupsCreateCommand(getClient clientFactory) *cobra.Command {
 	cmd.Flags().String("space-id", "", "Space ID (required)")
 	cmd.Flags().String("board-id", "", "Board ID (required)")
 	cmd.Flags().String("title", "", "Item group title (required)")
-	cmd.Flags().String("color", "", "Optional item group color")
+	cmd.Flags().String("color", "", "Item group color (required)")
 	cmd.Flags().String("ranking", "", "Optional item group ranking")
 	cmd.Flags().String("idempotency-key", "", "Optional Idempotency-Key header")
 	cmd.Flags().Bool("dry-run", false, "Print the plan without calling the API")
-	markRequired(cmd, "space-id", "board-id", "title")
+	markRequired(cmd, "space-id", "board-id", "title", "color")
 	return cmd
 }
 

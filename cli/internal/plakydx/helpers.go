@@ -56,8 +56,21 @@ func optionalStringArrayFlag(cmd *cobra.Command, name string) ([]string, error) 
 	return cmd.Flags().GetStringArray(name)
 }
 
-func optionalIntFlag(cmd *cobra.Command, name string) (int, error) {
-	return cmd.Flags().GetInt(name)
+func optionalIntFlag(cmd *cobra.Command, name string, bounds ...int) (int, error) {
+	if len(bounds) > 2 {
+		return 0, fmt.Errorf("--%s has invalid bounds", name)
+	}
+	value, err := cmd.Flags().GetInt(name)
+	if err != nil {
+		return 0, err
+	}
+	if len(bounds) >= 1 && (cmd.Flags().Changed(name) || value != 0) && value < bounds[0] {
+		return 0, fmt.Errorf("--%s must be at least %d", name, bounds[0])
+	}
+	if len(bounds) == 2 && value > bounds[1] {
+		return 0, fmt.Errorf("--%s must be at most %d", name, bounds[1])
+	}
+	return value, nil
 }
 
 func optionalInt64Flag(cmd *cobra.Command, name string) (int64, error) {
@@ -84,7 +97,7 @@ func optionalBoolFlag(cmd *cobra.Command, name string) (*bool, error) {
 	return &value, err
 }
 
-func jsonBodyFlag(cmd *cobra.Command, required bool) (any, error) {
+func jsonBodyFlag(cmd *cobra.Command, required bool, requiredProperties ...string) (any, error) {
 	raw, err := optionalStringFlag(cmd, "body")
 	if err != nil {
 		return nil, err
@@ -99,10 +112,11 @@ func jsonBodyFlag(cmd *cobra.Command, required bool) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if required {
-		if _, ok := value.(map[string]any); !ok {
-			return nil, fmt.Errorf("--body must be a JSON object")
-		}
+	if value == nil {
+		return nil, fmt.Errorf("JSON body must be a JSON object")
+	}
+	if err := plakysdk.ValidateJSONBody(value, required, requiredProperties...); err != nil {
+		return nil, err
 	}
 	return value, nil
 }

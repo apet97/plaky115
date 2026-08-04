@@ -19,6 +19,7 @@ export function buildCobraCommand(op) {
   lines.push(`\tcmd := &cobra.Command{`);
   lines.push(`\t\tUse:   ${JSON.stringify(useSlug)},`);
   lines.push(`\t\tShort: ${JSON.stringify(op.summary ?? op.operationId)},`);
+  lines.push(`\t\tArgs:  cobra.NoArgs,`);
   lines.push(`\t\tRunE: func(cmd *cobra.Command, args []string) error {`);
   lines.push(`\t\t\tclient, err := getClient(cmd)`);
   lines.push(`\t\t\tif err != nil {`);
@@ -106,6 +107,9 @@ export function buildGoOperations(ops) {
       lines.push(descriptor.isVoid ? `\t\treturn err` : `\t\treturn nil, err`);
       lines.push(`\t}`);
     }
+    for (const parameter of queryParameters) {
+      lines.push(...goIntegerBoundsLines(op, descriptor, parameter));
+    }
     lines.push(`\tpath := ${formatGoPath(op.path, pathParameters.map(({ name }) => name))}`);
     if (hasQuery) {
       lines.push(`\tquery := url.Values{}`);
@@ -118,6 +122,9 @@ export function buildGoOperations(ops) {
       lines.push(`\tif jsonBody == nil {`);
       lines.push(`\t\tjsonBody = opts.Body`);
       lines.push(`\t}`);
+      lines.push(`\tif err := ValidateJSONBody(jsonBody, ${op.request.required === true}${goStringArguments(descriptor.requestRequiredProperties)}); err != nil {`);
+      lines.push(`\t\t${goErrorReturn(descriptor, "err")}`);
+      lines.push(`\t}`);
       lines.push(`\treq.JSONBody = jsonBody`);
     }
     if (descriptor.requestKind === "multipart") lines.push(`\treq.Multipart = opts.Multipart`);
@@ -127,6 +134,9 @@ export function buildGoOperations(ops) {
     } else {
       lines.push(`\tvar out any`);
       lines.push(`\tif err := c.Do(ctx, req, &out); err != nil {`);
+      lines.push(`\t\treturn nil, err`);
+      lines.push(`\t}`);
+      lines.push(`\tif err := ValidateResponseShape(${JSON.stringify(op.operationId)}, ${JSON.stringify(responseKind(descriptor))}, out, ${goStringSlice(descriptor.successRequiredProperties)}, ${descriptor.createdIdPointer === "$.id"}, ${descriptor.sensitiveLink}); err != nil {`);
       lines.push(`\t\treturn nil, err`);
       lines.push(`\t}`);
       lines.push(`\treturn out, nil`);
@@ -185,7 +195,7 @@ function goRunnerLines(op) {
     lines.push(...runnerFlagRead(parameter, false));
   }
   if (descriptor.requestKind === "json") {
-    lines.push(`\tjsonBody, err := jsonBodyFlag(cmd, ${op.request.required === true})`);
+    lines.push(`\tjsonBody, err := jsonBodyFlag(cmd, ${op.request.required === true}${goStringArguments(descriptor.requestRequiredProperties)})`);
     lines.push(`\tif err != nil {`);
     lines.push(`\t\treturn err`);
     lines.push(`\t}`);
@@ -270,6 +280,25 @@ function goQueryLines(parameter) {
   }
 }
 
+function goIntegerBoundsLines(op, descriptor, parameter) {
+  const bounds = integerBounds(parameter.schema);
+  if (!bounds) return [];
+  const field = `opts.${cap(parameter.name)}`;
+  const lines = [];
+  const errorReturn = (message) => `\t\t${goErrorReturn(descriptor, `fmt.Errorf(${JSON.stringify(message)})`)}`;
+  if (bounds.minimum !== undefined) {
+    lines.push(`\tif ${field} != 0 && ${field} < ${goNumberLiteral(bounds.minimum)} {`);
+    lines.push(errorReturn(`${op.operationId}: ${parameter.name} must be at least ${bounds.minimum}`));
+    lines.push(`\t}`);
+  }
+  if (bounds.maximum !== undefined) {
+    lines.push(`\tif ${field} > ${goNumberLiteral(bounds.maximum)} {`);
+    lines.push(errorReturn(`${op.operationId}: ${parameter.name} must be at most ${bounds.maximum}`));
+    lines.push(`\t}`);
+  }
+  return lines;
+}
+
 function goOptionType(parameter) {
   switch (parameter.schema.type) {
     case "string": return "string";
@@ -300,8 +329,17 @@ function runnerFlagRead(parameter, required) {
       default: throw new Error(`${parameter.name}: unsupported runner flag type ${parameter.schema.type}`);
     }
   }
+  const helperArguments = [`cmd`, flag];
+  if (!required && helper === "optionalIntFlag") {
+    const bounds = integerBounds(parameter.schema);
+    if (bounds?.minimum !== undefined) helperArguments.push(goNumberLiteral(bounds.minimum));
+    if (bounds?.maximum !== undefined) {
+      if (bounds.minimum === undefined) helperArguments.push("0");
+      helperArguments.push(goNumberLiteral(bounds.maximum));
+    }
+  }
   return [
-    `\t${variable}, err := ${helper}(cmd, ${flag})`,
+    `\t${variable}, err := ${helper}(${helperArguments.join(", ")})`,
     `\tif err != nil {`,
     `\t\treturn err`,
     `\t}`,
@@ -310,6 +348,35 @@ function runnerFlagRead(parameter, required) {
 
 function isInt64(parameter) {
   return parameter.schema.type === "integer" && parameter.schema.format === "int64";
+}
+
+function responseKind(descriptor) {
+  if (descriptor.isPaged) return "paged-object";
+  if (descriptor.isArray) return "json-array";
+  if (descriptor.isVoid) return "void";
+  return "json-object";
+}
+
+function integerBounds(schema) {
+  if (schema?.type !== "integer" || schema.format === "int64") return null;
+  if (schema.minimum === undefined && schema.maximum === undefined) return null;
+  return { minimum: schema.minimum, maximum: schema.maximum };
+}
+
+function goNumberLiteral(value) {
+  return JSON.stringify(value);
+}
+
+function goStringArguments(values) {
+  return values.map((value) => `, ${JSON.stringify(value)}`).join("");
+}
+
+function goStringSlice(values) {
+  return `[]string{${values.map((value) => JSON.stringify(value)).join(", ")}}`;
+}
+
+function goErrorReturn(descriptor, expression) {
+  return descriptor.isVoid ? `return ${expression}` : `return nil, ${expression}`;
 }
 
 function localName(name) {

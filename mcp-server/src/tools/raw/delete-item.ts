@@ -8,7 +8,7 @@ const args = z.object({
   spaceId: int64Id.describe("Represents unique space identifier across the system."),
   boardId: int64Id.describe("Represents unique board identifier across the system."),
   itemId: int64Id.describe("Represents unique item identifier across the system."),
-});
+}).strict();
 const output = z.object({ ok: z.boolean() });
 
 export const deleteItemTool: McpToolDefinition = {

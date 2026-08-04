@@ -110,6 +110,87 @@ type MultipartFileBody struct {
 	Reader      io.Reader
 }
 
+// ValidateJSONBody enforces the normalized request-root contract before any
+// HTTP request is built. Open objects remain open; only the evidenced required
+// properties are checked here.
+func ValidateJSONBody(body any, required bool, requiredProperties ...string) error {
+	if body == nil {
+		if required {
+			return fmt.Errorf("JSON body is required")
+		}
+		return nil
+	}
+	record, ok := body.(map[string]any)
+	if !ok {
+		return fmt.Errorf("JSON body must be a JSON object")
+	}
+	for _, property := range requiredProperties {
+		if _, present := record[property]; !present {
+			return fmt.Errorf("JSON body property %q is required", property)
+		}
+	}
+	return nil
+}
+
+// ValidateResponseShape checks only the narrow root semantics owned by the
+// operation descriptor. Component-level validation remains outside the CLI.
+func ValidateResponseShape(operationID, kind string, value any, requiredProperties []string, createdID, sensitiveLink bool) error {
+	if kind == "json-array" {
+		if _, ok := value.([]any); !ok {
+			return fmt.Errorf("%s: response must be an array", operationID)
+		}
+		return nil
+	}
+	if kind != "json-object" && kind != "paged-object" {
+		return fmt.Errorf("%s: unsupported response kind %q", operationID, kind)
+	}
+	record, ok := value.(map[string]any)
+	if !ok {
+		return fmt.Errorf("%s: response must be an object", operationID)
+	}
+	for _, property := range requiredProperties {
+		if _, present := record[property]; !present {
+			return fmt.Errorf("%s: response property %q is required", operationID, property)
+		}
+	}
+	if kind == "paged-object" {
+		data, dataOK := record["data"].([]any)
+		hasMore, hasMoreOK := record["hasMore"].(bool)
+		if !dataOK || !hasMoreOK {
+			return fmt.Errorf("%s: response must contain array data and boolean hasMore", operationID)
+		}
+		if len(data) == 0 && hasMore {
+			return fmt.Errorf("%s: empty page cannot advertise more results", operationID)
+		}
+	}
+	if createdID {
+		if id, present := record["id"]; !present || id == nil {
+			return fmt.Errorf("%s: response property \"id\" is required", operationID)
+		}
+	}
+	if sensitiveLink {
+		urlValue, ok := record["url"].(string)
+		if !ok || !strings.HasPrefix(urlValue, "https://") {
+			return fmt.Errorf("%s: response url must use HTTPS", operationID)
+		}
+		if expiry, present := record["expiresInSeconds"]; present {
+			switch value := expiry.(type) {
+			case json.Number:
+				if strings.HasPrefix(value.String(), "-") {
+					return fmt.Errorf("%s: response expiry must be non-negative", operationID)
+				}
+			case float64:
+				if value < 0 {
+					return fmt.Errorf("%s: response expiry must be non-negative", operationID)
+				}
+			default:
+				return fmt.Errorf("%s: response expiry must be numeric", operationID)
+			}
+		}
+	}
+	return nil
+}
+
 func (c *Client) Do(ctx context.Context, req Request, out any) error {
 	u, err := c.requestURL(req.Path)
 	if err != nil {

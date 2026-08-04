@@ -5,8 +5,9 @@ import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
   body: z.record(z.unknown()).describe("JSON request body for createWidget fixture."),
-});
+}).strict();
 const output = z.object({}).passthrough();
+const rawOutput = z.object({}).passthrough();
 
 export const createWidgetTool: McpToolDefinition = {
   name: "plaky_create_widget",
@@ -30,6 +31,7 @@ export const createWidgetTool: McpToolDefinition = {
       body: parsed.body,
       operationId: "createWidget",
     }, ctx.requestOptions);
+    rawOutput.parse(result);
     return ctx.respond(result, { compactKind: "raw" });
   },
 };

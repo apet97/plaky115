@@ -10,6 +10,7 @@ func newArchiveWidgetCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "archive-widget",
 		Short: "archiveWidget fixture",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := getClient(cmd)
 			if err != nil {

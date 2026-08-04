@@ -6,10 +6,11 @@ import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
   spaceId: int64Id.describe("Represents unique space identifier across the system."),
-  page: z.number().int().describe("Page number.").optional(),
-  pageSize: z.number().int().describe("Page size.").optional(),
-});
-const output = z.object({}).passthrough();
+  page: z.number().int().min(1).max(2147483647).describe("Page number.").optional(),
+  pageSize: z.number().int().min(1).describe("Page size.").optional(),
+}).strict();
+const output = z.object({ data: z.array(z.unknown()), hasMore: z.boolean() }).passthrough();
+const rawOutput = z.object({ data: z.array(z.unknown()), hasMore: z.boolean() }).passthrough();
 
 export const listBoardsTool: McpToolDefinition = {
   name: "plaky_list_boards",
@@ -37,6 +38,7 @@ export const listBoardsTool: McpToolDefinition = {
       query,
       operationId: "listBoards",
     }, ctx.requestOptions);
+    rawOutput.parse(result);
     return ctx.respond(result, { compactKind: "board" });
   },
 };

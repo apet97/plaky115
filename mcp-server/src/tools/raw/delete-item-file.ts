@@ -9,7 +9,7 @@ const args = z.object({
   boardId: int64Id.describe("Unique identifier of the board."),
   itemId: int64Id.describe("Represents unique board identifier across the system."),
   itemFileId: int64Id.describe("Represents unique item file identifier across the system."),
-});
+}).strict();
 const output = z.object({ ok: z.boolean() });
 
 export const deleteItemFileTool: McpToolDefinition = {

@@ -579,7 +579,7 @@ func TestCommentsThreadCommandListsComments(t *testing.T) {
 			t.Fatalf("unexpected path: %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"data":[{"id":4,"text":"hello"}],"hasMore":false}`))
+		_, _ = w.Write([]byte(`[{"id":4,"text":"hello"}]`))
 	}))
 	defer server.Close()
 

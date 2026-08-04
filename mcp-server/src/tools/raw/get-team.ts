@@ -6,8 +6,9 @@ import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
   teamId: int64Id.describe("Represents unique team identifier across the system."),
-});
+}).strict();
 const output = z.object({}).passthrough();
+const rawOutput = z.object({}).passthrough();
 
 export const getTeamTool: McpToolDefinition = {
   name: "plaky_get_team",
@@ -30,6 +31,7 @@ export const getTeamTool: McpToolDefinition = {
       path: `/v1/public/teams/${encodeURIComponent(String(parsed.teamId))}`,
       operationId: "getTeam",
     }, ctx.requestOptions);
+    rawOutput.parse(result);
     return ctx.respond(result, { compactKind: "raw" });
   },
 };

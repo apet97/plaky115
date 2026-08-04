@@ -10,8 +10,9 @@ const args = z.object({
   itemId: int64Id.describe("Represents unique item identifier across the system."),
   itemFieldKey: z.string().describe("Represents key of the field."),
   body: z.record(z.unknown()).describe("JSON request body for Update one item field."),
-});
+}).strict();
 const output = z.object({}).passthrough();
+const rawOutput = z.object({}).passthrough();
 
 export const updateItemFieldTool: McpToolDefinition = {
   name: "plaky_update_item_field",
@@ -35,6 +36,7 @@ export const updateItemFieldTool: McpToolDefinition = {
       body: parsed.body,
       operationId: "updateItemField",
     }, ctx.requestOptions);
+    rawOutput.parse(result);
     return ctx.respond(result, { compactKind: "item" });
   },
 };

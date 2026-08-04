@@ -71,6 +71,55 @@ func TestGeneratedOperationsRejectInvalidIDsBeforeNetwork(t *testing.T) {
 	}
 }
 
+func TestValidateJSONBody(t *testing.T) {
+	if err := ValidateJSONBody(nil, false); err != nil {
+		t.Fatalf("optional nil body: %v", err)
+	}
+	for _, body := range []any{nil, []any{}} {
+		if err := ValidateJSONBody(body, true); err == nil {
+			t.Fatalf("body %#v unexpectedly accepted", body)
+		}
+	}
+	if err := ValidateJSONBody(map[string]any{"title": "x"}, true, "title", "color"); err == nil || !strings.Contains(err.Error(), "color") {
+		t.Fatalf("missing property error = %v", err)
+	}
+	if err := ValidateJSONBody(map[string]any{}, true); err != nil {
+		t.Fatalf("open object rejected: %v", err)
+	}
+}
+
+func TestValidateResponseShape(t *testing.T) {
+	tests := []struct {
+		name    string
+		kind    string
+		value   any
+		created bool
+		signed  bool
+		wantErr string
+	}{
+		{name: "paged", kind: "paged-object", value: map[string]any{"data": []any{}, "hasMore": false}},
+		{name: "paged missing", kind: "paged-object", value: map[string]any{"data": []any{}}, wantErr: "hasMore"},
+		{name: "paged empty more", kind: "paged-object", value: map[string]any{"data": []any{}, "hasMore": true}, wantErr: "empty page"},
+		{name: "array", kind: "json-array", value: []any{}},
+		{name: "array wrong root", kind: "json-array", value: map[string]any{}, wantErr: "array"},
+		{name: "created id", kind: "json-object", value: map[string]any{"id": json.Number("9223372036854775807")}, created: true},
+		{name: "created missing id", kind: "json-object", value: map[string]any{}, created: true, wantErr: "id"},
+		{name: "signed link", kind: "json-object", value: map[string]any{"url": "https://example.test/file", "expiresInSeconds": json.Number("60")}, signed: true},
+		{name: "insecure link", kind: "json-object", value: map[string]any{"url": "http://example.test/file"}, signed: true, wantErr: "HTTPS"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := ValidateResponseShape("fixture", test.kind, test.value, nil, test.created, test.signed)
+			if test.wantErr == "" && err != nil {
+				t.Fatalf("error = %v", err)
+			}
+			if test.wantErr != "" && (err == nil || !strings.Contains(err.Error(), test.wantErr)) {
+				t.Fatalf("error = %v, want %q", err, test.wantErr)
+			}
+		})
+	}
+}
+
 func TestClientDoConvertsOnlySafeJSONIntegers(t *testing.T) {
 	const payload = `{"safe":9007199254740991,"positiveBoundary":9007199254740992,"negativeBoundary":-9007199254740992}`
 	client := serverClient(t, http.StatusOK, payload, "")

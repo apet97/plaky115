@@ -12,8 +12,9 @@ const args = z.object({
   fileBase64: z.string().describe("Canonical base64 file content; decoded size is bounded before upload."),
   fileName: z.string().min(1).describe("File name sent in the multipart upload."),
   contentType: z.string().describe("Optional file media type, such as application/pdf.").optional(),
-});
-const output = z.object({}).passthrough();
+}).strict();
+const output = z.object({ id: z.unknown() }).passthrough();
+const rawOutput = z.object({ id: z.unknown() }).passthrough();
 
 export const uploadItemFileTool: McpToolDefinition = {
   name: "plaky_upload_item_file",
@@ -42,6 +43,7 @@ export const uploadItemFileTool: McpToolDefinition = {
       body,
       operationId: "uploadItemFile",
     }, ctx.requestOptions);
+    rawOutput.parse(result);
     return ctx.respond(result, { compactKind: "itemFile" });
   },
 };

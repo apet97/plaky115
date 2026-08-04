@@ -10,6 +10,7 @@ func newReplaceCommentReactionsCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "replace-comment-reactions",
 		Short: "Replace comment reactions",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := getClient(cmd)
 			if err != nil {

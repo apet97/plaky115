@@ -36,6 +36,9 @@ func (c *Client) GetWidget(ctx context.Context, opts GetWidgetOptions) (any, err
 	if err := c.Do(ctx, req, &out); err != nil {
 		return nil, err
 	}
+	if err := ValidateResponseShape("getWidget", "json-object", out, []string{}, false, false); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
@@ -55,10 +58,16 @@ func (c *Client) CreateWidget(ctx context.Context, opts CreateWidgetOptions) (an
 	if jsonBody == nil {
 		jsonBody = opts.Body
 	}
+	if err := ValidateJSONBody(jsonBody, true); err != nil {
+		return nil, err
+	}
 	req.JSONBody = jsonBody
 	req.Idempotency = opts.IdempotencyKey
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
+		return nil, err
+	}
+	if err := ValidateResponseShape("createWidget", "json-object", out, []string{}, false, false); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -91,6 +100,9 @@ func (c *Client) UploadWidgetFile(ctx context.Context, opts UploadWidgetFileOpti
 	req.Idempotency = opts.IdempotencyKey
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
+		return nil, err
+	}
+	if err := ValidateResponseShape("uploadWidgetFile", "json-object", out, []string{}, false, false); err != nil {
 		return nil, err
 	}
 	return out, nil

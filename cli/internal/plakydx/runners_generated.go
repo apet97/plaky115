@@ -15,11 +15,11 @@ func RunListSpaces(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) 
 	if err != nil {
 		return err
 	}
-	page, err := optionalIntFlag(cmd, "page")
+	page, err := optionalIntFlag(cmd, "page", 1, 2147483647)
 	if err != nil {
 		return err
 	}
-	pageSize, err := optionalIntFlag(cmd, "page-size")
+	pageSize, err := optionalIntFlag(cmd, "page-size", 1)
 	if err != nil {
 		return err
 	}
@@ -62,11 +62,11 @@ func RunListBoards(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) 
 	if err != nil {
 		return err
 	}
-	page, err := optionalIntFlag(cmd, "page")
+	page, err := optionalIntFlag(cmd, "page", 1, 2147483647)
 	if err != nil {
 		return err
 	}
-	pageSize, err := optionalIntFlag(cmd, "page-size")
+	pageSize, err := optionalIntFlag(cmd, "page-size", 1)
 	if err != nil {
 		return err
 	}
@@ -113,11 +113,11 @@ func RunListItemGroups(ctx context.Context, cmd *cobra.Command, c *plakysdk.Clie
 	if err != nil {
 		return err
 	}
-	page, err := optionalIntFlag(cmd, "page")
+	page, err := optionalIntFlag(cmd, "page", 1, 2147483647)
 	if err != nil {
 		return err
 	}
-	pageSize, err := optionalIntFlag(cmd, "page-size")
+	pageSize, err := optionalIntFlag(cmd, "page-size", 1)
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func RunCreateItemGroup(ctx context.Context, cmd *cobra.Command, c *plakysdk.Cli
 	if err != nil {
 		return err
 	}
-	jsonBody, err := jsonBodyFlag(cmd, true)
+	jsonBody, err := jsonBodyFlag(cmd, true, "title", "color")
 	if err != nil {
 		return err
 	}
@@ -233,7 +233,7 @@ func RunUpdateItemGroup(ctx context.Context, cmd *cobra.Command, c *plakysdk.Cli
 	if err != nil {
 		return err
 	}
-	jsonBody, err := jsonBodyFlag(cmd, true)
+	jsonBody, err := jsonBodyFlag(cmd, true, "title", "ranking", "color")
 	if err != nil {
 		return err
 	}
@@ -309,11 +309,11 @@ func RunListItems(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) e
 	if err != nil {
 		return err
 	}
-	page, err := optionalIntFlag(cmd, "page")
+	page, err := optionalIntFlag(cmd, "page", 1, 2147483647)
 	if err != nil {
 		return err
 	}
-	pageSize, err := optionalIntFlag(cmd, "page-size")
+	pageSize, err := optionalIntFlag(cmd, "page-size", 1)
 	if err != nil {
 		return err
 	}
@@ -464,7 +464,7 @@ func RunCreateItemComment(ctx context.Context, cmd *cobra.Command, c *plakysdk.C
 	if err != nil {
 		return err
 	}
-	jsonBody, err := jsonBodyFlag(cmd, true)
+	jsonBody, err := jsonBodyFlag(cmd, true, "text")
 	if err != nil {
 		return err
 	}
@@ -537,7 +537,7 @@ func RunUpdateItemComment(ctx context.Context, cmd *cobra.Command, c *plakysdk.C
 	if err != nil {
 		return err
 	}
-	jsonBody, err := jsonBodyFlag(cmd, true)
+	jsonBody, err := jsonBodyFlag(cmd, true, "text")
 	if err != nil {
 		return err
 	}
@@ -578,7 +578,7 @@ func RunReplaceCommentReactions(ctx context.Context, cmd *cobra.Command, c *plak
 	if err != nil {
 		return err
 	}
-	jsonBody, err := jsonBodyFlag(cmd, true)
+	jsonBody, err := jsonBodyFlag(cmd, true, "reactions")
 	if err != nil {
 		return err
 	}
@@ -827,7 +827,7 @@ func RunUpdateItemFile(ctx context.Context, cmd *cobra.Command, c *plakysdk.Clie
 	if err != nil {
 		return err
 	}
-	jsonBody, err := jsonBodyFlag(cmd, true)
+	jsonBody, err := jsonBodyFlag(cmd, true, "name")
 	if err != nil {
 		return err
 	}
@@ -899,11 +899,11 @@ func RunListSubitems(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client
 	if err != nil {
 		return err
 	}
-	page, err := optionalIntFlag(cmd, "page")
+	page, err := optionalIntFlag(cmd, "page", 1, 2147483647)
 	if err != nil {
 		return err
 	}
-	pageSize, err := optionalIntFlag(cmd, "page-size")
+	pageSize, err := optionalIntFlag(cmd, "page-size", 1)
 	if err != nil {
 		return err
 	}
@@ -924,11 +924,11 @@ func RunListSubitems(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client
 
 // RunListTeams reads raw flags and executes listTeams.
 func RunListTeams(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
-	page, err := optionalIntFlag(cmd, "page")
+	page, err := optionalIntFlag(cmd, "page", 1, 2147483647)
 	if err != nil {
 		return err
 	}
-	pageSize, err := optionalIntFlag(cmd, "page-size")
+	pageSize, err := optionalIntFlag(cmd, "page-size", 1)
 	if err != nil {
 		return err
 	}
@@ -973,11 +973,11 @@ func RunListUsers(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) e
 	if err != nil {
 		return err
 	}
-	page, err := optionalIntFlag(cmd, "page")
+	page, err := optionalIntFlag(cmd, "page", 1, 2147483647)
 	if err != nil {
 		return err
 	}
-	pageSize, err := optionalIntFlag(cmd, "page-size")
+	pageSize, err := optionalIntFlag(cmd, "page-size", 1)
 	if err != nil {
 		return err
 	}

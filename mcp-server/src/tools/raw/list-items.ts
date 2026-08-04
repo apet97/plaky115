@@ -11,10 +11,11 @@ const args = z.object({
   parentId: int64Id.describe("Represents unique item identifier across the system.").optional(),
   subitemsBehaviour: z.enum(["INCLUDE","EXCLUDE","EMBED"]).describe("Indicates how subitems are treated in the response. By default subitems will be included. This flag is not applicable when **parentId** is set. **Options:** * **INCLUDE**: Includes subitems in the top level response. * **EXCLUDE**: Excludes subitems from the top level response. * **EMBED**: Excludes from top level and embeds into each parent with sorts and filters applied.").optional(),
   expand: z.array(z.enum(["space","board","group","createdBy","parent","subscriptions","fields"])).describe("Comma-separated list of relationships to expand into full objects instead of IDs.").optional(),
-  page: z.number().int().describe("Page number.").optional(),
-  pageSize: z.number().int().describe("Page size.").optional(),
-});
-const output = z.object({}).passthrough();
+  page: z.number().int().min(1).max(2147483647).describe("Page number.").optional(),
+  pageSize: z.number().int().min(1).describe("Page size.").optional(),
+}).strict();
+const output = z.object({ data: z.array(z.unknown()), hasMore: z.boolean() }).passthrough();
+const rawOutput = z.object({ data: z.array(z.unknown()), hasMore: z.boolean() }).passthrough();
 
 export const listItemsTool: McpToolDefinition = {
   name: "plaky_list_items",
@@ -46,6 +47,7 @@ export const listItemsTool: McpToolDefinition = {
       query,
       operationId: "listItems",
     }, ctx.requestOptions);
+    rawOutput.parse(result);
     return ctx.respond(result, { compactKind: "item" });
   },
 };

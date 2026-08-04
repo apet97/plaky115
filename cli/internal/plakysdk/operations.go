@@ -16,6 +16,15 @@ var _ = strings.NewReader
 
 // ListSpaces executes the listSpaces operation: GET /v1/public/spaces
 func (c *Client) ListSpaces(ctx context.Context, opts ListSpacesOptions) (any, error) {
+	if opts.Page != 0 && opts.Page < 1 {
+		return nil, fmt.Errorf("listSpaces: page must be at least 1")
+	}
+	if opts.Page > 2147483647 {
+		return nil, fmt.Errorf("listSpaces: page must be at most 2147483647")
+	}
+	if opts.PageSize != 0 && opts.PageSize < 1 {
+		return nil, fmt.Errorf("listSpaces: pageSize must be at least 1")
+	}
 	path := "/v1/public/spaces"
 	query := url.Values{}
 	if len(opts.Expand) > 0 {
@@ -31,6 +40,9 @@ func (c *Client) ListSpaces(ctx context.Context, opts ListSpacesOptions) (any, e
 	req.Query = query
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
+		return nil, err
+	}
+	if err := ValidateResponseShape("listSpaces", "paged-object", out, []string{"data", "hasMore"}, false, false); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -58,6 +70,9 @@ func (c *Client) GetSpace(ctx context.Context, opts GetSpaceOptions) (any, error
 	if err := c.Do(ctx, req, &out); err != nil {
 		return nil, err
 	}
+	if err := ValidateResponseShape("getSpace", "json-object", out, []string{}, false, false); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
@@ -71,6 +86,15 @@ func (c *Client) ListBoards(ctx context.Context, opts ListBoardsOptions) (any, e
 	if _, err := CanonicalInt64ID(opts.SpaceId); err != nil {
 		return nil, err
 	}
+	if opts.Page != 0 && opts.Page < 1 {
+		return nil, fmt.Errorf("listBoards: page must be at least 1")
+	}
+	if opts.Page > 2147483647 {
+		return nil, fmt.Errorf("listBoards: page must be at most 2147483647")
+	}
+	if opts.PageSize != 0 && opts.PageSize < 1 {
+		return nil, fmt.Errorf("listBoards: pageSize must be at least 1")
+	}
 	path := strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards", "{spaceId}", url.PathEscape(opts.SpaceId))
 	query := url.Values{}
 	if opts.Page != 0 {
@@ -83,6 +107,9 @@ func (c *Client) ListBoards(ctx context.Context, opts ListBoardsOptions) (any, e
 	req.Query = query
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
+		return nil, err
+	}
+	if err := ValidateResponseShape("listBoards", "paged-object", out, []string{"data", "hasMore"}, false, false); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -108,6 +135,9 @@ func (c *Client) GetBoard(ctx context.Context, opts GetBoardOptions) (any, error
 	if err := c.Do(ctx, req, &out); err != nil {
 		return nil, err
 	}
+	if err := ValidateResponseShape("getBoard", "json-object", out, []string{}, false, false); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
@@ -124,6 +154,15 @@ func (c *Client) ListItemGroups(ctx context.Context, opts ListItemGroupsOptions)
 	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
 		return nil, err
 	}
+	if opts.Page != 0 && opts.Page < 1 {
+		return nil, fmt.Errorf("listItemGroups: page must be at least 1")
+	}
+	if opts.Page > 2147483647 {
+		return nil, fmt.Errorf("listItemGroups: page must be at most 2147483647")
+	}
+	if opts.PageSize != 0 && opts.PageSize < 1 {
+		return nil, fmt.Errorf("listItemGroups: pageSize must be at least 1")
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/item-groups", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId))
 	query := url.Values{}
 	if opts.Page != 0 {
@@ -136,6 +175,9 @@ func (c *Client) ListItemGroups(ctx context.Context, opts ListItemGroupsOptions)
 	req.Query = query
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
+		return nil, err
+	}
+	if err := ValidateResponseShape("listItemGroups", "paged-object", out, []string{"data", "hasMore"}, false, false); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -162,10 +204,16 @@ func (c *Client) CreateItemGroup(ctx context.Context, opts CreateItemGroupOption
 	if jsonBody == nil {
 		jsonBody = opts.Body
 	}
+	if err := ValidateJSONBody(jsonBody, true, "title", "color"); err != nil {
+		return nil, err
+	}
 	req.JSONBody = jsonBody
 	req.Idempotency = opts.IdempotencyKey
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
+		return nil, err
+	}
+	if err := ValidateResponseShape("createItemGroup", "json-object", out, []string{}, true, false); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -220,6 +268,9 @@ func (c *Client) GetItemGroup(ctx context.Context, opts GetItemGroupOptions) (an
 	if err := c.Do(ctx, req, &out); err != nil {
 		return nil, err
 	}
+	if err := ValidateResponseShape("getItemGroup", "json-object", out, []string{}, false, false); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
@@ -246,10 +297,16 @@ func (c *Client) UpdateItemGroup(ctx context.Context, opts UpdateItemGroupOption
 	if jsonBody == nil {
 		jsonBody = opts.Body
 	}
+	if err := ValidateJSONBody(jsonBody, true, "title", "ranking", "color"); err != nil {
+		return nil, err
+	}
 	req.JSONBody = jsonBody
 	req.Idempotency = opts.IdempotencyKey
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
+		return nil, err
+	}
+	if err := ValidateResponseShape("updateItemGroup", "json-object", out, []string{}, false, false); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -296,6 +353,15 @@ func (c *Client) ListItems(ctx context.Context, opts ListItemsOptions) (any, err
 	if _, err := CanonicalInt64ID(opts.BoardId); err != nil {
 		return nil, err
 	}
+	if opts.Page != 0 && opts.Page < 1 {
+		return nil, fmt.Errorf("listItems: page must be at least 1")
+	}
+	if opts.Page > 2147483647 {
+		return nil, fmt.Errorf("listItems: page must be at most 2147483647")
+	}
+	if opts.PageSize != 0 && opts.PageSize < 1 {
+		return nil, fmt.Errorf("listItems: pageSize must be at least 1")
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId))
 	query := url.Values{}
 	if opts.BoardViewId != 0 {
@@ -320,6 +386,9 @@ func (c *Client) ListItems(ctx context.Context, opts ListItemsOptions) (any, err
 	req.Query = query
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
+		return nil, err
+	}
+	if err := ValidateResponseShape("listItems", "paged-object", out, []string{"data", "hasMore"}, false, false); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -350,10 +419,16 @@ func (c *Client) CreateItem(ctx context.Context, opts CreateItemOptions) (any, e
 	if jsonBody == nil {
 		jsonBody = opts.Body
 	}
+	if err := ValidateJSONBody(jsonBody, true); err != nil {
+		return nil, err
+	}
 	req.JSONBody = jsonBody
 	req.Idempotency = opts.IdempotencyKey
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
+		return nil, err
+	}
+	if err := ValidateResponseShape("createItem", "json-object", out, []string{}, true, false); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -413,6 +488,9 @@ func (c *Client) GetItem(ctx context.Context, opts GetItemOptions) (any, error) 
 	if err := c.Do(ctx, req, &out); err != nil {
 		return nil, err
 	}
+	if err := ValidateResponseShape("getItem", "json-object", out, []string{}, false, false); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
@@ -438,6 +516,9 @@ func (c *Client) ListItemComments(ctx context.Context, opts ListItemCommentsOpti
 	req := Request{Method: "GET", Path: path}
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
+		return nil, err
+	}
+	if err := ValidateResponseShape("listItemComments", "json-array", out, []string{}, false, false); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -466,10 +547,16 @@ func (c *Client) CreateItemComment(ctx context.Context, opts CreateItemCommentOp
 	if jsonBody == nil {
 		jsonBody = opts.Body
 	}
+	if err := ValidateJSONBody(jsonBody, true, "text"); err != nil {
+		return nil, err
+	}
 	req.JSONBody = jsonBody
 	req.Idempotency = opts.IdempotencyKey
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
+		return nil, err
+	}
+	if err := ValidateResponseShape("createItemComment", "json-object", out, []string{}, true, false); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -532,10 +619,16 @@ func (c *Client) UpdateItemComment(ctx context.Context, opts UpdateItemCommentOp
 	if jsonBody == nil {
 		jsonBody = opts.Body
 	}
+	if err := ValidateJSONBody(jsonBody, true, "text"); err != nil {
+		return nil, err
+	}
 	req.JSONBody = jsonBody
 	req.Idempotency = opts.IdempotencyKey
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
+		return nil, err
+	}
+	if err := ValidateResponseShape("updateItemComment", "json-object", out, []string{}, false, false); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -573,10 +666,16 @@ func (c *Client) ReplaceCommentReactions(ctx context.Context, opts ReplaceCommen
 	if jsonBody == nil {
 		jsonBody = opts.Body
 	}
+	if err := ValidateJSONBody(jsonBody, true, "reactions"); err != nil {
+		return nil, err
+	}
 	req.JSONBody = jsonBody
 	req.Idempotency = opts.IdempotencyKey
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
+		return nil, err
+	}
+	if err := ValidateResponseShape("replaceCommentReactions", "json-object", out, []string{}, false, false); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -611,10 +710,16 @@ func (c *Client) UpdateItemFields(ctx context.Context, opts UpdateItemFieldsOpti
 	if jsonBody == nil {
 		jsonBody = opts.Body
 	}
+	if err := ValidateJSONBody(jsonBody, true); err != nil {
+		return nil, err
+	}
 	req.JSONBody = jsonBody
 	req.Idempotency = opts.IdempotencyKey
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
+		return nil, err
+	}
+	if err := ValidateResponseShape("updateItemFields", "json-object", out, []string{}, false, false); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -648,10 +753,16 @@ func (c *Client) UpdateItemField(ctx context.Context, opts UpdateItemFieldOption
 	if jsonBody == nil {
 		jsonBody = opts.Body
 	}
+	if err := ValidateJSONBody(jsonBody, true); err != nil {
+		return nil, err
+	}
 	req.JSONBody = jsonBody
 	req.Idempotency = opts.IdempotencyKey
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
+		return nil, err
+	}
+	if err := ValidateResponseShape("updateItemField", "json-object", out, []string{}, false, false); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -686,6 +797,9 @@ func (c *Client) ListItemFiles(ctx context.Context, opts ListItemFilesOptions) (
 	if err := c.Do(ctx, req, &out); err != nil {
 		return nil, err
 	}
+	if err := ValidateResponseShape("listItemFiles", "json-array", out, []string{}, false, false); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
@@ -712,6 +826,9 @@ func (c *Client) UploadItemFile(ctx context.Context, opts UploadItemFileOptions)
 	req.Idempotency = opts.IdempotencyKey
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
+		return nil, err
+	}
+	if err := ValidateResponseShape("uploadItemFile", "json-object", out, []string{}, true, false); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -771,6 +888,9 @@ func (c *Client) GetItemFile(ctx context.Context, opts GetItemFileOptions) (any,
 	if err := c.Do(ctx, req, &out); err != nil {
 		return nil, err
 	}
+	if err := ValidateResponseShape("getItemFile", "json-object", out, []string{}, false, false); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
@@ -801,10 +921,16 @@ func (c *Client) UpdateItemFile(ctx context.Context, opts UpdateItemFileOptions)
 	if jsonBody == nil {
 		jsonBody = opts.Body
 	}
+	if err := ValidateJSONBody(jsonBody, true, "name"); err != nil {
+		return nil, err
+	}
 	req.JSONBody = jsonBody
 	req.Idempotency = opts.IdempotencyKey
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
+		return nil, err
+	}
+	if err := ValidateResponseShape("updateItemFile", "json-object", out, []string{}, false, false); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -842,6 +968,9 @@ func (c *Client) GetItemFileDownload(ctx context.Context, opts GetItemFileDownlo
 	if err := c.Do(ctx, req, &out); err != nil {
 		return nil, err
 	}
+	if err := ValidateResponseShape("getItemFileDownload", "json-object", out, []string{}, false, true); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
@@ -863,6 +992,15 @@ func (c *Client) ListSubitems(ctx context.Context, opts ListSubitemsOptions) (an
 	if _, err := CanonicalInt64ID(opts.ItemId); err != nil {
 		return nil, err
 	}
+	if opts.Page != 0 && opts.Page < 1 {
+		return nil, fmt.Errorf("listSubitems: page must be at least 1")
+	}
+	if opts.Page > 2147483647 {
+		return nil, fmt.Errorf("listSubitems: page must be at most 2147483647")
+	}
+	if opts.PageSize != 0 && opts.PageSize < 1 {
+		return nil, fmt.Errorf("listSubitems: pageSize must be at least 1")
+	}
 	path := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll("/v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/sub-items", "{spaceId}", url.PathEscape(opts.SpaceId)), "{boardId}", url.PathEscape(opts.BoardId)), "{itemId}", url.PathEscape(opts.ItemId))
 	query := url.Values{}
 	if len(opts.Expand) > 0 {
@@ -880,6 +1018,9 @@ func (c *Client) ListSubitems(ctx context.Context, opts ListSubitemsOptions) (an
 	if err := c.Do(ctx, req, &out); err != nil {
 		return nil, err
 	}
+	if err := ValidateResponseShape("listSubitems", "paged-object", out, []string{"data", "hasMore"}, false, false); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
@@ -894,6 +1035,15 @@ type ListSubitemsOptions struct {
 
 // ListTeams executes the listTeams operation: GET /v1/public/teams
 func (c *Client) ListTeams(ctx context.Context, opts ListTeamsOptions) (any, error) {
+	if opts.Page != 0 && opts.Page < 1 {
+		return nil, fmt.Errorf("listTeams: page must be at least 1")
+	}
+	if opts.Page > 2147483647 {
+		return nil, fmt.Errorf("listTeams: page must be at most 2147483647")
+	}
+	if opts.PageSize != 0 && opts.PageSize < 1 {
+		return nil, fmt.Errorf("listTeams: pageSize must be at least 1")
+	}
 	path := "/v1/public/teams"
 	query := url.Values{}
 	if opts.Page != 0 {
@@ -906,6 +1056,9 @@ func (c *Client) ListTeams(ctx context.Context, opts ListTeamsOptions) (any, err
 	req.Query = query
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
+		return nil, err
+	}
+	if err := ValidateResponseShape("listTeams", "paged-object", out, []string{"data", "hasMore"}, false, false); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -927,6 +1080,9 @@ func (c *Client) GetTeam(ctx context.Context, opts GetTeamOptions) (any, error) 
 	if err := c.Do(ctx, req, &out); err != nil {
 		return nil, err
 	}
+	if err := ValidateResponseShape("getTeam", "json-object", out, []string{}, false, false); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
@@ -936,6 +1092,15 @@ type GetTeamOptions struct {
 
 // ListUsers executes the listUsers operation: GET /v1/public/users
 func (c *Client) ListUsers(ctx context.Context, opts ListUsersOptions) (any, error) {
+	if opts.Page != 0 && opts.Page < 1 {
+		return nil, fmt.Errorf("listUsers: page must be at least 1")
+	}
+	if opts.Page > 2147483647 {
+		return nil, fmt.Errorf("listUsers: page must be at most 2147483647")
+	}
+	if opts.PageSize != 0 && opts.PageSize < 1 {
+		return nil, fmt.Errorf("listUsers: pageSize must be at least 1")
+	}
 	path := "/v1/public/users"
 	query := url.Values{}
 	for _, value := range opts.Emails {
@@ -959,6 +1124,9 @@ func (c *Client) ListUsers(ctx context.Context, opts ListUsersOptions) (any, err
 	if err := c.Do(ctx, req, &out); err != nil {
 		return nil, err
 	}
+	if err := ValidateResponseShape("listUsers", "paged-object", out, []string{"data", "hasMore"}, false, false); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
@@ -976,6 +1144,9 @@ func (c *Client) GetCurrentUser(ctx context.Context, opts GetCurrentUserOptions)
 	req := Request{Method: "GET", Path: path}
 	var out any
 	if err := c.Do(ctx, req, &out); err != nil {
+		return nil, err
+	}
+	if err := ValidateResponseShape("getCurrentUser", "json-object", out, []string{}, false, false); err != nil {
 		return nil, err
 	}
 	return out, nil

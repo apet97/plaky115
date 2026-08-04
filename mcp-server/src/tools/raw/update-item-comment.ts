@@ -9,9 +9,10 @@ const args = z.object({
   boardId: int64Id.describe("Represents unique board identifier across the system."),
   itemId: int64Id.describe("Represents unique item identifier across the system."),
   itemCommentId: int64Id.describe("Represents unique item comment identifier across the system."),
-  body: z.record(z.unknown()).describe("JSON request body for Update item comment."),
-});
+  body: z.record(z.unknown()).superRefine((body, ctx) => { if (!Object.prototype.hasOwnProperty.call(body, "text")) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["text"], message: "required" }); }).describe("JSON request body for Update item comment."),
+}).strict();
 const output = z.object({}).passthrough();
+const rawOutput = z.object({}).passthrough();
 
 export const updateItemCommentTool: McpToolDefinition = {
   name: "plaky_update_item_comment",
@@ -35,6 +36,7 @@ export const updateItemCommentTool: McpToolDefinition = {
       body: parsed.body,
       operationId: "updateItemComment",
     }, ctx.requestOptions);
+    rawOutput.parse(result);
     return ctx.respond(result, { compactKind: "comment" });
   },
 };

@@ -9,8 +9,9 @@ const args = z.object({
   status: z.enum(["OPEN","DONE"]).describe("Status filter.").optional(),
   limit: z.number().int().describe("Result limit.").optional(),
   labels: z.array(z.string()).describe("Labels to match.").optional(),
-});
+}).strict();
 const output = z.object({}).passthrough();
+const rawOutput = z.object({}).passthrough();
 
 export const getWidgetTool: McpToolDefinition = {
   name: "plaky_get_widget",
@@ -39,6 +40,7 @@ export const getWidgetTool: McpToolDefinition = {
       query,
       operationId: "getWidget",
     }, ctx.requestOptions);
+    rawOutput.parse(result);
     return ctx.respond(result, { compactKind: "item" });
   },
 };

@@ -23,21 +23,24 @@ export function buildRawToolModule(op) {
     lines.push(`  ${propertyKey(parameter.name)}: ${zodParameter(parameter)},`);
   }
   if (hasJsonBody) {
+    const bodySchema = zodRequestBody(op);
     const optional = op.request.required ? "" : ".optional()";
-    lines.push(`  body: z.record(z.unknown()).describe("JSON request body for ${op.summary ?? op.operationId}.")${optional},`);
+    lines.push(`  body: ${bodySchema}.describe("JSON request body for ${op.summary ?? op.operationId}.")${optional},`);
   }
   if (hasMultipartBody) {
     lines.push(`  fileBase64: z.string().describe("Canonical base64 file content; decoded size is bounded before upload."),`);
     lines.push(`  fileName: z.string().min(1).describe("File name sent in the multipart upload."),`);
     lines.push(`  contentType: z.string().describe("Optional file media type, such as application/pdf.").optional(),`);
   }
-  lines.push(`});`);
+  lines.push(`}).strict();`);
   const outputSchema = isVoid
     ? `z.object({ ok: z.boolean() })`
     : isArray
       ? `z.object({ data: z.array(z.unknown()) })`
-      : `z.object({}).passthrough()`;
+      : responseObjectSchema(descriptor);
   lines.push(`const output = ${outputSchema};`);
+  const rawOutputSchema = isVoid ? null : isArray ? `z.array(z.unknown())` : responseObjectSchema(descriptor);
+  if (rawOutputSchema) lines.push(`const rawOutput = ${rawOutputSchema};`);
   lines.push(``);
   lines.push(`export const ${camelOp}Tool: McpToolDefinition = {`);
   lines.push(`  name: "${op.mcpName}",`);
@@ -81,6 +84,7 @@ export function buildRawToolModule(op) {
   if (isVoid) lines.push(`      responseType: "void",`);
   lines.push(`      operationId: "${camelOp}",`);
   lines.push(`    }, ctx.requestOptions);`);
+  if (rawOutputSchema) lines.push(`    rawOutput.parse(result);`);
   if (isVoid) {
     lines.push(`    return ctx.respond({ ok: true }, { compactKind: ${JSON.stringify(op.compactKind)} });`);
   } else if (isArray) {
@@ -116,18 +120,80 @@ function zodParameter(parameter) {
 }
 
 function zodSchema(schema) {
+  let result;
   if (Array.isArray(schema.enum)) {
-    if (schema.enum.every((value) => typeof value === "string")) return `z.enum(${JSON.stringify(schema.enum)})`;
-    return `z.union([${schema.enum.map((value) => `z.literal(${JSON.stringify(value)})`).join(", ")}])`;
+    result = schema.enum.every((value) => typeof value === "string")
+      ? `z.enum(${JSON.stringify(schema.enum)})`
+      : `z.union([${schema.enum.map((value) => `z.literal(${JSON.stringify(value)})`).join(", ")}])`;
+  } else {
+    switch (schema.type) {
+      case "string": result = "z.string()"; break;
+      case "integer": result = schema.format === "int64" ? "int64Id" : "z.number().int()"; break;
+      case "number": result = "z.number()"; break;
+      case "boolean": result = "z.boolean()"; break;
+      case "array": result = `z.array(${zodSchema(schema.items)})`; break;
+      default: throw new Error(`unsupported parameter schema type: ${schema.type}`);
+    }
   }
-  switch (schema.type) {
-    case "string": return "z.string()";
-    case "integer": return schema.format === "int64" ? "int64Id" : "z.number().int()";
-    case "number": return "z.number()";
-    case "boolean": return "z.boolean()";
-    case "array": return `z.array(${zodSchema(schema.items)})`;
-    default: throw new Error(`unsupported parameter schema type: ${schema.type}`);
+  return applyZodConstraints(result, schema);
+}
+
+function applyZodConstraints(expression, schema) {
+  if (schema.type === "string") {
+    if (schema.minLength !== undefined) expression += `.min(${numberLiteral(schema.minLength)})`;
+    if (schema.maxLength !== undefined) expression += `.max(${numberLiteral(schema.maxLength)})`;
+    if (schema.pattern !== undefined) expression += `.regex(new RegExp(${JSON.stringify(schema.pattern)}))`;
+  } else if ((schema.type === "integer" || schema.type === "number") && schema.format !== "int64") {
+    if (schema.minimum !== undefined) expression += `.min(${numberLiteral(schema.minimum)})`;
+    if (schema.maximum !== undefined) expression += `.max(${numberLiteral(schema.maximum)})`;
+    if (schema.exclusiveMinimum !== undefined) {
+      const value = schema.exclusiveMinimum === true ? schema.minimum : schema.exclusiveMinimum;
+      if (value !== undefined) expression += `.gt(${numberLiteral(value)})`;
+    }
+    if (schema.exclusiveMaximum !== undefined) {
+      const value = schema.exclusiveMaximum === true ? schema.maximum : schema.exclusiveMaximum;
+      if (value !== undefined) expression += `.lt(${numberLiteral(value)})`;
+    }
+    if (schema.multipleOf !== undefined) expression += `.multipleOf(${numberLiteral(schema.multipleOf)})`;
+  } else if (schema.type === "array") {
+    if (schema.minItems !== undefined) expression += `.min(${numberLiteral(schema.minItems)})`;
+    if (schema.maxItems !== undefined) expression += `.max(${numberLiteral(schema.maxItems)})`;
+    if (schema.uniqueItems === true) expression += `.refine((value) => new Set(value).size === value.length, "must contain unique items")`;
   }
+  return expression;
+}
+
+function zodRequestBody(operation) {
+  let expression = "z.record(z.unknown())";
+  const required = operation.request?.requiredProperties ?? [];
+  if (operation.request?.rootKind === "object" && required.length > 0) {
+    const checks = required.map((property) =>
+      `if (!Object.prototype.hasOwnProperty.call(body, ${JSON.stringify(property)})) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [${JSON.stringify(property)}], message: "required" });`
+    ).join(" ");
+    expression += `.superRefine((body, ctx) => { ${checks} })`;
+  }
+  return expression;
+}
+
+function responseObjectSchema(descriptor) {
+  const required = new Set(descriptor.successRequiredProperties ?? []);
+  if (descriptor.createdIdPointer === "$.id") required.add("id");
+  if (descriptor.sensitiveLink) required.add("url");
+  const fields = [...required].map((property) => {
+    if (property === "data" && descriptor.isPaged) return "data: z.array(z.unknown())";
+    if (property === "hasMore" && descriptor.isPaged) return "hasMore: z.boolean()";
+    if (property === "url" && descriptor.sensitiveLink) {
+      return "url: z.string().url().refine((value) => value.startsWith(\"https://\"), \"must use HTTPS\")";
+    }
+    return `${propertyKey(property)}: z.unknown()`;
+  });
+  if (descriptor.sensitiveLink) fields.push("expiresInSeconds: z.number().int().nonnegative().optional()");
+  const properties = fields.length === 0 ? "" : ` ${fields.join(", ")} `;
+  return `z.object({${properties}}).passthrough()`;
+}
+
+function numberLiteral(value) {
+  return JSON.stringify(value);
 }
 
 function usesInt64(schema) {

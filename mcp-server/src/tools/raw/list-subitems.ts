@@ -9,10 +9,11 @@ const args = z.object({
   boardId: int64Id.describe("Represents unique board identifier across the system."),
   itemId: int64Id.describe("Represents unique item identifier across the system."),
   expand: z.array(z.enum(["space","board","group","createdBy","parent","subscriptions","fields"])).describe("Comma-separated list of relationships to expand into full objects instead of IDs.").optional(),
-  page: z.number().int().describe("Page number.").optional(),
-  pageSize: z.number().int().describe("Page size.").optional(),
-});
-const output = z.object({}).passthrough();
+  page: z.number().int().min(1).max(2147483647).describe("Page number.").optional(),
+  pageSize: z.number().int().min(1).describe("Page size.").optional(),
+}).strict();
+const output = z.object({ data: z.array(z.unknown()), hasMore: z.boolean() }).passthrough();
+const rawOutput = z.object({ data: z.array(z.unknown()), hasMore: z.boolean() }).passthrough();
 
 export const listSubitemsTool: McpToolDefinition = {
   name: "plaky_list_subitems",
@@ -41,6 +42,7 @@ export const listSubitemsTool: McpToolDefinition = {
       query,
       operationId: "listSubitems",
     }, ctx.requestOptions);
+    rawOutput.parse(result);
     return ctx.respond(result, { compactKind: "item" });
   },
 };
