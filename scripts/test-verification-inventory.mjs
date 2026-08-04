@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { verificationScriptNames } from "./lib/verification-plan.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const pkg = JSON.parse(readFileSync(`${root}/package.json`, "utf8"));
@@ -13,10 +14,18 @@ test("verify accounts for every tracked scripts/test-*.mjs file", () => {
     encoding: "utf8",
   }).trim().split("\n").filter(Boolean).sort();
   const reachable = collectReachableScripts(pkg.scripts, "verify");
-  const commands = [...reachable].map((name) => pkg.scripts[name]).join("\n");
+  const commands = [
+    ...[...reachable].map((name) => pkg.scripts[name]),
+    ...verificationScriptNames().map((name) => pkg.scripts[name]),
+  ].join("\n");
   const missing = tracked.filter((path) => !commands.includes(path));
 
   assert.deepEqual(missing, [], `tracked verification tests missing from npm run verify: ${missing.join(", ")}`);
+});
+
+test("verification plan is explicit and every referenced npm script exists", () => {
+  const missing = verificationScriptNames().filter((name) => typeof pkg.scripts[name] !== "string");
+  assert.deepEqual(missing, [], `verification plan references missing package scripts: ${missing.join(", ")}`);
 });
 
 function collectReachableScripts(scripts, entrypoint) {

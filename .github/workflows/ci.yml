@@ -40,39 +40,11 @@ jobs:
           npm --prefix mcp-server ci
           cd cli && go mod download
       - name: Verify contracts, generation, security, and release policy
+        run: npm run verify
+      - name: Verify production dependencies and Go vulnerabilities
         run: |
-          npm run workflow:policy:test
-          npm run verification:inventory:test
-          npm run release:contract:test
-          npm run installer:test
-          npm run contract:source:test
-          npm run contract:inventory:test
-          npm run overlay:validate
-          npm run lint:openapi
-          npm run openapi:test
-          npm run metadata:test
-          npm run contract:expected:check
-          npm run generated:drift
-          npm run codegen:test
-          npm run test:surfaces
-          npm run postgen:drift
-          npm run docs:surface:test
-          npm run examples:check
-          npm run live:sweep:test
           npm run audit:production
           npm run govulncheck
-          cd cli && go test ./... && go build -o /tmp/plaky115 ./cmd/plaky115 && goreleaser check
-      - name: Verify packages and cross-surface parity once
-        run: |
-          npm --prefix sdk run build
-          npm --prefix mcp-server run build
-          npm run parity:test
-          npm run status:surfaces:strict
-          npm run secret:scan:test
-          npm run secret:scan
-          npm run artifacts:audit
-          npm run pack:smoke
-          npm run packsnapshot:drift
 
   node-compatibility:
     name: Node ${{ matrix.node-version }} packages

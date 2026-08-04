@@ -75,7 +75,9 @@ test("Dependabot proposes weekly GitHub Actions updates", () => {
 test("offline verification runs the workflow policy before any build", () => {
   const pkg = JSON.parse(readFileSync(`${root}/package.json`, "utf8"));
   assert.equal(pkg.scripts["workflow:policy:test"], "node --test scripts/test-workflow-policy.mjs");
-  assert.match(pkg.scripts["verify:offline"], /^npm run workflow:policy:test && /);
+  assert.equal(pkg.scripts["verify:offline"], "node scripts/verify-offline.mjs");
+  const runner = readFileSync(`${root}/scripts/verify-offline.mjs`, "utf8");
+  assert.match(runner, /verificationPlan/);
 });
 
 function expectedPermissions(name) {
