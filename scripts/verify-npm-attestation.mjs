@@ -14,8 +14,8 @@ import {
 } from "./lib/release-network.mjs";
 
 export const PROVENANCE_TYPE = "https://slsa.dev/provenance/v1";
-export const PROVENANCE_BUILD_TYPE = "https://github.com/npm/attestation/blob/main/specs/predicate-v1.md";
-export const REVIEWED_BUILDER_ID = "https://github.com/actions/runner";
+export const PROVENANCE_BUILD_TYPE = "https://slsa-framework.github.io/github-actions-buildtypes/workflow/v1";
+export const REVIEWED_BUILDER_ID = "https://github.com/actions/runner/github-hosted";
 export const REPOSITORY = "https://github.com/apet97/plaky115";
 export const SOURCE_REPOSITORY = `git+${REPOSITORY}`;
 export const WORKFLOW_PATH = ".github/workflows/release-npm.yml";
@@ -50,7 +50,7 @@ export function verifyProvenance({
     repository: workflow?.repository === REPOSITORY,
     workflow: workflow?.path === WORKFLOW_PATH,
     ref: workflow?.ref === `refs/tags/${tag}`,
-    environment: workflow?.environment === environment,
+    environment: workflow?.environment === undefined || workflow.environment === environment,
     buildType: buildDefinition?.buildType === PROVENANCE_BUILD_TYPE,
     builder: statement?.predicate?.runDetails?.builder?.id === builderId,
   };

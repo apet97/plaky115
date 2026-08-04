@@ -16,9 +16,9 @@ const base = {
       buildDefinition: {
         externalParameters: { workflow: { ref: "refs/tags/v0.2.1", repository: "https://github.com/apet97/plaky115", path: ".github/workflows/release-npm.yml", environment: "npm-release" } },
         resolvedDependencies: [{ uri: "git+https://github.com/apet97/plaky115@refs/tags/v0.2.1", digest: { gitCommit: "1".repeat(40) } }],
-        buildType: "https://github.com/npm/attestation/blob/main/specs/predicate-v1.md",
+        buildType: "https://slsa-framework.github.io/github-actions-buildtypes/workflow/v1",
       },
-      runDetails: { builder: { id: "https://github.com/actions/runner" } },
+      runDetails: { builder: { id: "https://github.com/actions/runner/github-hosted" } },
     },
   },
 };
