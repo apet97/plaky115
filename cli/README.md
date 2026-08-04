@@ -44,9 +44,12 @@ $env:PLAKY115_VERSION = $version
 ```
 
 Both installers download the archive and `checksums.txt` from the same exact
-release and verify SHA-256 before extraction. Set
+release with HTTPS-only bounded redirects/timeouts, verify SHA-256 before
+extraction, reject unsafe/non-regular archive entries, and replace an existing
+binary through a recoverable backup. Set
 `PLAKY115_VERSION` to a specific `v*` tag or leave it unset for the latest
-release.
+release. The reviewed installer limits are recorded in
+`../scripts/installer-limits.json` and checked against both implementations.
 
 ## Curated Commands
 

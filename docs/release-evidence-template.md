@@ -4,6 +4,7 @@
 - Candidate commit and clean status:
 - npm/CLI workflow run IDs:
 - SDK/MCP versions, integrity digests, and attestation checks:
+- Inspected tarball paths, compressed bytes, SHA-256/SHA-512, SRI, and inventory hashes:
 - CLI asset names and SHA-256 checksums:
 - Operation count and generated-surface status:
 - SDK/MCP/Go test counts:
@@ -13,6 +14,7 @@
 - Authorized mutation result and cleanup counts, or `not authorized`:
 - Registry/tag absence preflight:
 - GitHub environment/ruleset readback:
+- Trusted publisher readback status (`confirmed` required):
 - Open risks or approved waivers:
 
 Do not include credentials, response bodies, workspace content, user identity,

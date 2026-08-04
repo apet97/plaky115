@@ -20,6 +20,11 @@ Deprecations remain documented for at least one stable release. CLI `--api-key`
 is deprecated through 1.x and is scheduled for removal in 2.0; use the
 environment or `--api-key-stdin`.
 
+The release review index for exported symbols, commands, tools, package
+subpaths, and compatibility bridges is maintained in
+[`compatibility-inventory.md`](compatibility-inventory.md). Generated operation
+and schema inventories remain generator-owned and are verified mechanically.
+
 Generated raw operation names follow the accepted 32-operation contract.
 Resource methods and curated workflows remain hand-written compatibility
 surfaces. See `docs/codegen.md` for ownership.

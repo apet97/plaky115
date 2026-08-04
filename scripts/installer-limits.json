@@ -1,0 +1,9 @@
+{
+  "metadataBytes": 1048576,
+  "archiveBytes": 268435456,
+  "entryBytes": 268435456,
+  "entries": 32,
+  "connectTimeoutSeconds": 10,
+  "totalTimeoutSeconds": 120,
+  "maxRedirects": 5
+}

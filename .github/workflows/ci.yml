@@ -153,4 +153,11 @@ jobs:
             try { & ./cli/scripts/install.ps1; $rollbackExercised = $false } catch { $rollbackExercised = $_.Exception.Message -match "simulated atomic replacement failure" }
             if (-not $rollbackExercised) { throw "replacement failure was not exercised" }
             if ((Get-Content (Join-Path $install "plaky115.exe") -Raw) -ne "existing binary") { throw "replacement failure did not restore existing binary" }
+
+            $env:PLAKY115_INSTALL_TEST_FAIL_RESTORE = "1"
+            try { & ./cli/scripts/install.ps1; $restoreFailureExercised = $false } catch { $restoreFailureExercised = $_.Exception.Message -match "recovery backup preserved" }
+            if (-not $restoreFailureExercised) { throw "restore failure was not preserved" }
+            $backups = @(Get-ChildItem -LiteralPath $install -Filter ".plaky115.backup.*")
+            if ($backups.Count -ne 1) { throw "recovery backup was not preserved" }
+            if ((Get-Content $backups[0].FullName -Raw) -ne "existing binary") { throw "preserved recovery backup contents changed" }
           } finally { Stop-Process $server -Force }

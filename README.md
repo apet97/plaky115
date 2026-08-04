@@ -114,7 +114,8 @@ and [client installation snippets](docs/install-snippets.md).
   cancellation, and interceptors.
 - Curated CLI and MCP workflows alongside exact operation-shaped raw surfaces.
 - Deterministic local code generation, package-content snapshots, consumer
-  smoke tests, secret scanning, and release provenance checks.
+  smoke tests, bounded inspected release tarballs, secret scanning, and
+  immutable npm provenance checks.
 
 Only `GET` requests can retry. Writes remain single-attempt even when an
 idempotency key is present. Callers may attach an explicit key, but the public
@@ -160,6 +161,7 @@ and [code generation](docs/codegen.md).
 | CLI users | [Go CLI](cli/README.md) |
 | MCP users | [MCP server](mcp-server/README.md), [host snippets](docs/install-snippets.md), [recipes](examples/mcp/recipes.md) |
 | API behavior | [Verified wire behavior](docs/api-behavior.md) |
+| Compatibility | [Public compatibility inventory](docs/compatibility-inventory.md) |
 | Contributors | [Contributing](CONTRIBUTING.md), [API evolution](docs/api-evolution.md), [codegen](docs/codegen.md) |
 | Security | [Security policy](SECURITY.md) |
 | Maintainers | [Release checklist](docs/release-checklist.md), [action pin provenance](docs/release/action-pins.md) |
