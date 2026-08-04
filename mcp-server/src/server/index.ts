@@ -11,6 +11,7 @@ import {
   PlakyDecodeError,
   PlakyError,
   PlakyPartialMutationError,
+  PlakyOutputLimitError,
   PlakyTimeoutError,
   UploadValidationError,
   redact,
@@ -19,7 +20,7 @@ import type { MutationReceipt } from "plaky115";
 import { ZodError } from "zod/v3";
 import { selectTools, UsageError, type Mode } from "./modes.js";
 import { filterByScopes } from "./scopes.js";
-import { compactByKind, serializeForMcp, structuredForMcp } from "../runtime/compaction.js";
+import { compactByKind, McpResponseLimitError, serializeForMcp, structuredForMcp } from "../runtime/compaction.js";
 import { createMutationAttempt, McpMutationAttemptError, type McpAttemptSnapshot } from "../runtime/attempts.js";
 import { resolveMaxUploadBytes } from "../runtime/upload.js";
 import type {
@@ -76,7 +77,7 @@ export function buildServer(opts: ServerOptions): { server: McpServer; tools: Mc
         : value;
       const structuredContent = structuredForMcp(compacted);
       return {
-        content: [{ type: "text", text: serializeForMcp(structuredContent) }],
+        content: [{ type: "text", text: ro?.summary === undefined ? serializeForMcp(structuredContent) : redact(ro.summary) }],
         structuredContent,
       };
     },
@@ -209,6 +210,24 @@ function classifyToolError(
       code: error.code,
       path: error.path,
     }, state);
+  }
+  if (error instanceof PlakyOutputLimitError) {
+    return {
+      category: "usage",
+      name: error.name,
+      message: redact(error.message),
+      retryable: false,
+      code: error.code,
+    };
+  }
+  if (error instanceof McpResponseLimitError) {
+    return {
+      category: "usage",
+      name: error.name,
+      message: redact(error.message),
+      retryable: false,
+      code: error.code,
+    };
   }
   if (error instanceof PlakyError) return plakyDetail("plaky", error, false, state);
   if (error instanceof ZodError) {

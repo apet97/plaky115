@@ -3,11 +3,12 @@ import type { MutationPhase, MutationReceipt, PlakyClient, PlakyRequestOptions }
 import type { McpMutationAttempt } from "./attempts.js";
 
 export type McpScope = "read" | "write" | "destructive";
-export type CompactKind = "raw" | "item" | "board" | "space" | "comment" | "itemGroup" | "itemFile" | "downloadLink";
+export type CompactKind = "raw" | "item" | "board" | "space" | "workspace" | "comment" | "itemGroup" | "itemFile" | "downloadLink";
 
 export type McpRespondOptions = {
   compactKind?: CompactKind;
   includeRaw?: boolean;
+  summary?: string;
 };
 
 export type McpToolResponse = {

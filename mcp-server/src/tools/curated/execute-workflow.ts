@@ -3,7 +3,7 @@ import {
   workspaceMap,
   searchItemsDetailed,
   bulkUpdateItems,
-  exportItems,
+  readItemExportChunk,
   asSpaceId,
   asBoardId,
   asItemId,
@@ -88,7 +88,7 @@ export async function executeWorkflow(
 
   switch (workflowId) {
     case "workspace.map":
-      return ctx.respond(await workspaceMap(ctx.client, { signal: ctx.signal }), { compactKind: "raw" });
+      return ctx.respond(await workspaceMap(ctx.client, { signal: ctx.signal }), { compactKind: "workspace" });
     case "items.search": {
       const limit = (args["limit"] as number | undefined) ?? 200;
       const progress = createProgressReporter(ctx.progress, limit, "items scanned");
@@ -97,6 +97,7 @@ export async function executeWorkflow(
         board: readRef(args, "board") as EntityRef,
         query: args["query"] as string,
         limit,
+        cursor: args["cursor"] as { page: number; index: number } | undefined,
         signal: ctx.signal,
         onProgress: (scanned) => progress(scanned),
       });
@@ -215,13 +216,17 @@ export async function executeWorkflow(
     }
     case "export.items": {
       const format = (args["format"] as "jsonl" | "csv" | undefined) ?? "jsonl";
-      const body = await exportItems(ctx.client, {
+      const result = await readItemExportChunk(ctx.client, {
         space: readRef(args, "space") as EntityRef,
         board: readRef(args, "board") as EntityRef,
         format,
         signal: ctx.signal,
+        maxItems: args["maxItems"] as number | undefined,
+        maxBytes: args["maxBytes"] as number | undefined,
+        cursor: args["cursor"] as { page: number; index: number } | undefined,
       });
-      return ctx.respond({ format, body });
+      const continuation = result.nextCursor === undefined ? "complete" : `continue at page ${result.nextCursor.page}, index ${result.nextCursor.index}`;
+      return ctx.respond(result, { summary: `Exported ${result.returned} ${format} item records (${result.bytes} UTF-8 bytes); ${continuation}.` });
     }
   }
 }

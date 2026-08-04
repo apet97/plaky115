@@ -7,6 +7,9 @@ import {
   PlakyApiError,
   PlakyRateLimitError,
   bulkUpdateItems,
+  readItemChunk,
+  readItemExportChunk,
+  iterateItemChunks,
   withRetries,
   searchItems,
   searchItemsDetailed,
@@ -37,6 +40,8 @@ import {
   type ItemGroupDeleteParams,
   type ItemShape,
   type SearchItemsDetailedResult,
+  type BoundedChunk,
+  type ItemExportChunk,
   type PlakyOpenApiComponents,
   type PlakyOpenApiOperations,
   type PlakyApiResponse,
@@ -121,6 +126,9 @@ expectType<string | undefined>(comment.text);
 
 expectType<Promise<ItemShape[]>>(searchItems(client, { space: 1, board: 2, query: "" }));
 expectType<Promise<SearchItemsDetailedResult>>(searchItemsDetailed(client, { space: 1, board: 2, query: "", limit: 10 }));
+expectType<Promise<BoundedChunk<ItemShape>>>(readItemChunk(client, { space: 1, board: 2, maxItems: 10 }));
+expectType<AsyncIterableIterator<BoundedChunk<ItemShape>>>(iterateItemChunks(client, { space: 1, board: 2, maxItems: 10 }));
+expectType<Promise<ItemExportChunk>>(readItemExportChunk(client, { space: 1, board: 2, format: "jsonl" }));
 expectType<Promise<readonly MutationReceipt[]>>(bulkUpdateItems(client, {
   space: 1,
   board: 2,

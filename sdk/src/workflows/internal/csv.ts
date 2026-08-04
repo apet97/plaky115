@@ -10,6 +10,52 @@ type FieldDescriptor = {
   column?: string | undefined;
 };
 
+export type CsvSchema = {
+  topKeys: string[];
+  descriptors: FieldDescriptor[];
+};
+
+/**
+ * Build a deterministic CSV schema from one page and the board's field
+ * definitions. The seed page is intentionally bounded; later pages cannot
+ * change the header or cause an unbounded discovery pass.
+ */
+export function createItemsCsvSchema(items: JsonRecord[], fieldDefinitions: JsonRecord[] = []): CsvSchema {
+  const topKeys = Array.from(new Set([
+    ...items.flatMap((item) => Object.keys(item).filter((key) => key !== "fields")),
+  ])).sort(compareText);
+  const descriptors = new Map<string, FieldDescriptor>();
+  let missingOccurrence = 0;
+
+  for (const definition of fieldDefinitions) {
+    const label = fieldLabel(definition);
+    if (label === "") continue;
+    const key = typeof definition["key"] === "string" && definition["key"] !== "" ? definition["key"] : undefined;
+    const identity = key === undefined ? `missing:${label}:${++missingOccurrence}` : `key:${key}`;
+    if (!descriptors.has(identity)) descriptors.set(identity, { identity, key, label });
+  }
+  for (const item of items) collectFieldValues(item, descriptors);
+  return finalizeCsvSchema(topKeys, descriptors);
+}
+
+/** Render one page against a previously frozen CSV schema. */
+export function renderItemsCsvChunk(items: JsonRecord[], safety: CsvSafety, schema: CsvSchema, includeHeader: boolean): string {
+  if (items.length === 0 && !includeHeader) return "";
+  const fieldValues = items.map((item) => collectFieldValues(item, new Map(schema.descriptors.map((descriptor) => [descriptor.identity, descriptor]))));
+  const header = [...schema.topKeys, ...schema.descriptors.map((descriptor) => descriptor.column!)];
+  const lines = includeHeader ? [header.map(quoteCsv).join(",")] : [];
+  for (let index = 0; index < items.length; index++) {
+    const item = items[index]!;
+    const values = fieldValues[index]!;
+    const row = [
+      ...schema.topKeys.map((key) => formatCell(item[key], safety)),
+      ...schema.descriptors.map((descriptor) => formatCell(values.get(descriptor.identity), safety)),
+    ];
+    lines.push(row.map(quoteCsv).join(","));
+  }
+  return lines.length === 0 ? "" : `${lines.join("\n")}\n`;
+}
+
 export function renderItemsCsv(items: JsonRecord[], safety: CsvSafety): string {
   if (items.length === 0) return "";
 
@@ -75,6 +121,30 @@ function collectFieldValues(item: JsonRecord, descriptors: Map<string, FieldDesc
     if (!values.has(identity)) values.set(identity, field["value"]);
   }
   return values;
+}
+
+function finalizeCsvSchema(topKeys: string[], descriptors: Map<string, FieldDescriptor>): CsvSchema {
+  const ordered = Array.from(descriptors.values()).sort((left, right) => compareText(left.label, right.label) || compareText(left.identity, right.identity));
+  let missingIndex = 0;
+  for (const descriptor of ordered) {
+    if (descriptor.key === undefined) descriptor.missingIndex = ++missingIndex;
+  }
+
+  const labelCounts = new Map<string, number>();
+  for (const descriptor of ordered) labelCounts.set(descriptor.label, (labelCounts.get(descriptor.label) ?? 0) + 1);
+  const usedColumns = new Set(topKeys);
+  const topKeySet = new Set(topKeys);
+  for (const descriptor of ordered) {
+    const collides = topKeySet.has(descriptor.label) || (labelCounts.get(descriptor.label) ?? 0) > 1;
+    const base = collides
+      ? descriptor.key !== undefined
+        ? `${descriptor.label} [${descriptor.key}]`
+        : `${descriptor.label} [#${descriptor.missingIndex}]`
+      : descriptor.label;
+    descriptor.column = uniqueColumn(base, usedColumns);
+    usedColumns.add(descriptor.column);
+  }
+  return { topKeys, descriptors: ordered };
 }
 
 function fieldLabel(field: JsonRecord): string {

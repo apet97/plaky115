@@ -24,6 +24,11 @@
       "import": "./esm/runtime/errors.js",
       "default": "./esm/runtime/errors.js"
     },
+    "./runtime/chunks.js": {
+      "types": "./esm/runtime/chunks.d.ts",
+      "import": "./esm/runtime/chunks.js",
+      "default": "./esm/runtime/chunks.js"
+    },
     "./runtime/http.js": {
       "types": "./esm/runtime/http.d.ts",
       "import": "./esm/runtime/http.js",

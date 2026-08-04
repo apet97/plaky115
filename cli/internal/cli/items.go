@@ -223,43 +223,164 @@ func newItemsExportCommand(getClient clientFactory) *cobra.Command {
 			if csvSafety != "spreadsheet" && csvSafety != "raw" {
 				return fmt.Errorf("--csv-safety must be spreadsheet or raw")
 			}
+			page, _ := cmd.Flags().GetInt("page")
+			pageIndex, _ := cmd.Flags().GetInt("page-index")
+			pageSize, _ := cmd.Flags().GetInt("page-size")
+			maxItems, _ := cmd.Flags().GetInt64("max-items")
+			maxBytes, _ := cmd.Flags().GetInt64("max-bytes")
+			if page < 1 {
+				return fmt.Errorf("--page must be at least 1")
+			}
+			if pageIndex < 0 {
+				return fmt.Errorf("--page-index must be non-negative")
+			}
+			if pageSize < 1 {
+				return fmt.Errorf("--page-size must be at least 1")
+			}
+			if maxItems < 1 {
+				return fmt.Errorf("--max-items must be at least 1")
+			}
+			if maxBytes < 1 {
+				return fmt.Errorf("--max-bytes must be at least 1")
+			}
 			c, err := getClient(cmd)
 			if err != nil {
 				return err
 			}
-			items, err := drainItems(cmd, c, spaceID, boardID)
-			if err != nil {
-				return err
-			}
-			if format == "jsonl" {
-				w := cmd.OutOrStdout()
-				for _, it := range items {
-					b, err := json.Marshal(it)
-					if err != nil {
-						return err
-					}
-					if _, err := fmt.Fprintln(w, string(b)); err != nil {
-						return err
-					}
-				}
-				return nil
-			}
-			return writeCSV(cmd, items, csvSafety)
+			return streamItemsExport(cmd, c, spaceID, boardID, format, csvSafety, page, pageIndex, pageSize, maxItems, maxBytes)
 		},
 	}
 	cmd.Flags().String("space-id", "", "Space ID (required)")
 	cmd.Flags().String("board-id", "", "Board ID (required)")
 	cmd.Flags().String("format", "jsonl", "Output format: jsonl | csv")
 	cmd.Flags().String("csv-safety", "spreadsheet", "CSV string safety: spreadsheet | raw")
+	cmd.Flags().Int("page", 1, "First API page or continuation page")
+	cmd.Flags().Int("page-index", 0, "Zero-based item index within the first continuation page")
+	cmd.Flags().Int("page-size", 200, "API page size")
+	cmd.Flags().Int64("max-items", 10_000, "Maximum items to emit")
+	cmd.Flags().Int64("max-bytes", 16*1024*1024, "Maximum UTF-8 output bytes")
 	markRequired(cmd, "space-id", "board-id")
 	return cmd
 }
 
-func drainItems(cmd *cobra.Command, c *plakysdk.Client, spaceID, boardID string) ([]map[string]any, error) {
+func streamItemsExport(cmd *cobra.Command, c *plakysdk.Client, spaceID, boardID, format, csvSafety string, page, pageIndex, pageSize int, maxItems, maxBytes int64) error {
 	ctx := cmd.Context()
-	return drainPaged(200, func(page, pageSize int) (any, error) {
-		return c.ListItems(ctx, plakysdk.ListItemsOptions{SpaceId: spaceID, BoardId: boardID, Page: page, PageSize: pageSize})
-	})
+	out := cmd.OutOrStdout()
+	var csvState csvSchema
+	csvHeaderWritten := false
+	var outputBytes int64
+	var emitted int64
+	var board any
+
+	if format == "csv" {
+		var err error
+		board, err = c.GetBoard(ctx, plakysdk.GetBoardOptions{SpaceId: spaceID, BoardId: boardID})
+		if err != nil {
+			return err
+		}
+	}
+
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		raw, err := c.ListItems(ctx, plakysdk.ListItemsOptions{SpaceId: spaceID, BoardId: boardID, Page: page, PageSize: pageSize})
+		if err != nil {
+			return err
+		}
+		_, batch, hasMore, err := plakydx.RequirePage(raw, "items export response")
+		if err != nil {
+			return err
+		}
+		if pageIndex > len(batch) {
+			return fmt.Errorf("items export continuation index %d exceeds page %d length", pageIndex, page)
+		}
+
+		if format == "csv" && !csvHeaderWritten && len(batch) > 0 {
+			seed, err := recordsFromBatch(batch, "items export CSV schema")
+			if err != nil {
+				return err
+			}
+			csvState = buildCSVSchema(seed, board)
+			header, err := renderCSVHeader(csvState)
+			if err != nil {
+				return err
+			}
+			if int64(len(header)) > maxBytes {
+				return fmt.Errorf("items export truncated: max-bytes=%d next-page=%d next-index=%d", maxBytes, page, pageIndex)
+			}
+			if _, err := out.Write(header); err != nil {
+				return err
+			}
+			outputBytes += int64(len(header))
+			csvHeaderWritten = true
+		}
+
+		for index := pageIndex; index < len(batch); index++ {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if emitted >= maxItems {
+				return exportTruncated(maxItems, maxBytes, page, index)
+			}
+			record, err := plakydx.RequireRecord(batch[index], "items export item")
+			if err != nil {
+				return err
+			}
+			var encoded []byte
+			if format == "jsonl" {
+				encoded, err = json.Marshal(record)
+				if err != nil {
+					return err
+				}
+				encoded = append(encoded, '\n')
+			} else {
+				encoded, err = renderCSVRow(record, csvState, csvSafety)
+				if err != nil {
+					return err
+				}
+			}
+			if outputBytes+int64(len(encoded)) > maxBytes {
+				return exportTruncated(maxItems, maxBytes, page, index)
+			}
+			if _, err := out.Write(encoded); err != nil {
+				return err
+			}
+			outputBytes += int64(len(encoded))
+			emitted++
+		}
+
+		if !hasMore {
+			return nil
+		}
+		if len(batch) == 0 {
+			return fmt.Errorf("items export page %d was empty while hasMore was true", page)
+		}
+		if emitted >= maxItems {
+			return exportTruncated(maxItems, maxBytes, page+1, 0)
+		}
+		if page >= maxPaginationPages {
+			return fmt.Errorf("pagination aborted after %d pages", maxPaginationPages)
+		}
+		page++
+		pageIndex = 0
+	}
+}
+
+func recordsFromBatch(batch []any, label string) ([]map[string]any, error) {
+	records := make([]map[string]any, 0, len(batch))
+	for _, value := range batch {
+		record, err := plakydx.RequireRecord(value, label)
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, record)
+	}
+	return records, nil
+}
+
+func exportTruncated(maxItems, maxBytes int64, page, index int) error {
+	return fmt.Errorf("items export truncated: max-items=%d max-bytes=%d next-page=%d next-index=%d", maxItems, maxBytes, page, index)
 }
 
 // maxPaginationPages is a safety valve, not an API contract: it bounds an

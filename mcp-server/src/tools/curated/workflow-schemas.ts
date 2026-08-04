@@ -53,9 +53,14 @@ function entityInput<T extends z.ZodRawShape>(required: readonly EntityName[], s
 }
 
 const workspaceMapInputSchema = z.object({}).strict();
+const cursorSchema = z.object({
+  page: z.number().int().positive(),
+  index: z.number().int().nonnegative(),
+}).strict().describe("Exact page and zero-based item index at which to continue.");
 const itemSearchInputSchema = entityInput(["space", "board"], {
   query: z.string().describe("Item search query; empty matches every scanned item."),
   limit: z.number().int().positive().describe("Maximum items to scan.").optional(),
+  cursor: cursorSchema.optional(),
 });
 const itemCreateBodySchema = z.object({
   title: z.string().describe("Item title.").optional(),
@@ -81,6 +86,9 @@ const commentThreadInputSchema = entityInput(["space", "board", "item"], {
 });
 const exportItemsInputSchema = entityInput(["space", "board"], {
   format: z.enum(["jsonl", "csv"]).describe("Export format.").optional(),
+  maxItems: z.number().int().positive().describe("Maximum items in one export chunk.").optional(),
+  maxBytes: z.number().int().positive().describe("Maximum UTF-8 bytes in one export chunk.").optional(),
+  cursor: cursorSchema.optional(),
 });
 const itemGroupBodyBase = {
   title: z.string().min(1).describe("Item Group title."),

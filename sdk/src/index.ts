@@ -94,6 +94,18 @@ export { RateLimitSink } from "./runtime/rate-limit.js";
 export type { RateLimitSnapshot } from "./runtime/rate-limit.js";
 export { paginate } from "./runtime/pagination.js";
 export type { Page, PageFetcher, PageOptions, PaginatedIterator } from "./runtime/pagination.js";
+export {
+  DEFAULT_CHUNK_MAX_BYTES,
+  DEFAULT_CHUNK_MAX_ITEMS,
+  MAX_MATERIALIZED_BYTES,
+  MAX_MATERIALIZED_ITEMS,
+  PlakyMaterializationLimitError,
+  PlakyOutputLimitError,
+  iteratePagedChunks,
+  readPagedChunk,
+  utf8ByteLength,
+} from "./runtime/chunks.js";
+export type { BoundedChunk, ChunkIterator, ChunkOptions, PageCursor } from "./runtime/chunks.js";
 export type { PlakyRequestOptions } from "./runtime/http.js";
 export {
   MAX_UPLOAD_BYTES_HARD_CEILING,
@@ -216,8 +228,27 @@ export {
 } from "./resolvers/index.js";
 export type { EntityRef, EntitySelector } from "./resolvers/index.js";
 
-export { workspaceMap, searchItems, searchItemsDetailed, bulkUpdateItems, exportItems } from "./workflows/index.js";
-export type { SearchItemsParams, SearchItemsDetailedResult, BulkUpdateParams, ExportItemsParams } from "./workflows/index.js";
+export {
+  workspaceMap,
+  searchItems,
+  searchItemsDetailed,
+  bulkUpdateItems,
+  exportItems,
+  readItemChunk,
+  iterateItemChunks,
+  readItemExportChunk,
+  iterateItemExportChunks,
+} from "./workflows/index.js";
+export type {
+  SearchItemsParams,
+  SearchItemsDetailedResult,
+  BulkUpdateParams,
+  ExportItemsParams,
+  ItemExportChunkParams,
+  WorkspaceMapOptions,
+  ItemChunkParams,
+  ItemExportChunk,
+} from "./workflows/index.js";
 export {
   normalizeBase64UploadPlan,
   normalizeBlobUploadPlan,

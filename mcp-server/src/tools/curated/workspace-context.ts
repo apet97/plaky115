@@ -14,14 +14,17 @@ export const workspaceContextTool: McpToolDefinition = {
     openWorldHint: false,
   },
   inputSchema: z.object({
-    includeRaw: z.boolean().describe("Include uncompressed workspace, space, and board payloads.").optional(),
+    includeRaw: z.boolean().describe("Include raw payloads when they fit the independent raw-response bound.").optional(),
   }),
   outputSchema: z.object({
-    value: z.unknown(),
+    data: z.array(z.unknown()),
+    complete: z.boolean(),
+    truncated: z.boolean(),
+    value: z.array(z.unknown()).optional().describe("Deprecated 1.x compatibility alias for data."),
   }).passthrough(),
   async handler(input, ctx) {
     const { includeRaw } = input as { includeRaw?: boolean };
     const map = await workspaceMap(ctx.client, { signal: ctx.signal });
-    return ctx.respond(map, { compactKind: "raw", includeRaw: includeRaw === true });
+    return ctx.respond(map, { compactKind: "workspace", includeRaw: includeRaw === true });
   },
 };

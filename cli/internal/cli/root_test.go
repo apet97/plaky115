@@ -237,6 +237,71 @@ func TestItemsExportCSVRejectsUnknownSafetyMode(t *testing.T) {
 	}
 }
 
+func TestItemsExportStreamsAndReportsExactContinuationAtItemCap(t *testing.T) {
+	var pages []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/v1/public/spaces/1/boards/2" {
+			_, _ = w.Write([]byte(`{"id":2,"fields":[]}`))
+			return
+		}
+		page := r.URL.Query().Get("page")
+		pages = append(pages, page)
+		if page == "2" {
+			_, _ = w.Write([]byte(`{"data":[{"id":3}],"hasMore":false}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"data":[{"id":1},{"id":2}],"hasMore":true}`))
+	}))
+	defer server.Close()
+
+	t.Setenv("PLAKY115_API_KEY", "from-env")
+	stdout, _, err := executeRootStreams(t, nil,
+		"--server-url", server.URL,
+		"items-export", "--space-id", "1", "--board-id", "2", "--format", "jsonl", "--max-items", "1")
+	if err == nil || !strings.Contains(err.Error(), "next-page=1") || !strings.Contains(err.Error(), "next-index=1") {
+		t.Fatalf("bounded export error = %v", err)
+	}
+	if stdout != "{\"id\":1}\n" {
+		t.Fatalf("bounded export stdout = %q", stdout)
+	}
+	if len(pages) != 1 || pages[0] != "1" {
+		t.Fatalf("bounded export fetched pages = %v", pages)
+	}
+}
+
+func TestItemsExportCSVFetchesBoardBeforeStreamingRows(t *testing.T) {
+	var order []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v1/public/spaces/1/boards/2":
+			order = append(order, "board")
+			_, _ = w.Write([]byte(`{"id":2,"fields":[{"key":"status","name":"Status"}]}`))
+		case "/v1/public/spaces/1/boards/2/items":
+			order = append(order, "items")
+			_, _ = w.Write([]byte(`{"data":[{"id":1,"title":"A","fields":[{"key":"status","name":"Status","value":"Open"}]}],"hasMore":false}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	t.Setenv("PLAKY115_API_KEY", "from-env")
+	stdout, _, err := executeRootStreams(t, nil,
+		"--server-url", server.URL,
+		"items-export", "--space-id", "1", "--board-id", "2", "--format", "csv")
+	if err != nil {
+		t.Fatalf("CSV export error = %v", err)
+	}
+	if len(order) < 2 || order[0] != "board" || order[1] != "items" {
+		t.Fatalf("CSV request order = %v", order)
+	}
+	if !strings.Contains(stdout, "Status") || !strings.Contains(stdout, "Open") {
+		t.Fatalf("CSV output = %q", stdout)
+	}
+}
+
 func readExportFixture(t *testing.T, name string) []byte {
 	t.Helper()
 	_, filename, _, ok := runtime.Caller(0)

@@ -77,8 +77,11 @@ printf 'contents' | plaky115 item-files-upload --space-id 123 --board-id 456 --i
 plaky115 item-files-download-link --space-id 123 --board-id 456 --item-id 789 --item-file-id 654
 ```
 
-`workspace-map`, `find`, and `items-export` drain all pages instead of returning
-only the first API page. `item-groups-list` also drains all pages. A real item
+`workspace-map`, `find`, and `item-groups-list` retain their compatibility
+behavior. `items-export` streams one API page at a time and never spools the
+workspace to a temporary file. Use `--max-items`, `--max-bytes`, `--page`,
+`--page-index`, and `--page-size` to bound or resume an export; a cap returns a
+machine-readable error containing `next-page` and `next-index`. A real item
 group archive requires `--confirm`; `--dry-run` prints its plan without writing.
 File uploads are single-attempt and accept an optional explicit
 `--idempotency-key`. The download-link command prints the API's short-lived URL
@@ -87,7 +90,7 @@ URL as a bearer capability and do not persist it in logs.
 
 Item search accepts `--limit` (default 200) and reports `data`, `scanned`,
 `matched`, `truncated`, and `nextPage` when another server page remains. CSV
-export is deterministic and defaults to `--csv-safety spreadsheet`, which
+export is deterministic, fetches board field definitions before writing, and defaults to `--csv-safety spreadsheet`, which
 neutralizes leading formula characters in string cells. Use `--csv-safety raw`
 only for a trusted consumer that explicitly requires the unmodified strings.
 

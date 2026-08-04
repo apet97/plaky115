@@ -12,6 +12,7 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const options = parseGenerationOptions(process.argv.slice(2), root);
 const publicRuntimeModules = [
   "errors",
+  "chunks",
   "http",
   "idempotency",
   "ids",
