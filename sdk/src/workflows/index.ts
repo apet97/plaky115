@@ -1,6 +1,17 @@
 import type { PlakyClient } from "../client/client.js";
 import { resolveSpaceAndBoard, type EntityRef } from "../resolvers/index.js";
 import { asSpaceId, asBoardId, asItemId } from "../runtime/ids.js";
+import { idPathSegment } from "../client/path.js";
+import {
+  PlakyPartialMutationError,
+  freezeMutationReceipt,
+  freezeMutationReceipts,
+  mutationErrorSummary,
+  type MutationErrorSummary,
+  type MutationPhase,
+  type MutationReceipt,
+  type MutationReceiptStatus,
+} from "../runtime/mutations.js";
 import type { ResourceRequestOverrides } from "../runtime/types.js";
 import type { ItemShape } from "../client/shapes.js";
 import { renderItemsCsv, type CsvSafety } from "./internal/csv.js";
@@ -116,32 +127,106 @@ export type BulkUpdateParams = {
   onProgress?: (completed: number, total: number) => void | Promise<void>;
 };
 
-export async function bulkUpdateItems(client: PlakyClient, params: BulkUpdateParams): Promise<Array<{ itemId: number | string; status: "dry-run" | "updated" | "error"; detail?: unknown }>> {
+export async function bulkUpdateItems(client: PlakyClient, params: BulkUpdateParams): Promise<readonly MutationReceipt[]> {
+  const itemIds = validateBulkUpdates(params.updates);
   const requestOptions = params.signal ? { signal: params.signal } : undefined;
   const { space, board } = await resolveSpaceAndBoard(client, { space: params.space, board: params.board }, requestOptions);
-  const out = [];
+  const spaceId = canonicalResolvedId(space.id, "space");
+  const boardId = canonicalResolvedId(board.id, "board");
+  let receipts = params.updates.map((_, index) => freezeMutationReceipt({
+    operation: "items.updateFields",
+    index,
+    status: "planned",
+    attempted: false,
+    mayHaveCommitted: false,
+    phase: "preflight",
+    targetIds: { spaceId, boardId, itemId: itemIds[index]! },
+  }));
+
+  if (params.signal?.aborted) {
+    throw partialMutation("Bulk item update was aborted before the first write.", receipts, 0, params.signal.reason);
+  }
+
   for (const [index, update] of params.updates.entries()) {
-    if (params.signal?.aborted) throw params.signal.reason ?? new DOMException("Aborted", "AbortError");
+    if (params.signal?.aborted) {
+      throw partialMutation("Bulk item update was aborted before the next write.", receipts, index, params.signal.reason);
+    }
     if (params.dryRun === true) {
-      out.push({ itemId: update.itemId, status: "dry-run" as const });
-      await params.onProgress?.(index + 1, params.updates.length);
+      await reportBulkProgress(params, index, receipts);
       continue;
     }
+    receipts[index] = transitionReceipt(receipts[index]!, "request-started", "request");
     try {
       await client.items.updateFields({
-        spaceId: asSpaceId(space.id!),
-        boardId: asBoardId(board.id!),
-        itemId: asItemId(update.itemId),
+        spaceId: asSpaceId(spaceId),
+        boardId: asBoardId(boardId),
+        itemId: asItemId(itemIds[index]!),
         body: update.body,
       }, params.signal ? { signal: params.signal } : undefined);
-      out.push({ itemId: update.itemId, status: "updated" as const });
+      receipts[index] = transitionReceipt(receipts[index]!, "completed", "completed");
     } catch (err) {
-      if (params.throwOnError === true) throw err;
-      out.push({ itemId: update.itemId, status: "error" as const, detail: (err as Error).message });
+      receipts[index] = transitionReceipt(receipts[index]!, "ambiguous", "response", mutationErrorSummary(err));
+      if (params.throwOnError === true) {
+        throw partialMutation("Bulk item update has an unconfirmed mutation outcome.", receipts, index, err);
+      }
     }
-    await params.onProgress?.(index + 1, params.updates.length);
+    await reportBulkProgress(params, index, receipts);
   }
-  return out;
+  return freezeMutationReceipts(receipts);
+}
+
+function validateBulkUpdates(updates: BulkUpdateParams["updates"]): string[] {
+  if (!Array.isArray(updates)) throw new TypeError("updates must be an array");
+  return updates.map((update, index) => {
+    if (update === null || typeof update !== "object") throw new TypeError(`updates[${index}] must be an object`);
+    const candidate = update as { itemId?: unknown; body?: unknown };
+    if (typeof candidate.itemId !== "string" && typeof candidate.itemId !== "number") {
+      throw new TypeError(`updates[${index}].itemId must be a number or decimal string`);
+    }
+    if (!isPlainRecord(candidate.body)) throw new TypeError(`updates[${index}].body must be a plain object`);
+    return idPathSegment(candidate.itemId);
+  });
+}
+
+function canonicalResolvedId(value: number | string | undefined, label: string): string {
+  if (value === undefined) throw new Error(`${label} resolver returned no ID`);
+  return idPathSegment(value);
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function transitionReceipt(
+  receipt: MutationReceipt,
+  status: MutationReceiptStatus,
+  phase: MutationPhase,
+  error?: MutationErrorSummary,
+): MutationReceipt {
+  return freezeMutationReceipt({
+    operation: receipt.operation,
+    index: receipt.index,
+    status,
+    attempted: status !== "planned",
+    mayHaveCommitted: status === "ambiguous" || status === "request-started",
+    phase,
+    targetIds: receipt.targetIds,
+    ...(error === undefined ? {} : { error }),
+  });
+}
+
+async function reportBulkProgress(params: BulkUpdateParams, index: number, receipts: readonly MutationReceipt[]): Promise<void> {
+  try {
+    await params.onProgress?.(index + 1, params.updates.length);
+  } catch (error) {
+    throw partialMutation("Bulk item update progress reporting failed.", receipts, index, error);
+  }
+}
+
+function partialMutation(message: string, receipts: readonly MutationReceipt[], failedIndex: number, cause: unknown): PlakyPartialMutationError {
+  return new PlakyPartialMutationError(message, receipts, { cause, failedIndex });
 }
 
 export type ExportItemsParams = {

@@ -67,6 +67,13 @@ export {
   PlakyAmbiguousMatchError,
 } from "./runtime/errors.js";
 export type { NormalizedProblem, NormalizedProblemFamily, PlakyProblem } from "./runtime/errors.js";
+export { PlakyPartialMutationError } from "./runtime/mutations.js";
+export type {
+  MutationErrorSummary,
+  MutationPhase,
+  MutationReceipt,
+  MutationReceiptStatus,
+} from "./runtime/mutations.js";
 export type {
   ApiKeyProvider,
   FetchLike,

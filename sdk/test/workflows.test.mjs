@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test, beforeEach } from "node:test";
-import { PlakyClient, workspaceMap, searchItems, searchItemsDetailed, bulkUpdateItems, exportItems } from "../esm/index.js";
+import { PlakyClient, PlakyPartialMutationError, workspaceMap, searchItems, searchItemsDetailed, bulkUpdateItems, exportItems } from "../esm/index.js";
 
 let fetchMock;
 beforeEach(() => {
@@ -145,7 +145,8 @@ test("bulkUpdateItems with dryRun records dry-run per update without calling wri
   });
   assert.equal(writeCalls, 0);
   assert.equal(out.length, 2);
-  assert.ok(out.every((r) => r.status === "dry-run"));
+  assert.ok(out.every((r) => r.status === "planned" && r.phase === "preflight" && r.attempted === false));
+  assert.equal(out[0].targetIds.itemId, "100");
 });
 
 test("bulkUpdateItems reports updated/error per item and continues past a failure", async () => {
@@ -173,9 +174,11 @@ test("bulkUpdateItems reports updated/error per item and continues past a failur
     updates: [{ itemId: 100, body: { Status: "Done" } }, { itemId: 101, body: { Status: "X" } }],
   });
   assert.equal(out.length, 2);
-  assert.equal(out[0].status, "updated");
-  assert.equal(out[1].status, "error");
-  assert.ok(out[1].detail, "the failed update should carry an error detail");
+  assert.equal(out[0].status, "completed");
+  assert.equal(out[0].mayHaveCommitted, false);
+  assert.equal(out[1].status, "ambiguous");
+  assert.equal(out[1].mayHaveCommitted, true);
+  assert.equal(out[1].error?.message, "boom");
 });
 
 test("bulkUpdateItems can stop after an ambiguous write failure", async () => {
@@ -195,7 +198,15 @@ test("bulkUpdateItems can stop after an ambiguous write failure", async () => {
     board: 11,
     updates: [{ itemId: 100, body: {} }, { itemId: 101, body: {} }],
     throwOnError: true,
-  }), /possibly committed/);
+  }), (error) => {
+    assert.ok(error instanceof PlakyPartialMutationError);
+    assert.equal(error.failedIndex, 0);
+    assert.equal(error.receipts.length, 2);
+    assert.equal(error.receipts[0].status, "ambiguous");
+    assert.equal(error.receipts[1].status, "planned");
+    assert.equal(error.cause?.message, "possibly committed");
+    return true;
+  });
   assert.equal(writeCalls, 1);
 });
 
@@ -218,7 +229,52 @@ test("bulkUpdateItems forwards cancellation to the in-flight write", async () =>
     updates: [{ itemId: 100, body: {} }],
     signal: controller.signal,
     throwOnError: true,
-  }), (error) => error?.name === "AbortError");
+  }), (error) => {
+    assert.ok(error instanceof PlakyPartialMutationError);
+    assert.equal(error.receipts[0].status, "ambiguous");
+    assert.equal(error.cause?.name, "AbortError");
+    return true;
+  });
+});
+
+test("bulkUpdateItems validates every update before resolving or writing", async () => {
+  let fetchCalls = 0;
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
+  globalThis.fetch = async () => {
+    fetchCalls++;
+    throw new Error("preflight validation must not fetch");
+  };
+
+  await assert.rejects(bulkUpdateItems(c, {
+    space: 1,
+    board: 11,
+    updates: [
+      { itemId: "9007199254740993", body: {} },
+      { itemId: 101, body: [] },
+    ],
+  }), /plain object/);
+  assert.equal(fetchCalls, 0);
+});
+
+test("bulkUpdateItems preserves completed receipts when progress reporting fails", async () => {
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
+  c.spaces.get = async () => ({ id: 1, title: "Ops" });
+  c.boards.get = async () => ({ id: 11, title: "Roadmap" });
+  c.items.updateFields = async () => ({ id: "9007199254740993" });
+
+  await assert.rejects(bulkUpdateItems(c, {
+    space: 1,
+    board: 11,
+    updates: [{ itemId: "9007199254740993", body: {} }, { itemId: 101, body: {} }],
+    onProgress: async () => { throw new Error("callback failed"); },
+  }), (error) => {
+    assert.ok(error instanceof PlakyPartialMutationError);
+    assert.equal(error.receipts[0].status, "completed");
+    assert.equal(error.receipts[0].targetIds.itemId, "9007199254740993");
+    assert.equal(error.receipts[1].status, "planned");
+    assert.equal(error.cause?.message, "callback failed");
+    return true;
+  });
 });
 
 test("exportItems csv byte-matches the shared safe and raw fixtures", async () => {

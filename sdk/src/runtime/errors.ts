@@ -12,7 +12,14 @@ export class PlakyError extends Error {
   constructor(message: string, options?: { cause?: unknown }) {
     super(message);
     this.name = new.target.name;
-    if (options?.cause !== undefined) this.cause = options.cause;
+    if (options?.cause !== undefined) {
+      Object.defineProperty(this, "cause", {
+        configurable: true,
+        enumerable: false,
+        value: options.cause,
+        writable: true,
+      });
+    }
   }
 }
 

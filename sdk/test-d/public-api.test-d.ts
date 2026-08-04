@@ -6,6 +6,8 @@ import {
   PlakyClient,
   PlakyApiError,
   PlakyRateLimitError,
+  bulkUpdateItems,
+  withRetries,
   searchItems,
   searchItemsDetailed,
   type BoardShape,
@@ -42,6 +44,8 @@ import {
   type PlakyRequestOverrides,
   type PagedResult,
   type ResourceRequestOverrides,
+  type MutationReceipt,
+  type RetryOptions,
   type StrictPagedResult,
   type SpaceExpand,
   type SpaceIdType,
@@ -80,6 +84,9 @@ expectAssignable<PlakyRequestOverrides>(requestOverrides);
 
 const resourceOverrides = { timeoutMs: 5_000, maxRetries: 1 } satisfies ResourceRequestOverrides;
 expectAssignable<ResourceRequestOverrides>(resourceOverrides);
+const readRetryOptions = { kind: "read", maxRetries: 1 } satisfies RetryOptions;
+expectAssignable<RetryOptions>(readRetryOptions);
+expectType<Promise<string>>(withRetries(async () => "ok", readRetryOptions));
 const legacyPage: PagedResult<SpaceShape> = {};
 expectAssignable<PagedResult<SpaceShape>>(legacyPage);
 expectType<StrictPagedResult<SpaceShape>>(await client.spaces.list());
@@ -114,6 +121,11 @@ expectType<string | undefined>(comment.text);
 
 expectType<Promise<ItemShape[]>>(searchItems(client, { space: 1, board: 2, query: "" }));
 expectType<Promise<SearchItemsDetailedResult>>(searchItemsDetailed(client, { space: 1, board: 2, query: "", limit: 10 }));
+expectType<Promise<readonly MutationReceipt[]>>(bulkUpdateItems(client, {
+  space: 1,
+  board: 2,
+  updates: [{ itemId: "9007199254740993", body: {} }],
+}));
 
 await client.users.list({ emails: ["a@example.com"], status: "ACTIVE", type: "MEMBER" });
 const status: UserStatus = "ACTIVE";
