@@ -7,23 +7,10 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseGenerationOptions } from "./lib/generation-options.mjs";
+import { publicRuntimeModules } from "./lib/sdk-runtime-modules.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const options = parseGenerationOptions(process.argv.slice(2), root);
-const publicRuntimeModules = [
-  "errors",
-  "chunks",
-  "http",
-  "idempotency",
-  "ids",
-  "interceptors",
-  "pagination",
-  "rate-limit",
-  "redact",
-  "retries",
-  "types",
-  "user-agent",
-];
 
 function runtimeExport(name) {
   return {

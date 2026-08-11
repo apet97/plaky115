@@ -43,8 +43,9 @@ npm --prefix mcp-server ci
   the last generator `generate:all` runs, before the post-generation
   `test:surfaces` check. `npm run artifacts:audit` fails if a module under
   `sdk/src/runtime/` is not declared public (`publicRuntimeModules` in
-  `postgen-dx.mjs`) or private (`intentionallyPrivateRuntimeModules` in
-  `scripts/audit-package-artifacts.mjs`).
+  `scripts/lib/sdk-runtime-modules.mjs`, shared by `postgen-dx.mjs` and
+  `audit-package-artifacts.mjs`) or private (`intentionallyPrivateRuntimeModules`
+  in `scripts/audit-package-artifacts.mjs`).
 - SDK transport is public at `sdk/src/runtime/http.ts`; helpers under
   `sdk/src/runtime/internal/` remain private package paths.
 - Raw CLI writes require `--body`; raw deletes require `--confirm`.
