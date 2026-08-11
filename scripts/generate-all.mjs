@@ -27,6 +27,7 @@ steps.push(
   ["node", ["scripts/generate-mcp.mjs", "--source-root", options.sourceRoot, "--output-root", options.outputRoot]],
   ["node", ["scripts/generate-cli.mjs", "--source-root", options.sourceRoot, "--output-root", options.outputRoot]],
   ["node", ["scripts/generate-docs-index.mjs", "--source-root", options.sourceRoot, "--output-root", options.outputRoot]],
+  ["node", ["scripts/postgen-dx.mjs", "--source-root", options.sourceRoot, "--output-root", options.outputRoot]],
 );
 if (!isolated) steps.push(["npm", ["run", "test:surfaces"]]);
 

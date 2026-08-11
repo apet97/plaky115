@@ -32,7 +32,6 @@ export const verificationPlan = Object.freeze([
   npmGate("generated-drift", "generated:drift"),
   npmGate("codegen", "codegen:test"),
   npmGate("surface-audit", "test:surfaces"),
-  npmGate("postgen-drift", "postgen:drift"),
   npmGate("docs-surface", "docs:surface:test"),
   npmGate("examples", "examples:check"),
   npmGate("live-sweep-source", "live:sweep:test"),

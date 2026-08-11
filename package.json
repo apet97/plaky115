@@ -46,7 +46,6 @@
     "examples:check": "node scripts/check-examples.mjs",
     "live:sweep:test": "node --test scripts/test-live-sweep-source.mjs scripts/test-live-cleanup.mjs scripts/test-live-read-sweep.mjs",
     "generated:drift": "node scripts/check-generated-drift.mjs",
-    "postgen:drift": "node scripts/check-postgen-drift.mjs",
     "artifacts:audit": "node scripts/audit-package-artifacts.mjs",
     "pack:smoke": "node scripts/pack-smoke.mjs",
     "packsnapshot:write": "node scripts/pack-snapshot.mjs --write",

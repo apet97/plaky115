@@ -10,7 +10,9 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const targets = [
   "openapi/plaky115-dx.openapi.yaml",
   "openapi/plaky115-operation-metadata.json",
+  "sdk/package.json",
   "sdk/src/generated",
+  "mcp-server/package.json",
   "mcp-server/src/tools/raw",
   "mcp-server/src/runtime/docs-index.ts",
   "cli/internal/cli/raw",
