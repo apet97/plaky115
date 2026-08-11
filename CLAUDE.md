@@ -90,6 +90,10 @@ change it, regenerate, and review the complete drift.
 - All path IDs are canonical non-negative signed-int64 decimals and fail before
   network access. Unsafe JSON integers decode as exact decimal strings.
 - SDK runtime internals and generated operation paths are intentionally private.
+- A new file under `sdk/src/runtime/` must be declared: add it to
+  `publicRuntimeModules` in `scripts/postgen-dx.mjs` and run `generate:all`, or
+  to `intentionallyPrivateRuntimeModules` in `scripts/audit-package-artifacts.mjs`.
+  `npm run artifacts:audit` fails on an undeclared module.
 - Remote HTTP is rejected except literal loopback; SDK/Go credential requests
   do not follow redirects; buffered responses default to 16 MiB with a 64 MiB
   hard ceiling.

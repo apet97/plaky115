@@ -1,15 +1,26 @@
 # Plaky115
 
+<div align="center">
+
+**One repository for the Plaky public API — TypeScript SDK, Go CLI, and MCP server.**
+
 [![CI](https://github.com/apet97/plaky115/actions/workflows/ci.yml/badge.svg)](https://github.com/apet97/plaky115/actions/workflows/ci.yml)
 [![GitHub release](https://img.shields.io/github/v/release/apet97/plaky115?display_name=tag&sort=semver)](https://github.com/apet97/plaky115/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 [![SDK on npm](https://img.shields.io/npm/v/plaky115?label=SDK)](https://www.npmjs.com/package/plaky115)
 [![MCP on npm](https://img.shields.io/npm/v/plaky115-mcp?label=MCP)](https://www.npmjs.com/package/plaky115-mcp)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node.js >=22.12](https://img.shields.io/badge/node-%3E%3D22.12-339933?logo=node.js&logoColor=white)](sdk/package.json)
 [![Go 1.26](https://img.shields.io/badge/go-1.26-00ADD8?logo=go&logoColor=white)](cli/go.mod)
 
-One repository for working with the Plaky public API from TypeScript, a terminal,
-or an MCP host.
+[SDK guide](sdk/README.md) · [CLI guide](cli/README.md) · [MCP guide](mcp-server/README.md) · [Documentation](#documentation) · [Security](SECURITY.md)
+
+</div>
+
+> [!IMPORTANT]
+> Plaky115 is unofficial and independent. It is not affiliated with, endorsed by,
+> or sponsored by Plaky or CAKE.com. “Plaky” and “CAKE.com” are trademarks of
+> their respective owners.
 
 | Surface | Package | Best for |
 | --- | --- | --- |
@@ -17,10 +28,17 @@ or an MCP host.
 | Go CLI | [`plaky115`](cli/README.md) | Shell automation, exports, diagnostics, and exact raw commands |
 | MCP server | [`plaky115-mcp`](mcp-server/README.md) | Claude, Cursor, and other MCP clients with safe defaults |
 
-> [!IMPORTANT]
-> Plaky115 is unofficial and independent. It is not affiliated with, endorsed by,
-> or sponsored by Plaky or CAKE.com. “Plaky” and “CAKE.com” are trademarks of
-> their respective owners.
+## Contents
+
+- [Quick start](#quick-start)
+- [What ships](#what-ships)
+- [Configuration](#configuration)
+- [Surface map](#surface-map)
+- [Documentation](#documentation)
+- [Development](#development)
+- [Live smoke](#live-smoke)
+- [Security and support](#security-and-support)
+- [License](#license)
 
 ## Quick start
 
@@ -57,7 +75,8 @@ PLAKY115_VERSION="$version" bash install-plaky115.sh
 rm install-plaky115.sh
 ```
 
-Windows PowerShell:
+<details>
+<summary>Windows PowerShell</summary>
 
 ```powershell
 $version = "v1.0.1"
@@ -67,6 +86,8 @@ $env:PLAKY115_VERSION = $version
 ./install-plaky115.ps1
 Remove-Item install-plaky115.ps1
 ```
+
+</details>
 
 ```bash
 export PLAKY115_API_KEY=...
@@ -138,14 +159,16 @@ The API is page-based. `page` and `pageSize` are server parameters; SDK iterator
 
 ## Surface map
 
-```text
-api-1.yaml + overlays/
-        │
-        ├── generated schema types
-        ├── generated CLI raw commands + Go request helpers
-        └── generated MCP raw tools
-
-hand-written SDK resources ── curated CLI commands ── curated MCP workflows
+```mermaid
+flowchart LR
+    spec["api-1.yaml<br/>+ overlays/"] --> openapi["plaky115-dx<br/>.openapi.yaml"]
+    openapi --> types["generated<br/>schema types"]
+    openapi --> meta["operation-<br/>metadata.json"]
+    meta --> cliraw["generated CLI<br/>raw commands"]
+    meta --> mcpraw["generated MCP<br/>raw tools"]
+    types -. type-only escape hatch .-> sdk["hand-written SDK<br/>resources"]
+    cliraw --> cli["curated CLI<br/>commands"]
+    mcpraw --> mcp["curated MCP<br/>workflows"]
 ```
 
 Generated artifacts are built locally and checked for deterministic drift. The

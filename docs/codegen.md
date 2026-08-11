@@ -22,24 +22,24 @@ api-1.yaml (upstream)
     v
 openapi/plaky115-dx.openapi.yaml
     |
+    +-- openapi-typescript      -> sdk/src/generated/types.ts
+    |
     +-- ruby scripts/generate-operation-metadata.rb
     v
 openapi/plaky115-operation-metadata.json
     |
-    +-- openapi-typescript      -> sdk/src/generated/types.ts
     +-- generate-mcp.mjs        -> mcp-server/src/tools/raw/*.ts + index.ts
     +-- generate-cli.mjs        -> cli/internal/cli/raw/*.go + raw.go
     |                            -> cli/internal/plakysdk/operations.go
     |                            -> cli/internal/plakydx/runners_generated.go
     +-- generate-docs-index.mjs -> mcp-server/src/runtime/docs-index.ts
-    |
-    +-- postgen-dx.mjs          -> sdk/package.json, mcp-server/package.json
 ```
 
-`postgen-dx.mjs` runs last, in both in-place and isolated generation. It
-normalizes `description`, `license`, `repository`, and the `exports` map of
-both `package.json` files from a hardcoded list of public SDK runtime
-modules.
+`scripts/postgen-dx.mjs` runs last, after the four generators above, in both
+in-place and isolated generation. Unlike them, it does not derive from the
+spec: it reads both `package.json` files directly and normalizes their
+`description`, `license`, `repository`, and `exports` map from a hardcoded
+list of public SDK runtime modules.
 
 ## Scripts
 

@@ -41,7 +41,10 @@ npm --prefix mcp-server ci
   Go and Zod formatting stays in the target generator.
 - `scripts/postgen-dx.mjs` owns package metadata and SDK runtime exports; it is
   the last generator `generate:all` runs, before the post-generation
-  `test:surfaces` check.
+  `test:surfaces` check. `npm run artifacts:audit` fails if a module under
+  `sdk/src/runtime/` is not declared public (`publicRuntimeModules` in
+  `postgen-dx.mjs`) or private (`intentionallyPrivateRuntimeModules` in
+  `scripts/audit-package-artifacts.mjs`).
 - SDK transport is public at `sdk/src/runtime/http.ts`; helpers under
   `sdk/src/runtime/internal/` remain private package paths.
 - Raw CLI writes require `--body`; raw deletes require `--confirm`.
