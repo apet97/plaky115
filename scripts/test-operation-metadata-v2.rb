@@ -108,19 +108,25 @@ class OperationMetadataV2Test < Minitest::Test
     assert_match(/duplicate operationId/, stderr)
   end
 
-  def test_success_200_and_201_json_objects_include_schema_refs
+  def test_success_200_and_201_json_objects_include_schema_refs_and_roots
     json = generate(File.join(FIXTURES, "metadata-json.yaml")).fetch("operations").fetch(0)
     assert_equal({
       "status" => 200,
       "kind" => "json-object",
       "mediaType" => "application/json",
       "schemaRef" => "#/components/schemas/Widget",
+      "rootKind" => "object",
+      "requiredProperties" => [],
+      "createdIdPointer" => "$.id",
     }, json.fetch("success"))
 
     multipart = generate(File.join(FIXTURES, "metadata-multipart.yaml")).fetch("operations").fetch(0)
     assert_equal 201, multipart.dig("success", "status")
     assert_equal "json-object", multipart.dig("success", "kind")
     assert_equal "#/components/schemas/File", multipart.dig("success", "schemaRef")
+    assert_equal "object", multipart.dig("success", "rootKind")
+    assert_equal [], multipart.dig("success", "requiredProperties")
+    assert_equal "$.id", multipart.dig("success", "createdIdPointer")
   end
 
   def test_success_bare_array_is_list_and_bodyless_put_is_void
@@ -129,6 +135,7 @@ class OperationMetadataV2Test < Minitest::Test
       "status" => 200,
       "kind" => "json-array",
       "mediaType" => "application/json",
+      "rootKind" => "array",
     }, array.fetch("success"))
     assert_equal true, array.fetch("list")
 
@@ -191,6 +198,9 @@ class OperationMetadataV2Test < Minitest::Test
       "required" => true,
       "mediaType" => "application/json",
       "schemaRef" => "#/components/schemas/WidgetInput",
+      "rootKind" => "object",
+      "requiredProperties" => ["title"],
+      "allowEmptyObject" => false,
     }, operation.fetch("request"))
 
     spec.dig("paths", "/fixture/widgets/{widgetId}", "post", "requestBody")["required"] = false
@@ -205,6 +215,9 @@ class OperationMetadataV2Test < Minitest::Test
     operation = generate_document(spec).fetch("operations").fetch(0)
     assert_equal "multipart", operation.dig("request", "kind")
     assert_equal "multipart/form-data", operation.dig("request", "mediaType")
+    assert_equal "object", operation.dig("request", "rootKind")
+    assert_equal ["file"], operation.dig("request", "requiredProperties")
+    assert_equal false, operation.dig("request", "allowEmptyObject")
     assert_equal [{
       "name" => "file",
       "required" => true,
@@ -275,7 +288,19 @@ class OperationMetadataV2Test < Minitest::Test
       "default" => ["alpha"],
       "items" => { "type" => "string", "enum" => %w[alpha beta] },
     }, labels.fetch("schema"))
-    assert_equal [{ "name" => "labels", "description" => "Labels used to filter fixture widgets.", "array" => true }],
+    assert_equal [{
+      "name" => "labels",
+      "required" => false,
+      "description" => "Labels used to filter fixture widgets.",
+      "schema" => {
+        "type" => "array",
+        "default" => ["alpha"],
+        "items" => { "type" => "string", "enum" => %w[alpha beta] },
+      },
+      "style" => "form",
+      "explode" => true,
+      "array" => true,
+    }],
                  operation.fetch("query")
   end
 
@@ -287,21 +312,43 @@ class OperationMetadataV2Test < Minitest::Test
       "in" => "query",
       "schema" => { "type" => "integer", "format" => "int32", "default" => 1 },
     }
+    operation["parameters"] << {
+      "name" => "pageSize",
+      "in" => "query",
+      "schema" => { "type" => "integer", "format" => "int32", "default" => 50 },
+    }
     operation["x-plaky115-pagination"] = {
-      "type" => "offsetLimit",
-      "outputs" => { "results" => "$.data" },
+      "kind" => "pageNumber",
+      "pageParameter" => "page",
+      "sizeParameter" => "pageSize",
+      "resultsPointer" => "$.data",
+      "hasMorePointer" => "$.hasMore",
     }
     metadata = generate_document(spec)
     generated = metadata.fetch("operations").fetch(0)
     assert_equal %w[widgetId labels], generated.fetch("parameters").map { |parameter| parameter.fetch("name") }
     assert_equal({
+      "kind" => "pageNumber",
+      "pageParameter" => "page",
+      "sizeParameter" => "pageSize",
+      "resultsPointer" => "$.data",
+      "hasMorePointer" => "$.hasMore",
+      "inputs" => [{
       "name" => "page",
       "in" => "query",
       "required" => false,
       "schema" => { "type" => "integer", "format" => "int32", "default" => 1 },
       "style" => "form",
       "explode" => true,
-    }, generated.dig("pagination", "inputs", 0))
+      }, {
+        "name" => "pageSize",
+        "in" => "query",
+        "required" => false,
+        "schema" => { "type" => "integer", "format" => "int32", "default" => 50 },
+        "style" => "form",
+        "explode" => true,
+      }],
+    }, generated.fetch("pagination"))
   end
 
   def test_parameter_local_refs_unescape_json_pointer_and_detect_cycles
@@ -348,8 +395,8 @@ class OperationMetadataV2Test < Minitest::Test
     assert_equal true, expand.fetch("array")
     assert_equal false, expand.fetch("explode")
     assert_equal true, emails.fetch("array")
-    refute emails.key?("explode")
-    refute_includes File.read(GENERATOR), "THREADED" + "_QUERY_PARAMS"
+    assert_equal true, emails.fetch("explode")
+    refute_includes File.read(GENERATOR), "PAGINATION_QUERY_PARAMS"
   end
 
   private

@@ -5,7 +5,7 @@ import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
   widgetId: z.string().describe("Widget identifier."),
-});
+}).strict();
 const output = z.object({ ok: z.boolean() });
 
 export const archiveWidgetTool: McpToolDefinition = {
@@ -24,12 +24,18 @@ export const archiveWidgetTool: McpToolDefinition = {
   outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
-    await request<void>({
-      method: "PUT",
-      path: `/v1/widgets/${encodeURIComponent(String(parsed.widgetId))}/archive`,
-      responseType: "void",
-      operationId: "archiveWidget",
-    }, ctx.requestOptions);
+    await ctx.attempt.mutate({
+      operation: "archiveWidget",
+      targetIds: { widgetId: String(parsed.widgetId) },
+      run: async () => {
+        await request<void>({
+          method: "PUT",
+          path: `/v1/widgets/${encodeURIComponent(String(parsed.widgetId))}/archive`,
+          responseType: "void",
+          operationId: "archiveWidget",
+        }, ctx.requestOptions);
+      },
+    });
     return ctx.respond({ ok: true }, { compactKind: "raw" });
   },
 };

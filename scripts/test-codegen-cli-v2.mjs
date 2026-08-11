@@ -106,6 +106,35 @@ test("Go runners are an exact golden and valid gofmt input", () => {
   assert.doesNotMatch(generated, /io\.ReadAll/);
 });
 
+test("Go generators thread descriptor request, response, and integer bounds", () => {
+  const metadata = operation({
+    operationId: "createBoundedWidget",
+    method: "POST",
+    request: {
+      kind: "json",
+      required: true,
+      rootKind: "object",
+      requiredProperties: ["title", "color"],
+    },
+    success: {
+      status: 201,
+      kind: "json-object",
+      rootKind: "object",
+      createdIdPointer: "$.id",
+    },
+    parameters: [parameter("page", "query", { type: "integer", minimum: 1, maximum: 10 }, false, "Page.")],
+  });
+  const operations = buildGoOperations([metadata]);
+  const runners = buildGoRunners([metadata]);
+  assert.match(operations, /opts\.Page != 0 && opts\.Page < 1/);
+  assert.match(operations, /ValidateJSONBody\(jsonBody, true, "title", "color"\)/);
+  assert.match(operations, /ValidateResponseShape\("createBoundedWidget", "json-object", out, \[\]string\{\}, true, false\)/);
+  assert.match(runners, /jsonBodyFlag\(cmd, true, "title", "color"\)/);
+  assert.match(runners, /optionalIntFlag\(cmd, "page", 1, 10\)/);
+  assertGofmt(operations);
+  assertGofmt(runners);
+});
+
 function assertGofmt(source) {
   const result = spawnSync("gofmt", { input: source, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);

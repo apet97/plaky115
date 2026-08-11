@@ -12,7 +12,7 @@ import {
 
 const SHA256 = /^[a-f0-9]{64}$/;
 const REQUIRED_PROVENANCE_FIELDS = [
-  "sourceUrl", "fetchedAt", "httpStatus", "contentType", "rawSha256",
+  "sourceUrl", "requestedUrl", "finalUrl", "redirectChain", "fetchedAt", "httpStatus", "contentType", "rawSha256",
   "canonicalSha256", "info", "operationCount", "methodPathKeys",
 ];
 
@@ -52,7 +52,17 @@ export function validateUpstreamManifestShape(manifest, { accepted }) {
       if (!(field in manifest)) throw new Error(`upstream manifest missing field: ${field}`);
     }
   }
-  if (typeof manifest.sourceUrl !== "string" || !manifest.sourceUrl) throw new Error("invalid sourceUrl");
+  for (const field of ["sourceUrl", "requestedUrl", "finalUrl"]) {
+    if (typeof manifest[field] !== "string" || !manifest[field]) throw new Error(`invalid ${field}`);
+  }
+  if (manifest.sourceUrl !== manifest.finalUrl) throw new Error("sourceUrl must identify the final source");
+  if (!Array.isArray(manifest.redirectChain)
+    || manifest.redirectChain.some((hop) => !isObject(hop)
+      || typeof hop.from !== "string" || !hop.from
+      || typeof hop.to !== "string" || !hop.to
+      || !Number.isInteger(hop.status) || hop.status < 300 || hop.status > 399)) {
+    throw new Error("invalid redirectChain");
+  }
   if (!isDateTime(manifest.fetchedAt)) throw new Error("invalid fetchedAt");
   if (!Number.isInteger(manifest.httpStatus) || manifest.httpStatus < 200 || manifest.httpStatus > 299) {
     throw new Error("invalid httpStatus");

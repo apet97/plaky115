@@ -4,13 +4,14 @@ import { request } from "plaky115/runtime/http.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
-  emails: z.array(z.string()).describe("If provided, you will get list of users filtered for the provided emails").optional(),
+  emails: z.array(z.string()).refine((value) => new Set(value).size === value.length, "must contain unique items").describe("If provided, you will get list of users filtered for the provided emails").optional(),
   status: z.enum(["ACTIVE","PENDING","INACTIVE"]).describe("If provided, you will get list of users filtered for the provided status").optional(),
   type: z.enum(["OWNER","ADMIN","MEMBER","VIEWER"]).describe("If provided, you will get list of users filtered for the provided type").optional(),
-  page: z.number().int().describe("Page number.").optional(),
-  pageSize: z.number().int().describe("Page size.").optional(),
-});
-const output = z.object({}).passthrough();
+  page: z.number().int().min(1).max(2147483647).describe("Page number.").optional(),
+  pageSize: z.number().int().min(1).describe("Page size.").optional(),
+}).strict();
+const output = z.object({ data: z.array(z.unknown()), hasMore: z.boolean() }).passthrough();
+const rawOutput = z.object({ data: z.array(z.unknown()), hasMore: z.boolean() }).passthrough();
 
 export const listUsersTool: McpToolDefinition = {
   name: "plaky_list_users",
@@ -41,6 +42,7 @@ export const listUsersTool: McpToolDefinition = {
       query,
       operationId: "listUsers",
     }, ctx.requestOptions);
+    rawOutput.parse(result);
     return ctx.respond(result, { compactKind: "raw" });
   },
 };

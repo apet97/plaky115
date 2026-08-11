@@ -6,7 +6,11 @@ import { lstat, readFile, readdir } from "node:fs/promises";
 import { relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const SECRET_PATTERN = /plk_[A-Za-z0-9_-]+/g;
+export const SECRET_PATTERN_SOURCE = "plk_[A-Za-z0-9_-]+";
+
+export function createSecretPattern() {
+  return new RegExp(SECRET_PATTERN_SOURCE, "g");
+}
 
 // Reviewed exclusions only. `.live-artifacts` is intentionally absent.
 const EXCLUDED_DIRECTORY_NAMES = new Set([
@@ -47,7 +51,7 @@ function gitIncludedFiles(root) {
   }
 }
 
-async function validateRoot(root) {
+export async function validateRoot(root) {
   try {
     const stats = await lstat(root);
     if (!stats.isDirectory() || stats.isSymbolicLink()) return false;
@@ -57,10 +61,14 @@ async function validateRoot(root) {
   }
 }
 
-async function scan(root) {
+export async function scan(root, options = {}) {
   const findings = [];
   const failures = [];
-  const includedFiles = gitIncludedFiles(root);
+  const gitAware = options.gitAware ?? true;
+  const skipBinary = options.skipBinary ?? true;
+  const includeExcludedDirectories = options.includeExcludedDirectories ?? false;
+  const includedFiles = gitAware ? gitIncludedFiles(root) : null;
+  const secretPattern = createSecretPattern();
 
   function isForcedPath(path) {
     const value = displayPath(root, path);
@@ -93,7 +101,7 @@ async function scan(root) {
       const path = resolve(directory, entry.name);
       if (entry.isSymbolicLink()) continue;
       if (entry.isDirectory()) {
-        if (!EXCLUDED_DIRECTORY_NAMES.has(entry.name) && mayContainIncludedFile(path)) await walk(path);
+        if ((includeExcludedDirectories || !EXCLUDED_DIRECTORY_NAMES.has(entry.name)) && mayContainIncludedFile(path)) await walk(path);
         continue;
       }
       if (!entry.isFile()) continue;
@@ -106,11 +114,12 @@ async function scan(root) {
         failures.push(displayPath(root, path));
         continue;
       }
-      if (bytes.includes(0)) continue;
+      if (skipBinary && bytes.includes(0)) continue;
 
       const lines = bytes.toString("utf8").split(/\r?\n/);
       for (let index = 0; index < lines.length; index++) {
-        const matches = lines[index].match(SECRET_PATTERN);
+        secretPattern.lastIndex = 0;
+        const matches = lines[index].match(secretPattern);
         if (matches) findings.push({ path: displayPath(root, path), line: index + 1, count: matches.length });
       }
     }
@@ -120,6 +129,10 @@ async function scan(root) {
   findings.sort((left, right) => left.path.localeCompare(right.path) || left.line - right.line);
   failures.sort((left, right) => left.localeCompare(right));
   return { findings, failures };
+}
+
+export async function scanExtractedTree(root) {
+  return scan(root, { gitAware: false, skipBinary: false, includeExcludedDirectories: true });
 }
 
 export async function runSecretScan(rootArgument) {

@@ -2,6 +2,8 @@ import { PlakyApiError, PlakyRateLimitError } from "./errors.js";
 
 /** Options for {@link withRetries}. */
 export type RetryOptions = {
+  /** Explicitly identifies this helper as read-only. */
+  kind: "read";
   /** Maximum number of retries after the first attempt (0 disables retries). */
   maxRetries: number;
   /** Base backoff in milliseconds; doubled per attempt. Defaults to `250`. */
@@ -25,22 +27,27 @@ export type RetryOptions = {
  * @throws The last error if retries are exhausted or the error is not retryable.
  * @example
  * ```ts
- * const me = await withRetries(() => client.users.me(), { maxRetries: 3 });
+ * const me = await withRetries(() => client.users.me(), { kind: "read", maxRetries: 3 });
  * ```
  */
+export function withRetries<T>(fn: () => Promise<T>, opts?: RetryOptions): Promise<T>;
+/** @deprecated Pass `kind: "read"` explicitly. This compatibility overload is read-only at runtime. */
+export function withRetries<T>(fn: () => Promise<T>, opts: Omit<RetryOptions, "kind">): Promise<T>;
 export async function withRetries<T>(
   fn: () => Promise<T>,
-  opts: RetryOptions = { maxRetries: 2 },
+  opts: RetryOptions | Omit<RetryOptions, "kind"> = { kind: "read", maxRetries: 2 },
 ): Promise<T> {
-  const base = opts.baseDelayMs ?? 250;
-  assertRetryValue(opts.maxRetries, "maxRetries", true);
+  if ("kind" in opts && opts.kind !== "read") throw new Error("withRetries only supports kind=read");
+  const options = opts as RetryOptions;
+  const base = options.baseDelayMs ?? 250;
+  assertRetryValue(options.maxRetries, "maxRetries", true);
   assertRetryValue(base, "baseDelayMs", false);
-  const isRetryable = opts.isRetryable ?? defaultRetryable;
+  const isRetryable = options.isRetryable ?? defaultRetryable;
   for (let attempt = 0; ; attempt++) {
     try {
       return await fn();
     } catch (err) {
-      if (attempt >= opts.maxRetries || !isRetryable(err)) throw err;
+      if (attempt >= options.maxRetries || !isRetryable(err)) throw err;
       // Honor a server Retry-After but clamp it to [0, 60000] (same bound as the
       // transport) so a hostile/buggy value can't overflow setTimeout's 2^31
       // limit and fire immediately, or a negative value bypass the backoff.

@@ -11,7 +11,7 @@ export const executeMutationWorkflowTool: McpToolDefinition = {
     readOnlyHint: false,
     destructiveHint: false,
     idempotentHint: false,
-    openWorldHint: false,
+    openWorldHint: true,
   },
   inputSchema: mutationWorkflowInputSchema,
   outputSchema: z.object({}).passthrough(),

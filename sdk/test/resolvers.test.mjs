@@ -87,6 +87,28 @@ test("resolveSpace by name picks unique match", async () => {
   assert.equal(s.id, 2);
 });
 
+test("field-specific selectors match their declared field and ID-bearing objects stay direct", async () => {
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
+  const byTitle = await resolveSpace(c, { title: "engineering" });
+  assert.equal(byTitle.id, 2);
+  spaceListCalls = 0;
+  const byId = await resolveSpace(c, { id: "9007199254740992", title: "not-used" });
+  assert.equal(byId.title, "Large exact ID");
+  assert.equal(spaceListCalls, 0);
+});
+
+test("plain text checks title, name, and email independently", async () => {
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
+  const user = await resolveUser(c, "ada@example");
+  assert.equal(user.id, 7);
+});
+
+test("conflicting object selectors fail before a list call", async () => {
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
+  await assert.rejects(resolveSpace(c, { title: "Ops", name: "other" }), /selectors conflict/);
+  assert.equal(spaceListCalls, 0);
+});
+
 test("resolveSpace throws on ambiguous name", async () => {
   const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
   await assert.rejects(resolveSpace(c, "op"), (err) => err instanceof PlakyAmbiguousMatchError);

@@ -5,8 +5,9 @@ import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
   widgetId: z.string().describe("Widget identifier."),
-});
+}).strict();
 const output = z.object({ data: z.array(z.unknown()) });
+const rawOutput = z.array(z.unknown());
 
 export const listWidgetFilesTool: McpToolDefinition = {
   name: "plaky_list_widget_files",
@@ -29,6 +30,7 @@ export const listWidgetFilesTool: McpToolDefinition = {
       path: `/v1/widgets/${encodeURIComponent(String(parsed.widgetId))}/files`,
       operationId: "listWidgetFiles",
     }, ctx.requestOptions);
-    return ctx.respond({ data: result }, { compactKind: "itemFile" });
+    rawOutput.parse(result);
+    return ctx.respond(result, { compactKind: "itemFile" });
   },
 };

@@ -36,32 +36,38 @@ test("release job installs the complete toolchain and exact trusted-publishing n
   assert.equal(findAction(steps, "goreleaser/goreleaser-action")?.with?.version, "v2.15.2");
 });
 
-test("all verification and registry preflights precede SDK then MCP publication", () => {
+test("all verification and exact-artifact state-machine steps precede publication", () => {
   const runs = parseWorkflow().jobs.publish.steps.flatMap((step) => step.run ? [step.run] : []);
-  const sdkPublish = runs.indexOf("(cd sdk && npm publish --access public)");
-  const mcpPublish = runs.indexOf("(cd mcp-server && npm publish --access public)");
-  assert.ok(sdkPublish > 0 && mcpPublish === sdkPublish + 1, "publish steps must be explicit and adjacent in SDK/MCP order");
+  const pack = runs.findIndex((run) => run.includes("scripts/pack-release-artifacts.mjs --pack"));
+  const publish = runs.findIndex((run) => run.includes("scripts/publish-npm-release.mjs"));
+  const evidence = runs.findIndex((run) => run.includes("--output .release-artifacts/release-evidence.json"));
+  assert.ok(pack >= 0 && publish > pack && evidence > publish, "exact artifact, publication, and evidence steps must be ordered");
+  assert.doesNotMatch(runs.join("\n"), /\(cd (?:sdk|mcp-server) && npm publish/);
 
   for (const required of [
     "npm --prefix sdk ci",
     "npm --prefix mcp-server ci",
     "cd cli && go mod download",
     "npm run verify",
-    "cd sdk && npm pack --dry-run --json",
-    "cd mcp-server && npm pack --dry-run --json",
-    "npm run audit:production",
     "npm run govulncheck",
-    "npm run artifacts:audit",
-    "node scripts/check-release-version.mjs --tag \"${GITHUB_REF_NAME}\" --registry-preflight",
+    "npm run audit:production",
+    "--verify --manifest .release-artifacts/release-digests.json",
+    "--install --manifest .release-artifacts/release-digests.json",
+    "package-consumer-smoke.mjs --artifacts-manifest .release-artifacts/release-digests.json",
+    "scripts/check-release-determinism.mjs",
+    "scripts/write-release-evidence.mjs --check-readback",
   ]) {
     const index = runs.findIndex((run) => run.includes(required));
-    assert.ok(index >= 0 && index < sdkPublish, `missing pre-publish command: ${required}`);
+    assert.ok(index >= 0 && index <= publish, `missing release command: ${required}`);
   }
 });
 
 test("workflow contains no long-lived publish token or provenance opt-out", () => {
   const source = readFileSync(workflowPath, "utf8");
+  const publicationDriver = readFileSync(fileURLToPath(new URL("publish-npm-release.mjs", import.meta.url)), "utf8");
   assert.doesNotMatch(source, /NPM_TOKEN|NODE_AUTH_TOKEN|provenance\s*[=:]\s*false|NPM_CONFIG_PROVENANCE/);
+  assert.match(source, /release-digests\.json/);
+  assert.match(`${source}\n${publicationDriver}`, /--provenance/);
   assert.doesNotMatch(source, /pull_request|workflow_dispatch/);
   assert.match(source, /git rev-parse "\$\{GITHUB_REF\}\^\{commit\}"/);
   assert.match(source, /test "\$\{head_commit\}" = "\$\{GITHUB_SHA\}"/);

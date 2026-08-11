@@ -730,16 +730,20 @@ async function mcpItemFileSweep(tools, ctx, mcpSpaceId, mcpBoardId, itemId) {
 }
 
 async function createMcpHarness() {
-  const [{ PlakyClient }, { compactByKind, serializeForMcp, structuredForMcp }, { curatedTools }, { rawTools }] = await Promise.all([
+  const [{ PlakyClient }, { compactByKind, serializeForMcp, structuredForMcp }, { createMutationAttempt }, { curatedTools }, { rawTools }] = await Promise.all([
     import(`${root}sdk/esm/index.js`),
     import(`${root}mcp-server/esm/runtime/compaction.js`),
+    import(`${root}mcp-server/esm/runtime/attempts.js`),
     import(`${root}mcp-server/esm/tools/curated/index.js`),
     import(`${root}mcp-server/esm/tools/raw/index.js`),
   ]);
+  const controller = new AbortController();
   const client = new PlakyClient({ apiKey, serverURL: baseURL });
   const ctx = {
     client,
-    requestOptions: client.requestOptions(),
+    requestOptions: client.requestOptions({ signal: controller.signal }),
+    signal: controller.signal,
+    attempt: createMutationAttempt(),
     respond(value, ro) {
       const compacted = ro?.compactKind
         ? compactByKind(value, ro.compactKind, { includeRaw: ro.includeRaw === true })

@@ -10,13 +10,10 @@ func newListUsersCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list-users",
 		Short: "List workspace users",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := getClient(cmd)
-			if err != nil {
-				return err
-			}
 			ctx := cmd.Context()
-			return plakydx.RunListUsers(ctx, cmd, client)
+			return plakydx.RunListUsers(ctx, cmd, getClient)
 		},
 	}
 	cmd.Flags().StringArray("emails", nil, "If provided, you will get list of users filtered for the provided emails")

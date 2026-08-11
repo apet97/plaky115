@@ -12,10 +12,14 @@ const base = {
   statement: {
     predicateType: "https://slsa.dev/provenance/v1",
     subject: [{ name: "pkg:npm/plaky115@0.2.1", digest: { sha512: digest } }],
-    predicate: { buildDefinition: {
-      externalParameters: { workflow: { ref: "refs/tags/v0.2.1", repository: "https://github.com/apet97/plaky115", path: ".github/workflows/release-npm.yml" } },
-      resolvedDependencies: [{ uri: "git+https://github.com/apet97/plaky115@refs/tags/v0.2.1", digest: { gitCommit: "1".repeat(40) } }],
-    } },
+    predicate: {
+      buildDefinition: {
+        externalParameters: { workflow: { ref: "refs/tags/v0.2.1", repository: "https://github.com/apet97/plaky115", path: ".github/workflows/release-npm.yml", environment: "npm-release" } },
+        resolvedDependencies: [{ uri: "git+https://github.com/apet97/plaky115@refs/tags/v0.2.1", digest: { gitCommit: "1".repeat(40) } }],
+        buildType: "https://slsa-framework.github.io/github-actions-buildtypes/workflow/v1",
+      },
+      runDetails: { builder: { id: "https://github.com/actions/runner/github-hosted" } },
+    },
   },
 };
 
@@ -42,3 +46,17 @@ test("short SRI digest fails before provenance comparison", () => {
   value.integrity = `sha512-${Buffer.from("ab", "hex").toString("base64")}`;
   assert.throws(() => verifyProvenance(value), /one SHA-512 digest/);
 });
+
+for (const [name, mutate] of [
+  ["duplicate subject", (value) => { value.statement.subject.push(structuredClone(value.statement.subject[0])); }],
+  ["duplicate dependency", (value) => { value.statement.predicate.buildDefinition.resolvedDependencies.push(structuredClone(value.statement.predicate.buildDefinition.resolvedDependencies[0])); }],
+  ["environment", (value) => { value.statement.predicate.buildDefinition.externalParameters.workflow.environment = "other"; }],
+  ["build type", (value) => { value.statement.predicate.buildDefinition.buildType = "other"; }],
+  ["builder", (value) => { value.statement.predicate.runDetails.builder.id = "other"; }],
+]) {
+  test(`rejects ${name} provenance ambiguity`, () => {
+    const value = structuredClone(base);
+    mutate(value);
+    assert.throws(() => verifyProvenance(value), /subjectCount|dependencyCount|environment|buildType|builder/);
+  });
+}

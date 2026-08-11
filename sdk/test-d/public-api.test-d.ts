@@ -1,4 +1,4 @@
-import { expectAssignable, expectType } from "tsd";
+import { expectAssignable, expectError, expectType } from "tsd";
 import {
   FolderId,
   ItemFileId,
@@ -6,6 +6,11 @@ import {
   PlakyClient,
   PlakyApiError,
   PlakyRateLimitError,
+  bulkUpdateItems,
+  readItemChunk,
+  readItemExportChunk,
+  iterateItemChunks,
+  withRetries,
   searchItems,
   searchItemsDetailed,
   type BoardShape,
@@ -35,11 +40,18 @@ import {
   type ItemGroupDeleteParams,
   type ItemShape,
   type SearchItemsDetailedResult,
+  type BoundedChunk,
+  type ItemExportChunk,
   type PlakyOpenApiComponents,
   type PlakyOpenApiOperations,
   type PlakyApiResponse,
   type PlakyClientOptions,
   type PlakyRequestOverrides,
+  type PagedResult,
+  type ResourceRequestOverrides,
+  type MutationReceipt,
+  type RetryOptions,
+  type StrictPagedResult,
   type SpaceExpand,
   type SpaceIdType,
   type SpaceShape,
@@ -75,6 +87,18 @@ const requestOverrides = {
 } satisfies PlakyRequestOverrides;
 expectAssignable<PlakyRequestOverrides>(requestOverrides);
 
+const resourceOverrides = { timeoutMs: 5_000, maxRetries: 1 } satisfies ResourceRequestOverrides;
+expectAssignable<ResourceRequestOverrides>(resourceOverrides);
+const readRetryOptions = { kind: "read", maxRetries: 1 } satisfies RetryOptions;
+expectAssignable<RetryOptions>(readRetryOptions);
+expectType<Promise<string>>(withRetries(async () => "ok", readRetryOptions));
+const legacyPage: PagedResult<SpaceShape> = {};
+expectAssignable<PagedResult<SpaceShape>>(legacyPage);
+expectType<StrictPagedResult<SpaceShape>>(await client.spaces.list());
+expectError(client.spaces.get(1, { responseType: "text" }));
+expectError(client.items.get({ spaceId: 1, boardId: 2, itemId: 3 }, { responseType: "stream" }));
+expectType<Promise<string>>(client.request({ method: "GET", path: "/v1/public/status", responseType: "text" }));
+
 const response = await client.requestWithResponse<{ ok: boolean }>({
   method: "GET",
   path: "/v1/public/spaces",
@@ -102,6 +126,14 @@ expectType<string | undefined>(comment.text);
 
 expectType<Promise<ItemShape[]>>(searchItems(client, { space: 1, board: 2, query: "" }));
 expectType<Promise<SearchItemsDetailedResult>>(searchItemsDetailed(client, { space: 1, board: 2, query: "", limit: 10 }));
+expectType<Promise<BoundedChunk<ItemShape>>>(readItemChunk(client, { space: 1, board: 2, maxItems: 10 }));
+expectType<AsyncIterableIterator<BoundedChunk<ItemShape>>>(iterateItemChunks(client, { space: 1, board: 2, maxItems: 10 }));
+expectType<Promise<ItemExportChunk>>(readItemExportChunk(client, { space: 1, board: 2, format: "jsonl" }));
+expectType<Promise<readonly MutationReceipt[]>>(bulkUpdateItems(client, {
+  space: 1,
+  board: 2,
+  updates: [{ itemId: "9007199254740993", body: {} }],
+}));
 
 await client.users.list({ emails: ["a@example.com"], status: "ACTIVE", type: "MEMBER" });
 const status: UserStatus = "ACTIVE";
@@ -181,7 +213,7 @@ const groupListParams = { spaceId: 1, boardId: 2, pageSize: 50 } satisfies ItemG
 const groupIteratorParams = { ...groupListParams, limit: 10 } satisfies ItemGroupIteratorParams;
 const groupGetParams = { spaceId: 1, boardId: 2, itemGroupId } satisfies ItemGroupGetParams;
 const groupCreateBody = { title: "Backlog", color: "#123456" } satisfies ItemGroupCreateBody;
-const groupUpdateBody = { title: "Doing", ranking: "m" } satisfies ItemGroupUpdateBody;
+const groupUpdateBody = { title: "Doing", ranking: "m", color: "#654321" } satisfies ItemGroupUpdateBody;
 const groupCreateParams = { spaceId: 1, boardId: 2, body: groupCreateBody } satisfies ItemGroupCreateParams;
 const groupUpdateParams = { ...groupGetParams, body: groupUpdateBody } satisfies ItemGroupUpdateParams;
 const groupDeleteParams = { ...groupGetParams, idempotencyKey: "key" } satisfies ItemGroupDeleteParams;

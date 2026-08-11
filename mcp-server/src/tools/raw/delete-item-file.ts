@@ -9,7 +9,7 @@ const args = z.object({
   boardId: int64Id.describe("Unique identifier of the board."),
   itemId: int64Id.describe("Represents unique board identifier across the system."),
   itemFileId: int64Id.describe("Represents unique item file identifier across the system."),
-});
+}).strict();
 const output = z.object({ ok: z.boolean() });
 
 export const deleteItemFileTool: McpToolDefinition = {
@@ -28,12 +28,18 @@ export const deleteItemFileTool: McpToolDefinition = {
   outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
-    await request<void>({
-      method: "DELETE",
-      path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/files/${encodeURIComponent(String(parsed.itemFileId))}`,
-      responseType: "void",
-      operationId: "deleteItemFile",
-    }, ctx.requestOptions);
+    await ctx.attempt.mutate({
+      operation: "deleteItemFile",
+      targetIds: { spaceId: String(parsed.spaceId), boardId: String(parsed.boardId), itemId: String(parsed.itemId), itemFileId: String(parsed.itemFileId) },
+      run: async () => {
+        await request<void>({
+          method: "DELETE",
+          path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/files/${encodeURIComponent(String(parsed.itemFileId))}`,
+          responseType: "void",
+          operationId: "deleteItemFile",
+        }, ctx.requestOptions);
+      },
+    });
     return ctx.respond({ ok: true }, { compactKind: "raw" });
   },
 };

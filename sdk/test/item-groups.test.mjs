@@ -94,13 +94,13 @@ test("itemGroups.update sends the generated JSON shape and options idempotency k
   });
 
   const group = await client.itemGroups.update(
-    { spaceId: 1, boardId: 2, itemGroupId: 4, body: { title: "Done", ranking: "z" } },
+    { spaceId: 1, boardId: 2, itemGroupId: 4, body: { title: "Done", ranking: "z", color: "#123456" } },
     { idempotencyKey: "update-key" },
   );
 
   assert.equal(request.init.method, "PUT");
   assert.equal(request.headers.get("idempotency-key"), "update-key");
-  assert.deepEqual(JSON.parse(request.init.body), { title: "Done", ranking: "z" });
+  assert.deepEqual(JSON.parse(request.init.body), { title: "Done", ranking: "z", color: "#123456" });
   assert.equal(group.title, "Done");
 });
 
@@ -140,7 +140,7 @@ test("itemGroups mutations are never retried, even with an explicit key", async 
   }, { maxRetries: 2 });
 
   await assert.rejects(
-    client.itemGroups.create({ spaceId: 1, boardId: 2, body: { title: "One" }, idempotencyKey: "stable-key" }),
+    client.itemGroups.create({ spaceId: 1, boardId: 2, body: { title: "One", color: "#123456" }, idempotencyKey: "stable-key" }),
     /failed/,
   );
   assert.equal(fetchCalls, 1);

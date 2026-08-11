@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, beforeEach } from "node:test";
-import { PlakyClient, PlakyTimeoutError, SpaceId, redact, redactRecord } from "../esm/index.js";
+import { PlakyClient, PlakyResponseContractError, PlakyTimeoutError, SpaceId, redact, redactRecord } from "../esm/index.js";
 
 beforeEach(() => {
   globalThis.fetch = async (url) => {
@@ -31,6 +31,20 @@ test("client.spaces.list returns paged data", async () => {
   const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://example.test" });
   const page = await client.spaces.list({ page: 1, pageSize: 10 });
   assert.deepEqual(page.data?.[0]?.title, "Ops");
+});
+
+test("typed paged resources fail closed on malformed success roots", async () => {
+  for (const body of [
+    {},
+    { data: null, hasMore: false },
+    { data: [], hasMore: null },
+    { data: [], hasMore: true },
+    [],
+  ]) {
+    globalThis.fetch = async () => new Response(JSON.stringify(body), { status: 200 });
+    const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://example.test" });
+    await assert.rejects(client.spaces.list(), PlakyResponseContractError);
+  }
 });
 
 test("client.spaces.list serializes expand array query values", async () => {
@@ -217,10 +231,14 @@ test("constructor rejects negative or NaN timeoutMs/maxRetries", () => {
   assert.throws(() => new PlakyClient({ apiKey: "test-api-key", maxRetries: 1.5 }), /maxRetries must be a non-negative integer/);
 });
 
-test("constructor accepts maxRetries:0 and large finite timeouts without clamping", () => {
+test("constructor accepts maxRetries:0 and large finite timeouts within the timer bound", () => {
   const client = new PlakyClient({ apiKey: "test-api-key", maxRetries: 0, timeoutMs: 3_600_000.5 });
   assert.equal(client.options.maxRetries, 0);
   assert.equal(client.options.timeoutMs, 3_600_000.5);
+  assert.throws(
+    () => new PlakyClient({ apiKey: "test-api-key", timeoutMs: 2_147_483_648 }),
+    /timeoutMs must be a non-negative number no greater than 2147483647 milliseconds/,
+  );
 });
 
 test("redact handles API-key-shaped tokens with separators", () => {

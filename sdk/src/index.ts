@@ -53,6 +53,8 @@ export {
   PlakyTimeoutError,
   PlakyAbortError,
   PlakyDecodeError,
+  PlakyResponseContractError,
+  PlakyResponseTooLargeError,
   PlakyApiError,
   PlakyAuthError,
   PlakyPermissionError,
@@ -64,12 +66,21 @@ export {
   PlakyServerError,
   PlakyAmbiguousMatchError,
 } from "./runtime/errors.js";
+export type { NormalizedProblem, NormalizedProblemFamily, PlakyProblem } from "./runtime/errors.js";
+export { PlakyPartialMutationError } from "./runtime/mutations.js";
+export type {
+  MutationErrorSummary,
+  MutationPhase,
+  MutationReceipt,
+  MutationReceiptStatus,
+} from "./runtime/mutations.js";
 export type {
   ApiKeyProvider,
   FetchLike,
   HeaderProvider,
   PlakyApiResponse,
   PlakyRequestOverrides,
+  ResourceRequestOverrides,
   QueryParams,
   ResponseType,
 } from "./runtime/types.js";
@@ -83,7 +94,38 @@ export { RateLimitSink } from "./runtime/rate-limit.js";
 export type { RateLimitSnapshot } from "./runtime/rate-limit.js";
 export { paginate } from "./runtime/pagination.js";
 export type { Page, PageFetcher, PageOptions, PaginatedIterator } from "./runtime/pagination.js";
+export {
+  DEFAULT_CHUNK_MAX_BYTES,
+  DEFAULT_CHUNK_MAX_ITEMS,
+  MAX_MATERIALIZED_BYTES,
+  MAX_MATERIALIZED_ITEMS,
+  PlakyMaterializationLimitError,
+  PlakyOutputLimitError,
+  iteratePagedChunks,
+  readPagedChunk,
+  utf8ByteLength,
+} from "./runtime/chunks.js";
+export type { BoundedChunk, ChunkIterator, ChunkOptions, PageCursor } from "./runtime/chunks.js";
 export type { PlakyRequestOptions } from "./runtime/http.js";
+export {
+  MAX_UPLOAD_BYTES_HARD_CEILING,
+  MAX_UPLOAD_FILENAME_BYTES,
+  UploadValidationError,
+  decodeBase64Upload,
+  estimateBase64DecodedBytes,
+  normalizeUpload,
+  normalizeUploadMediaType,
+  normalizeUploadMetadata,
+  validateBlobUpload,
+  validateUploadFileName,
+  validateUploadLimit,
+} from "./runtime/upload.js";
+export type {
+  NormalizedUpload,
+  UploadInput,
+  UploadMetadata,
+  UploadValidationCode,
+} from "./runtime/upload.js";
 
 export type {
   paths as PlakyOpenApiPaths,
@@ -129,6 +171,7 @@ export type {
 
 export type {
   PagedResult,
+  StrictPagedResult,
   FieldShape,
   ItemFieldShape,
   ItemGroupShape,
@@ -183,7 +226,37 @@ export {
   resolveItemGroupInBoard,
   resolveItemFileOnItem,
 } from "./resolvers/index.js";
-export type { EntityRef } from "./resolvers/index.js";
+export type { EntityRef, EntitySelector } from "./resolvers/index.js";
 
-export { workspaceMap, searchItems, searchItemsDetailed, bulkUpdateItems, exportItems } from "./workflows/index.js";
-export type { SearchItemsParams, SearchItemsDetailedResult, BulkUpdateParams, ExportItemsParams } from "./workflows/index.js";
+export {
+  workspaceMap,
+  searchItems,
+  searchItemsDetailed,
+  bulkUpdateItems,
+  exportItems,
+  readItemChunk,
+  iterateItemChunks,
+  readItemExportChunk,
+  iterateItemExportChunks,
+} from "./workflows/index.js";
+export type {
+  SearchItemsParams,
+  SearchItemsDetailedResult,
+  BulkUpdateParams,
+  ExportItemsParams,
+  ItemExportChunkParams,
+  WorkspaceMapOptions,
+  ItemChunkParams,
+  ItemExportChunk,
+} from "./workflows/index.js";
+export {
+  normalizeBase64UploadPlan,
+  normalizeBlobUploadPlan,
+  normalizeCommentPlan,
+  normalizeItemCreatePlan,
+  normalizeItemFileUpdatePlan,
+  normalizeItemGroupCreatePlan,
+  normalizeItemGroupUpdatePlan,
+  normalizeItemUpdateFieldsPlan,
+} from "./workflows/mutation-plans.js";
+export type { NormalizedMutationPlan, NormalizedUploadPlan } from "./workflows/mutation-plans.js";

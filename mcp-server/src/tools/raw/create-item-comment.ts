@@ -8,9 +8,10 @@ const args = z.object({
   spaceId: int64Id.describe("Represents unique space identifier across the system."),
   boardId: int64Id.describe("Represents unique board identifier across the system."),
   itemId: int64Id.describe("Represents unique item identifier across the system."),
-  body: z.record(z.unknown()).describe("JSON request body for Create item comment."),
-});
-const output = z.object({}).passthrough();
+  body: z.record(z.unknown()).superRefine((body, ctx) => { if (!Object.prototype.hasOwnProperty.call(body, "text")) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["text"], message: "required" }); }).describe("JSON request body for Create item comment."),
+}).strict();
+const output = z.object({ id: z.unknown() }).passthrough();
+const rawOutput = z.object({ id: z.unknown() }).passthrough();
 
 export const createItemCommentTool: McpToolDefinition = {
   name: "plaky_create_item_comment",
@@ -28,12 +29,21 @@ export const createItemCommentTool: McpToolDefinition = {
   outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
-    const result = await request<Record<string, unknown>>({
-      method: "POST",
-      path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/comments`,
-      body: parsed.body,
-      operationId: "createItemComment",
-    }, ctx.requestOptions);
+    const result = await ctx.attempt.mutate({
+      operation: "createItemComment",
+      targetIds: { spaceId: String(parsed.spaceId), boardId: String(parsed.boardId), itemId: String(parsed.itemId) },
+      createdIdKey: "itemCommentId",
+      run: async () => {
+        const result = await request<Record<string, unknown>>({
+          method: "POST",
+          path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/comments`,
+          body: parsed.body,
+          operationId: "createItemComment",
+        }, ctx.requestOptions);
+        rawOutput.parse(result);
+        return result;
+      },
+    });
     return ctx.respond(result, { compactKind: "comment" });
   },
 };

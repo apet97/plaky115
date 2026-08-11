@@ -8,7 +8,7 @@ const args = z.object({
   spaceId: int64Id.describe("Represents unique space identifier across the system."),
   boardId: int64Id.describe("Represents unique board identifier across the system."),
   itemGroupId: int64Id.describe("Represents unique item group identifier across the system."),
-});
+}).strict();
 const output = z.object({ ok: z.boolean() });
 
 export const deleteItemGroupTool: McpToolDefinition = {
@@ -27,12 +27,18 @@ export const deleteItemGroupTool: McpToolDefinition = {
   outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
-    await request<void>({
-      method: "DELETE",
-      path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/item-groups/${encodeURIComponent(String(parsed.itemGroupId))}`,
-      responseType: "void",
-      operationId: "deleteItemGroup",
-    }, ctx.requestOptions);
+    await ctx.attempt.mutate({
+      operation: "deleteItemGroup",
+      targetIds: { spaceId: String(parsed.spaceId), boardId: String(parsed.boardId), itemGroupId: String(parsed.itemGroupId) },
+      run: async () => {
+        await request<void>({
+          method: "DELETE",
+          path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/item-groups/${encodeURIComponent(String(parsed.itemGroupId))}`,
+          responseType: "void",
+          operationId: "deleteItemGroup",
+        }, ctx.requestOptions);
+      },
+    });
     return ctx.respond({ ok: true }, { compactKind: "raw" });
   },
 };

@@ -8,15 +8,13 @@ import (
 
 func newUploadItemFileCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "upload-item-file",
-		Short: "Upload an item file",
+		Use:         "upload-item-file",
+		Short:       "Upload an item file",
+		Annotations: map[string]string{"plaky115.stdin-consumer": "file"},
+		Args:        cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := getClient(cmd)
-			if err != nil {
-				return err
-			}
 			ctx := cmd.Context()
-			return plakydx.RunUploadItemFile(ctx, cmd, client)
+			return plakydx.RunUploadItemFile(ctx, cmd, getClient)
 		},
 	}
 	cmd.Flags().String("space-id", "", "Represents unique space identifier across the system. (required)")

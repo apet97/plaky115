@@ -5,8 +5,9 @@ import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
   body: z.record(z.unknown()).describe("JSON request body for createWidget fixture."),
-});
+}).strict();
 const output = z.object({}).passthrough();
+const rawOutput = z.object({}).passthrough();
 
 export const createWidgetTool: McpToolDefinition = {
   name: "plaky_create_widget",
@@ -24,12 +25,20 @@ export const createWidgetTool: McpToolDefinition = {
   outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
-    const result = await request<Record<string, unknown>>({
-      method: "POST",
-      path: "/v1/widgets",
-      body: parsed.body,
-      operationId: "createWidget",
-    }, ctx.requestOptions);
+    const result = await ctx.attempt.mutate({
+      operation: "createWidget",
+      targetIds: {},
+      run: async () => {
+        const result = await request<Record<string, unknown>>({
+          method: "POST",
+          path: "/v1/widgets",
+          body: parsed.body,
+          operationId: "createWidget",
+        }, ctx.requestOptions);
+        rawOutput.parse(result);
+        return result;
+      },
+    });
     return ctx.respond(result, { compactKind: "raw" });
   },
 };

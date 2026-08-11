@@ -37,42 +37,15 @@ jobs:
       - name: Install dependencies
         run: |
           npm --prefix sdk ci
+          npm --prefix sdk run build
           npm --prefix mcp-server ci
           cd cli && go mod download
       - name: Verify contracts, generation, security, and release policy
+        run: npm run verify
+      - name: Verify production dependencies and Go vulnerabilities
         run: |
-          npm run workflow:policy:test
-          npm run verification:inventory:test
-          npm run release:contract:test
-          npm run installer:test
-          npm run contract:source:test
-          npm run contract:inventory:test
-          npm run overlay:validate
-          npm run lint:openapi
-          npm run openapi:test
-          npm run metadata:test
-          npm run contract:expected:check
-          npm run generated:drift
-          npm run codegen:test
-          npm run test:surfaces
-          npm run postgen:drift
-          npm run docs:surface:test
-          npm run examples:check
-          npm run live:sweep:test
           npm run audit:production
           npm run govulncheck
-          cd cli && go test ./... && go build -o /tmp/plaky115 ./cmd/plaky115 && goreleaser check
-      - name: Verify packages and cross-surface parity once
-        run: |
-          npm --prefix sdk run build
-          npm --prefix mcp-server run build
-          npm run parity:test
-          npm run status:surfaces:strict
-          npm run secret:scan:test
-          npm run secret:scan
-          npm run artifacts:audit
-          npm run pack:smoke
-          npm run packsnapshot:drift
 
   node-compatibility:
     name: Node ${{ matrix.node-version }} packages
@@ -92,6 +65,7 @@ jobs:
         with:
           bun-version: "1.2.17"
       - run: npm --prefix sdk ci
+      - run: npm --prefix sdk run build
       - run: npm --prefix mcp-server ci
       - run: npm --prefix sdk run typecheck && npm --prefix sdk run test:types && npm --prefix sdk run lint && npm --prefix sdk test
       - run: npm --prefix mcp-server run lint && npm --prefix mcp-server test
@@ -181,4 +155,11 @@ jobs:
             try { & ./cli/scripts/install.ps1; $rollbackExercised = $false } catch { $rollbackExercised = $_.Exception.Message -match "simulated atomic replacement failure" }
             if (-not $rollbackExercised) { throw "replacement failure was not exercised" }
             if ((Get-Content (Join-Path $install "plaky115.exe") -Raw) -ne "existing binary") { throw "replacement failure did not restore existing binary" }
+
+            $env:PLAKY115_INSTALL_TEST_FAIL_RESTORE = "1"
+            try { & ./cli/scripts/install.ps1; $restoreFailureExercised = $false } catch { $restoreFailureExercised = $_.Exception.Message -match "recovery backup preserved" }
+            if (-not $restoreFailureExercised) { throw "restore failure was not preserved" }
+            $backups = @(Get-ChildItem -LiteralPath $install -Filter ".plaky115.backup.*")
+            if ($backups.Count -ne 1) { throw "recovery backup was not preserved" }
+            if ((Get-Content $backups[0].FullName -Raw) -ne "existing binary") { throw "preserved recovery backup contents changed" }
           } finally { Stop-Process $server -Force }

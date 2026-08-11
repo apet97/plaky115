@@ -9,8 +9,20 @@ test("withRetries rejects invalid retry settings", async () => {
     { maxRetries: 1.5 },
     { maxRetries: 1, baseDelayMs: Number.NaN },
   ]) {
-    await assert.rejects(withRetries(async () => "unused", opts));
+    await assert.rejects(withRetries(async () => "unused", { kind: "read", ...opts }));
   }
+});
+
+test("withRetries rejects non-read retry intent before invoking the operation", async () => {
+  let calls = 0;
+  await assert.rejects(
+    withRetries(async () => {
+      calls++;
+      return "unused";
+    }, { kind: "write", maxRetries: 1 }),
+    /kind=read/,
+  );
+  assert.equal(calls, 0);
 });
 
 function rateLimitError(retryAfterMs) {
@@ -49,7 +61,7 @@ test("withRetries retries a retryable error then resolves", async () => {
         throw new PlakyServerError("boom", { status: 500, method: "GET", url: "https://x", headers: new Headers() });
       }
       return "ok";
-    }, { maxRetries: 2 }),
+    }, { kind: "read", maxRetries: 2 }),
   );
   assert.equal(result, "ok");
   assert.equal(calls, 2);
@@ -62,7 +74,7 @@ test("withRetries clamps a hostile retry-after to <= 60s", async () => {
       calls++;
       if (calls === 1) throw rateLimitError(999_999_999_000);
       return "ok";
-    }, { maxRetries: 1 }),
+    }, { kind: "read", maxRetries: 1 }),
   );
   assert.equal(result, "ok");
   assert.ok(delays.length >= 1);
@@ -76,7 +88,7 @@ test("withRetries ignores a non-positive retry-after and uses computed backoff",
       calls++;
       if (calls === 1) throw rateLimitError(-5000);
       return "ok";
-    }, { maxRetries: 1, baseDelayMs: 250 }),
+    }, { kind: "read", maxRetries: 1, baseDelayMs: 250 }),
   );
   assert.ok(delays[0] >= 250, `delay ${delays[0]} should fall back to computed backoff, not fire immediately`);
   assert.ok(delays[0] <= 350);
@@ -86,7 +98,7 @@ test("withRetries rethrows a non-retryable error without waiting", async () => {
   await assert.rejects(
     withRetries(async () => {
       throw new Error("not retryable");
-    }, { maxRetries: 3 }),
+    }, { kind: "read", maxRetries: 3 }),
     (err) => err.message === "not retryable",
   );
 });

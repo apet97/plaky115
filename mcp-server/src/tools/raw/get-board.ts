@@ -7,8 +7,9 @@ import type { McpToolDefinition } from "../../runtime/types.js";
 const args = z.object({
   spaceId: int64Id.describe("Represents unique space identifier across the system."),
   boardId: int64Id.describe("Represents unique board identifier across the system."),
-});
+}).strict();
 const output = z.object({}).passthrough();
+const rawOutput = z.object({}).passthrough();
 
 export const getBoardTool: McpToolDefinition = {
   name: "plaky_get_board",
@@ -31,6 +32,7 @@ export const getBoardTool: McpToolDefinition = {
       path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}`,
       operationId: "getBoard",
     }, ctx.requestOptions);
+    rawOutput.parse(result);
     return ctx.respond(result, { compactKind: "board" });
   },
 };

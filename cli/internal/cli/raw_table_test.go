@@ -278,10 +278,10 @@ func rawCommandCases() []rawCase {
 		{
 			name:            "create-item-group JSON with explicit idempotency",
 			operationID:     "createItemGroup",
-			args:            []string{"create-item-group", "--space-id", "1", "--board-id", "2", "--body", `{"title":"Backlog"}`, "--idempotency-key", "group-create-1"},
+			args:            []string{"create-item-group", "--space-id", "1", "--board-id", "2", "--body", `{"title":"Backlog","color":"#123456"}`, "--idempotency-key", "group-create-1"},
 			wantMethod:      http.MethodPost,
 			wantPath:        "/v1/public/spaces/1/boards/2/item-groups",
-			wantBody:        map[string]any{"title": "Backlog"},
+			wantBody:        map[string]any{"title": "Backlog", "color": "#123456"},
 			wantIdempotency: "group-create-1",
 		},
 		{
@@ -301,10 +301,10 @@ func rawCommandCases() []rawCase {
 		{
 			name:        "update-item-group JSON",
 			operationID: "updateItemGroup",
-			args:        []string{"update-item-group", "--space-id", "1", "--board-id", "2", "--item-group-id", "3", "--body", `{"title":"Doing"}`},
+			args:        []string{"update-item-group", "--space-id", "1", "--board-id", "2", "--item-group-id", "3", "--body", `{"title":"Doing","ranking":"m","color":"#123456"}`},
 			wantMethod:  http.MethodPut,
 			wantPath:    "/v1/public/spaces/1/boards/2/item-groups/3",
-			wantBody:    map[string]any{"title": "Doing"},
+			wantBody:    map[string]any{"title": "Doing", "ranking": "m", "color": "#123456"},
 		},
 		{
 			name:        "archive-item-group confirmed and bodyless",
@@ -742,6 +742,14 @@ func assertRawOutput(t *testing.T, operation rawOperation, out string) {
 		var value map[string]any
 		if err := json.Unmarshal([]byte(out), &value); err != nil {
 			t.Fatalf("%s output is not one JSON object: %v\n%s", operation.OperationID, err, out)
+		}
+	case "paged-object":
+		var value struct {
+			Data    []any `json:"data"`
+			HasMore bool  `json:"hasMore"`
+		}
+		if err := json.Unmarshal([]byte(out), &value); err != nil {
+			t.Fatalf("%s output is not one paged JSON object: %v\n%s", operation.OperationID, err, out)
 		}
 	default:
 		t.Fatalf("%s has unsupported success kind %q", operation.OperationID, operation.Success.Kind)

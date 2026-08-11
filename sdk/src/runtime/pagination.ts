@@ -1,3 +1,6 @@
+import { PlakyResponseContractError } from "./errors.js";
+import type { StrictPagedResult } from "../client/shapes.js";
+
 export type Page<T> = {
   data: T[];
   hasMore: boolean;
@@ -16,6 +19,20 @@ export type PaginatedIterator<T> = AsyncIterableIterator<T> & {
   pages(): AsyncIterableIterator<Page<T>>;
   toArray(limit?: number): Promise<T[]>;
 };
+
+/** Validate a paged API root once, before any list/search control flow uses it. */
+export function assertPagedResult<T>(value: unknown, operationId: string): StrictPagedResult<T> {
+  const record = assertPageFields(value, operationId);
+  return record as StrictPagedResult<T>;
+}
+
+/** Validate a bare-array API root once, before a caller treats it as complete. */
+export function assertArrayResult<T>(value: unknown, operationId: string): T[] {
+  if (!Array.isArray(value)) {
+    throw new PlakyResponseContractError(operationId, "/", { cause: value });
+  }
+  return value as T[];
+}
 
 const DEFAULT_PAGE_SIZE = 100;
 
@@ -54,7 +71,7 @@ export function paginate<T>(fetcher: PageFetcher<T>, opts: PageOptions = {}): Pa
         page++;
         buffer = current.data.slice();
         bufferIndex = 0;
-        done = !current.hasMore || current.data.length === 0;
+        done = !current.hasMore;
       }
 
       if (bufferIndex >= buffer.length) {
@@ -83,7 +100,7 @@ export function paginate<T>(fetcher: PageFetcher<T>, opts: PageOptions = {}): Pa
 
         const current = await fetchPage(fetcher, nextPage, pageSize);
         nextPage++;
-        stop = !current.hasMore || current.data.length === 0;
+        stop = !current.hasMore;
 
         return { done: false, value: current };
       },
@@ -103,7 +120,7 @@ export function paginate<T>(fetcher: PageFetcher<T>, opts: PageOptions = {}): Pa
       const remaining = max - out.length;
       out.push(...current.data.slice(0, remaining));
 
-      if (!current.hasMore || current.data.length === 0) break;
+      if (!current.hasMore) break;
     }
 
     return out;
@@ -118,11 +135,41 @@ async function fetchPage<T>(fetcher: PageFetcher<T>, page: number, pageSize: num
   }
 
   const result = await fetcher({ page, pageSize });
+  const checked = assertPageFields(result, "paginate");
   return {
-    data: result.data ?? [],
-    hasMore: result.hasMore === true,
+    data: checked.data as T[],
+    hasMore: checked.hasMore,
     raw: result.raw,
   };
+}
+
+function assertPageFields(value: unknown, operationId: string): { data: unknown[]; hasMore: boolean } & Record<string, unknown> {
+  if (!isPlainObject(value)) {
+    throw new PlakyResponseContractError(operationId, "/", { cause: value });
+  }
+  const record = value as Record<string, unknown>;
+  if (!Object.prototype.hasOwnProperty.call(record, "data")) {
+    throw new PlakyResponseContractError(operationId, "/data", { cause: value });
+  }
+  if (!Array.isArray(record["data"])) {
+    throw new PlakyResponseContractError(operationId, "/data", { cause: value });
+  }
+  if (!Object.prototype.hasOwnProperty.call(record, "hasMore")) {
+    throw new PlakyResponseContractError(operationId, "/hasMore", { cause: value });
+  }
+  if (typeof record["hasMore"] !== "boolean") {
+    throw new PlakyResponseContractError(operationId, "/hasMore", { cause: value });
+  }
+  if (record["data"].length === 0 && record["hasMore"] === true) {
+    throw new PlakyResponseContractError(operationId, "/hasMore", { cause: value });
+  }
+  return record as { data: unknown[]; hasMore: boolean } & Record<string, unknown>;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
 
 function assertPositiveInteger(value: number, name: string): void {

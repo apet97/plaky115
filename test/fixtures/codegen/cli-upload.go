@@ -8,15 +8,13 @@ import (
 
 func newUploadWidgetFileCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "upload-widget-file",
-		Short: "uploadWidgetFile fixture",
+		Use:         "upload-widget-file",
+		Short:       "uploadWidgetFile fixture",
+		Annotations: map[string]string{"plaky115.stdin-consumer": "file"},
+		Args:        cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := getClient(cmd)
-			if err != nil {
-				return err
-			}
 			ctx := cmd.Context()
-			return plakydx.RunUploadWidgetFile(ctx, cmd, client)
+			return plakydx.RunUploadWidgetFile(ctx, cmd, getClient)
 		},
 	}
 	cmd.Flags().String("widget-id", "", "Widget identifier. (required)")

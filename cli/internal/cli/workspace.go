@@ -12,6 +12,7 @@ func newWorkspaceMapCommand(getClient clientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "workspace-map",
 		Short: "List spaces with their boards (compact tree).",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			c, err := getClient(cmd)
 			if err != nil {

@@ -78,8 +78,9 @@ change it, regenerate, and review the complete drift.
 - Item-file listing stays a bare array in SDK/CLI and a documented `data`
   envelope at the MCP boundary.
 - MCP defaults are `--mode curated --scope read`; invalid flags fail closed.
-- MCP uploads take `fileBase64`/filename/media type, with a 10 MiB default and
-  25 MiB hard limit. They never accept arbitrary filesystem paths.
+- MCP uploads take `fileBase64`/filename/media type, with a 25 MiB default and
+  25 MiB hard limit. They reject path traversal/separators and never accept
+  arbitrary filesystem paths.
 - `searchItemsDetailed` exposes scan/truncation metadata; deprecated
   `searchItems` remains the array-returning compatibility wrapper.
 - SDK and Go CSV exports are deterministic and spreadsheet-safe by default.
@@ -89,6 +90,10 @@ change it, regenerate, and review the complete drift.
 - All path IDs are canonical non-negative signed-int64 decimals and fail before
   network access. Unsafe JSON integers decode as exact decimal strings.
 - SDK runtime internals and generated operation paths are intentionally private.
+- A new file under `sdk/src/runtime/` must be declared: add it to
+  `publicRuntimeModules` in `scripts/postgen-dx.mjs` and run `generate:all`, or
+  to `intentionallyPrivateRuntimeModules` in `scripts/audit-package-artifacts.mjs`.
+  `npm run artifacts:audit` fails on an undeclared module.
 - Remote HTTP is rejected except literal loopback; SDK/Go credential requests
   do not follow redirects; buffered responses default to 16 MiB with a 64 MiB
   hard ceiling.

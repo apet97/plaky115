@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
+import { readRegistryPackage } from "./lib/release-network.mjs";
 
 const repositoryRoot = new URL("..", import.meta.url);
 const expectedRepository = "apet97/plaky115";
@@ -37,12 +37,11 @@ export async function checkReleaseVersion({
   if (registryPreflight) {
     for (const manifest of packages) {
       const result = await runCommand(manifest.name, manifest.version);
-      if (result.status === 0) {
+      if (result.state === "absent") continue;
+      if (result.state === "present" || result.status === 0) {
         throw new Error(`${manifest.name}@${manifest.version} already exists on npm`);
       }
-      if (!/\bE404\b/.test(result.stderr)) {
-        throw new Error(`${manifest.name}@${manifest.version} registry preflight was ambiguous`);
-      }
+      throw new Error(`${manifest.name}@${manifest.version} registry preflight was ambiguous`);
     }
   }
 
@@ -76,18 +75,8 @@ function resolveRepository(value) {
   }
 }
 
-function npmView(name, version) {
-  return new Promise((resolve, reject) => {
-    const child = spawn("npm", ["view", `${name}@${version}`, "version", "--json"], {
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    let stdout = "";
-    let stderr = "";
-    child.stdout.setEncoding("utf8").on("data", (chunk) => { stdout += chunk; });
-    child.stderr.setEncoding("utf8").on("data", (chunk) => { stderr += chunk; });
-    child.once("error", reject);
-    child.once("close", (status) => resolve({ status, stdout, stderr }));
-  });
+async function npmView(name, version) {
+  return readRegistryPackage(name, version);
 }
 
 async function main() {

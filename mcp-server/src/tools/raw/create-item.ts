@@ -8,8 +8,9 @@ const args = z.object({
   spaceId: int64Id.describe("Represents unique space identifier across the system."),
   boardId: int64Id.describe("Represents unique board identifier across the system."),
   body: z.record(z.unknown()).describe("JSON request body for Create an item."),
-});
-const output = z.object({}).passthrough();
+}).strict();
+const output = z.object({ id: z.unknown() }).passthrough();
+const rawOutput = z.object({ id: z.unknown() }).passthrough();
 
 export const createItemTool: McpToolDefinition = {
   name: "plaky_create_item",
@@ -27,12 +28,21 @@ export const createItemTool: McpToolDefinition = {
   outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
-    const result = await request<Record<string, unknown>>({
-      method: "POST",
-      path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items`,
-      body: parsed.body,
-      operationId: "createItem",
-    }, ctx.requestOptions);
+    const result = await ctx.attempt.mutate({
+      operation: "createItem",
+      targetIds: { spaceId: String(parsed.spaceId), boardId: String(parsed.boardId) },
+      createdIdKey: "itemId",
+      run: async () => {
+        const result = await request<Record<string, unknown>>({
+          method: "POST",
+          path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items`,
+          body: parsed.body,
+          operationId: "createItem",
+        }, ctx.requestOptions);
+        rawOutput.parse(result);
+        return result;
+      },
+    });
     return ctx.respond(result, { compactKind: "item" });
   },
 };

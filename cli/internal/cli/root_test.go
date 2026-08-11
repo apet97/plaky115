@@ -97,6 +97,98 @@ func TestAPIKeyStdinRejectsMissingExtraAndConflictingInput(t *testing.T) {
 	}
 }
 
+func TestAPIKeyStdinIsBounded(t *testing.T) {
+	input := strings.Repeat("x", maxAPIKeyBytes+1)
+	_, err := executeRootWithInput(t, bytes.NewBufferString(input), "--api-key-stdin", "doctor")
+	if err == nil || !strings.Contains(err.Error(), "exceeds") {
+		t.Fatalf("oversized API key error = %v", err)
+	}
+	if strings.Contains(err.Error(), input) {
+		t.Fatal("oversized API key was echoed")
+	}
+}
+
+func TestStdinOwnershipRejectsPairsAndTripleBeforeReading(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "api key and body",
+			args: []string{"--api-key-stdin", "raw", "create-item", "--space-id", "1", "--board-id", "2", "--body", "@-"},
+		},
+		{
+			name: "api key and file",
+			args: []string{"--api-key-stdin", "raw", "upload-item-file", "--space-id", "1", "--board-id", "2", "--item-id", "3", "--file", "-", "--filename", "fixture.txt"},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			reader := &failOnRead{}
+			cmd, err := NewRootCommand()
+			if err != nil {
+				t.Fatal(err)
+			}
+			cmd.SetIn(reader)
+			cmd.SetArgs(test.args)
+			err = cmd.Execute()
+			if err == nil || !strings.Contains(err.Error(), "multiple active consumers") {
+				t.Fatalf("ownership error = %v", err)
+			}
+			if reader.touched {
+				t.Fatal("stdin was read before ownership rejection")
+			}
+		})
+	}
+
+	reader := &failOnRead{}
+	fixture := &cobra.Command{Use: "fixture"}
+	fixture.PersistentFlags().Bool("api-key-stdin", false, "")
+	fixture.Flags().String("body", "", "")
+	fixture.Flags().String("file", "", "")
+	if err := fixture.Flags().Set("body", "@-"); err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.Flags().Set("file", "-"); err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.PersistentFlags().Set("api-key-stdin", "true"); err != nil {
+		t.Fatal(err)
+	}
+	fixture.SetIn(reader)
+	if err := validateStdinOwnership(fixture, nil); err == nil || !strings.Contains(err.Error(), "multiple active consumers") {
+		t.Fatalf("triple ownership error = %v", err)
+	}
+	if reader.touched {
+		t.Fatal("stdin was read during triple ownership rejection")
+	}
+}
+
+func TestRawBodyValidationPrecedesClientConstruction(t *testing.T) {
+	reader := &failOnRead{}
+	cmd, err := NewRootCommand()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd.SetIn(reader)
+	cmd.SetArgs([]string{"--api-key-stdin", "raw", "create-item", "--space-id", "1", "--board-id", "2", "--body", "{not-json}"})
+	err = cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "invalid --body JSON") {
+		t.Fatalf("body validation error = %v", err)
+	}
+	if reader.touched {
+		t.Fatal("API key stdin was read before local body validation")
+	}
+}
+
+type failOnRead struct {
+	touched bool
+}
+
+func (reader *failOnRead) Read([]byte) (int, error) {
+	reader.touched = true
+	return 0, errors.New("stdin must not be read")
+}
+
 func TestItemsExportCSV(t *testing.T) {
 	fixtureItems := readExportFixture(t, "items.json")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -142,6 +234,71 @@ func TestItemsExportCSVRejectsUnknownSafetyMode(t *testing.T) {
 	_, err := executeRoot(t, "--api-key", "from-flag", "items-export", "--space-id", "1", "--board-id", "2", "--format", "csv", "--csv-safety", "unsafe")
 	if err == nil || !strings.Contains(err.Error(), "--csv-safety") {
 		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestItemsExportStreamsAndReportsExactContinuationAtItemCap(t *testing.T) {
+	var pages []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/v1/public/spaces/1/boards/2" {
+			_, _ = w.Write([]byte(`{"id":2,"fields":[]}`))
+			return
+		}
+		page := r.URL.Query().Get("page")
+		pages = append(pages, page)
+		if page == "2" {
+			_, _ = w.Write([]byte(`{"data":[{"id":3}],"hasMore":false}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"data":[{"id":1},{"id":2}],"hasMore":true}`))
+	}))
+	defer server.Close()
+
+	t.Setenv("PLAKY115_API_KEY", "from-env")
+	stdout, _, err := executeRootStreams(t, nil,
+		"--server-url", server.URL,
+		"items-export", "--space-id", "1", "--board-id", "2", "--format", "jsonl", "--max-items", "1")
+	if err == nil || !strings.Contains(err.Error(), "next-page=1") || !strings.Contains(err.Error(), "next-index=1") {
+		t.Fatalf("bounded export error = %v", err)
+	}
+	if stdout != "{\"id\":1}\n" {
+		t.Fatalf("bounded export stdout = %q", stdout)
+	}
+	if len(pages) != 1 || pages[0] != "1" {
+		t.Fatalf("bounded export fetched pages = %v", pages)
+	}
+}
+
+func TestItemsExportCSVFetchesBoardBeforeStreamingRows(t *testing.T) {
+	var order []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v1/public/spaces/1/boards/2":
+			order = append(order, "board")
+			_, _ = w.Write([]byte(`{"id":2,"fields":[{"key":"status","name":"Status"}]}`))
+		case "/v1/public/spaces/1/boards/2/items":
+			order = append(order, "items")
+			_, _ = w.Write([]byte(`{"data":[{"id":1,"title":"A","fields":[{"key":"status","name":"Status","value":"Open"}]}],"hasMore":false}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	t.Setenv("PLAKY115_API_KEY", "from-env")
+	stdout, _, err := executeRootStreams(t, nil,
+		"--server-url", server.URL,
+		"items-export", "--space-id", "1", "--board-id", "2", "--format", "csv")
+	if err != nil {
+		t.Fatalf("CSV export error = %v", err)
+	}
+	if len(order) < 2 || order[0] != "board" || order[1] != "items" {
+		t.Fatalf("CSV request order = %v", order)
+	}
+	if !strings.Contains(stdout, "Status") || !strings.Contains(stdout, "Open") {
+		t.Fatalf("CSV output = %q", stdout)
 	}
 }
 
@@ -579,7 +736,7 @@ func TestCommentsThreadCommandListsComments(t *testing.T) {
 			t.Fatalf("unexpected path: %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"data":[{"id":4,"text":"hello"}],"hasMore":false}`))
+		_, _ = w.Write([]byte(`[{"id":4,"text":"hello"}]`))
 	}))
 	defer server.Close()
 

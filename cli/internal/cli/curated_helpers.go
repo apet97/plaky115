@@ -25,6 +25,13 @@ func markRequired(cmd *cobra.Command, names ...string) {
 	}
 }
 
+func markStdinConsumer(cmd *cobra.Command, consumer string) {
+	if cmd.Annotations == nil {
+		cmd.Annotations = map[string]string{}
+	}
+	cmd.Annotations[stdinConsumerAnnotation] = consumer
+}
+
 func newCompletionCommand(root *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                   "completion [bash|zsh|fish|powershell]",
@@ -78,6 +85,26 @@ func mustID(v any) (string, error) {
 
 func canonicalInt64(value string) (string, error) {
 	return plakysdk.CanonicalInt64ID(value)
+}
+
+func requiredFlagString(cmd *cobra.Command, name string) (string, error) {
+	value, err := cmd.Flags().GetString(name)
+	if err != nil {
+		return "", err
+	}
+	if value == "" {
+		return "", fmt.Errorf("--%s must be non-empty", name)
+	}
+	return value, nil
+}
+
+func validateIDValues(fields ...struct{ name, value string }) error {
+	for _, field := range fields {
+		if _, err := canonicalInt64(field.value); err != nil {
+			return fmt.Errorf("--%s: %w", field.name, err)
+		}
+	}
+	return nil
 }
 
 func drainPaged(pageSize int, fetch func(page int, pageSize int) (any, error)) ([]map[string]any, error) {

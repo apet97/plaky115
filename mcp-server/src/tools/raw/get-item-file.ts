@@ -9,8 +9,9 @@ const args = z.object({
   boardId: int64Id.describe("Represents unique board identifier across the system."),
   itemId: int64Id.describe("Represents unique item identifier across the system."),
   itemFileId: int64Id.describe("Represents unique item file identifier across the system."),
-});
+}).strict();
 const output = z.object({}).passthrough();
+const rawOutput = z.object({}).passthrough();
 
 export const getItemFileTool: McpToolDefinition = {
   name: "plaky_get_item_file",
@@ -33,6 +34,7 @@ export const getItemFileTool: McpToolDefinition = {
       path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/files/${encodeURIComponent(String(parsed.itemFileId))}`,
       operationId: "getItemFile",
     }, ctx.requestOptions);
+    rawOutput.parse(result);
     return ctx.respond(result, { compactKind: "itemFile" });
   },
 };

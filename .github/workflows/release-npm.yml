@@ -75,6 +75,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm --prefix sdk ci
+          npm --prefix sdk run build
           npm --prefix mcp-server ci
           cd cli && go mod download
 
@@ -84,23 +85,47 @@ jobs:
           npm run govulncheck
           npm run verify
 
-      - name: Inspect SDK pack
-        run: (cd sdk && npm pack --dry-run --json)
-
-      - name: Inspect MCP pack
-        run: (cd mcp-server && npm pack --dry-run --json)
-
-      - name: Audit package artifacts
+      - name: Build, inspect, and bind exact npm artifacts
         run: |
-          npm run artifacts:audit
-          npm run pack:smoke
-          npm run package:consumer-smoke
+          node scripts/pack-release-artifacts.mjs --pack \
+            --output .release-artifacts \
+            --tag "${GITHUB_REF_NAME}" \
+            --commit "${GITHUB_SHA}"
+          node scripts/pack-release-artifacts.mjs --verify --manifest .release-artifacts/release-digests.json
+          node scripts/pack-release-artifacts.mjs --install --manifest .release-artifacts/release-digests.json
+          node scripts/package-consumer-smoke.mjs --artifacts-manifest .release-artifacts/release-digests.json
 
-      - name: Require unpublished exact versions
-        run: node scripts/check-release-version.mjs --tag "${GITHUB_REF_NAME}" --registry-preflight
+      - name: Prove deterministic packs in two clean checkouts
+        run: node scripts/check-release-determinism.mjs
 
-      - name: Publish SDK
-        run: (cd sdk && npm publish --access public)
+      - name: Require trusted publisher configuration readback
+        env:
+          PLAKY115_RELEASE_CONFIG_READBACK: ${{ vars.PLAKY115_RELEASE_CONFIG_READBACK }}
+        run: node scripts/write-release-evidence.mjs --check-readback
 
-      - name: Publish MCP server
-        run: (cd mcp-server && npm publish --access public)
+      - name: Classify registry and publish exact artifacts
+        run: >-
+          node scripts/publish-npm-release.mjs
+          --manifest .release-artifacts/release-digests.json
+          --tag "${GITHUB_REF_NAME}"
+          --commit "${GITHUB_SHA}" > .release-artifacts/publication.json
+
+      - name: Emit sanitized release evidence
+        env:
+          PLAKY115_RELEASE_CONFIG_READBACK: ${{ vars.PLAKY115_RELEASE_CONFIG_READBACK }}
+        run: >-
+          node scripts/write-release-evidence.mjs
+          --manifest .release-artifacts/release-digests.json
+          --publication .release-artifacts/publication.json
+          --output .release-artifacts/release-evidence.json
+          --cli-status pass
+
+      - name: Upload npm release evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: npm-release-evidence
+          path: .release-artifacts/
+          if-no-files-found: error
+          retention-days: 30
+          include-hidden-files: true

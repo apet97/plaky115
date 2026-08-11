@@ -4,8 +4,9 @@ import { request } from "plaky115/runtime/http.js";
 import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
-});
+}).strict();
 const output = z.object({}).passthrough();
+const rawOutput = z.object({}).passthrough();
 
 export const getCurrentUserTool: McpToolDefinition = {
   name: "plaky_get_current_user",
@@ -27,6 +28,7 @@ export const getCurrentUserTool: McpToolDefinition = {
       path: "/v1/public/users/me",
       operationId: "getCurrentUser",
     }, ctx.requestOptions);
+    rawOutput.parse(result);
     return ctx.respond(result, { compactKind: "raw" });
   },
 };

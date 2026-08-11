@@ -1,7 +1,21 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test, beforeEach } from "node:test";
-import { PlakyClient, workspaceMap, searchItems, searchItemsDetailed, bulkUpdateItems, exportItems } from "../esm/index.js";
+import {
+  PlakyClient,
+  PlakyMaterializationLimitError,
+  PlakyOutputLimitError,
+  PlakyPartialMutationError,
+  PlakyResponseContractError,
+  workspaceMap,
+  searchItems,
+  searchItemsDetailed,
+  bulkUpdateItems,
+  exportItems,
+  readItemChunk,
+  iterateItemChunks,
+  iterateItemExportChunks,
+} from "../esm/index.js";
 
 let fetchMock;
 beforeEach(() => {
@@ -98,7 +112,7 @@ test("workspaceMap resolves the space collection once and preserves order", asyn
   let boardListCalls = 0;
   c.spaces.listAll = async (options) => {
     spaceListCalls++;
-    assert.deepEqual(options, { expand: ["board"] });
+    assert.deepEqual(options, { expand: ["board"], limit: 10001 });
     return [
       { id: 3, title: "Third", boards: [{ id: 31, title: "C" }] },
       { id: 1, title: "First", boards: [{ id: 11, title: "A" }] },
@@ -145,7 +159,8 @@ test("bulkUpdateItems with dryRun records dry-run per update without calling wri
   });
   assert.equal(writeCalls, 0);
   assert.equal(out.length, 2);
-  assert.ok(out.every((r) => r.status === "dry-run"));
+  assert.ok(out.every((r) => r.status === "planned" && r.phase === "preflight" && r.attempted === false));
+  assert.equal(out[0].targetIds.itemId, "100");
 });
 
 test("bulkUpdateItems reports updated/error per item and continues past a failure", async () => {
@@ -173,9 +188,11 @@ test("bulkUpdateItems reports updated/error per item and continues past a failur
     updates: [{ itemId: 100, body: { Status: "Done" } }, { itemId: 101, body: { Status: "X" } }],
   });
   assert.equal(out.length, 2);
-  assert.equal(out[0].status, "updated");
-  assert.equal(out[1].status, "error");
-  assert.ok(out[1].detail, "the failed update should carry an error detail");
+  assert.equal(out[0].status, "completed");
+  assert.equal(out[0].mayHaveCommitted, false);
+  assert.equal(out[1].status, "ambiguous");
+  assert.equal(out[1].mayHaveCommitted, true);
+  assert.equal(out[1].error?.message, "boom");
 });
 
 test("bulkUpdateItems can stop after an ambiguous write failure", async () => {
@@ -195,7 +212,15 @@ test("bulkUpdateItems can stop after an ambiguous write failure", async () => {
     board: 11,
     updates: [{ itemId: 100, body: {} }, { itemId: 101, body: {} }],
     throwOnError: true,
-  }), /possibly committed/);
+  }), (error) => {
+    assert.ok(error instanceof PlakyPartialMutationError);
+    assert.equal(error.failedIndex, 0);
+    assert.equal(error.receipts.length, 2);
+    assert.equal(error.receipts[0].status, "ambiguous");
+    assert.equal(error.receipts[1].status, "planned");
+    assert.equal(error.cause?.message, "possibly committed");
+    return true;
+  });
   assert.equal(writeCalls, 1);
 });
 
@@ -218,7 +243,52 @@ test("bulkUpdateItems forwards cancellation to the in-flight write", async () =>
     updates: [{ itemId: 100, body: {} }],
     signal: controller.signal,
     throwOnError: true,
-  }), (error) => error?.name === "AbortError");
+  }), (error) => {
+    assert.ok(error instanceof PlakyPartialMutationError);
+    assert.equal(error.receipts[0].status, "ambiguous");
+    assert.equal(error.cause?.name, "AbortError");
+    return true;
+  });
+});
+
+test("bulkUpdateItems validates every update before resolving or writing", async () => {
+  let fetchCalls = 0;
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
+  globalThis.fetch = async () => {
+    fetchCalls++;
+    throw new Error("preflight validation must not fetch");
+  };
+
+  await assert.rejects(bulkUpdateItems(c, {
+    space: 1,
+    board: 11,
+    updates: [
+      { itemId: "9007199254740993", body: {} },
+      { itemId: 101, body: [] },
+    ],
+  }), /plain object/);
+  assert.equal(fetchCalls, 0);
+});
+
+test("bulkUpdateItems preserves completed receipts when progress reporting fails", async () => {
+  const c = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
+  c.spaces.get = async () => ({ id: 1, title: "Ops" });
+  c.boards.get = async () => ({ id: 11, title: "Roadmap" });
+  c.items.updateFields = async () => ({ id: "9007199254740993" });
+
+  await assert.rejects(bulkUpdateItems(c, {
+    space: 1,
+    board: 11,
+    updates: [{ itemId: "9007199254740993", body: {} }, { itemId: 101, body: {} }],
+    onProgress: async () => { throw new Error("callback failed"); },
+  }), (error) => {
+    assert.ok(error instanceof PlakyPartialMutationError);
+    assert.equal(error.receipts[0].status, "completed");
+    assert.equal(error.receipts[0].targetIds.itemId, "9007199254740993");
+    assert.equal(error.receipts[1].status, "planned");
+    assert.equal(error.cause?.message, "callback failed");
+    return true;
+  });
 });
 
 test("exportItems csv byte-matches the shared safe and raw fixtures", async () => {
@@ -340,7 +410,7 @@ test("searchItemsDetailed walks pages and searches stable nested field values", 
   const result = await searchItemsDetailed(client, { space: 1, board: 11, query: "needle" });
 
   assert.deepEqual(result.data.map((item) => item.id), [3]);
-  assert.deepEqual(result, { data: result.data, scanned: 3, matched: 1, truncated: false });
+  assert.deepEqual(result, { data: result.data, scanned: 3, matched: 1, complete: true, truncated: false });
   assert.deepEqual(requests.map(({ page, pageSize }) => ({ page, pageSize })), [
     { page: 1, pageSize: 100 },
     { page: 2, pageSize: 100 },
@@ -356,7 +426,15 @@ test("searchItemsDetailed reports scan-limit truncation and nextPage without ove
   const result = await searchItemsDetailed(client, { space: 1, board: 11, query: "", limit: 2 });
 
   assert.deepEqual(result.data.map((item) => item.id), [1, 2]);
-  assert.deepEqual(result, { data: result.data, scanned: 2, matched: 2, truncated: true, nextPage: 2 });
+  assert.deepEqual(result, {
+    data: result.data,
+    scanned: 2,
+    matched: 2,
+    complete: false,
+    truncated: true,
+    continuation: { page: 1, index: 2 },
+    nextPage: 2,
+  });
   assert.equal(requests.length, 1);
   assert.equal(requests[0].pageSize, 2);
 });
@@ -368,7 +446,7 @@ test("searchItemsDetailed treats an exact complete boundary as not truncated", a
 
   const result = await searchItemsDetailed(client, { space: 1, board: 11, query: "", limit: 2 });
 
-  assert.deepEqual(result, { data: result.data, scanned: 2, matched: 2, truncated: false });
+  assert.deepEqual(result, { data: result.data, scanned: 2, matched: 2, complete: true, truncated: false });
   assert.equal("nextPage" in result, false);
 });
 
@@ -393,4 +471,94 @@ test("deprecated searchItems remains an array-returning compatibility wrapper", 
   const result = await searchItems(client, { space: 1, board: 11, query: "match" });
   assert.ok(Array.isArray(result));
   assert.deepEqual(result.map((item) => item.id), [1]);
+});
+
+function chunkClient(pages, boardFields = []) {
+  const client = new PlakyClient({ apiKey: "test-api-key", serverURL: "https://x" });
+  client.spaces.get = async () => ({ id: 1, title: "Ops" });
+  client.boards.get = async () => ({ id: 11, title: "Roadmap", fields: boardFields });
+  const requests = [];
+  client.items.list = async (params) => {
+    requests.push(params);
+    return pages[params.page - 1] ?? { data: [], hasMore: false };
+  };
+  return { client, requests };
+}
+
+test("bounded item chunks honor exact UTF-8 byte boundaries", async () => {
+  const items = [{ id: 1, title: "Ž" }, { id: 2, title: "世界" }];
+  const maxBytes = new TextEncoder().encode(JSON.stringify(items[0]) + JSON.stringify(items[1])).byteLength;
+  const { client } = chunkClient([{ data: items, hasMore: false }]);
+  const result = await readItemChunk(client, { space: 1, board: 11, maxBytes });
+  assert.equal(result.bytes, maxBytes);
+  assert.equal(result.complete, true);
+  assert.equal(result.truncated, false);
+  assert.deepEqual(result.data.map((item) => item.id), [1, 2]);
+});
+
+test("bounded item chunks reject an oversized single item before returning it", async () => {
+  const item = { id: 1, title: "too large" };
+  const { client } = chunkClient([{ data: [item], hasMore: false }]);
+  await assert.rejects(
+    readItemChunk(client, { space: 1, board: 11, maxBytes: new TextEncoder().encode(JSON.stringify(item)).byteLength - 1 }),
+    (error) => error instanceof PlakyOutputLimitError && error.limit === "bytes",
+  );
+});
+
+test("bounded item chunks resume at an exact page index without duplicates", async () => {
+  const { client, requests } = chunkClient([
+    { data: [{ id: 1 }, { id: 2 }], hasMore: true },
+    { data: [{ id: 3 }], hasMore: false },
+  ]);
+  const first = await readItemChunk(client, { space: 1, board: 11, maxItems: 1 });
+  assert.deepEqual(first.data.map((item) => item.id), [1]);
+  assert.deepEqual(first.nextCursor, { page: 1, index: 1 });
+  const second = await readItemChunk(client, { space: 1, board: 11, cursor: first.nextCursor, maxItems: 10 });
+  assert.deepEqual(second.data.map((item) => item.id), [2, 3]);
+  assert.equal(second.complete, true);
+  assert.deepEqual(requests.map(({ page }) => page), [1, 1, 2]);
+});
+
+test("closing a bounded chunk iterator stops future page calls", async () => {
+  const { client, requests } = chunkClient([
+    { data: [{ id: 1 }, { id: 2 }], hasMore: true },
+    { data: [{ id: 3 }], hasMore: false },
+  ]);
+  const iterator = iterateItemChunks(client, { space: 1, board: 11, maxItems: 1 });
+  const first = await iterator.next();
+  assert.equal(first.done, false);
+  await iterator.return();
+  await iterator.next();
+  assert.deepEqual(requests.map(({ page }) => page), [1]);
+});
+
+test("malformed bounded pages cannot produce a complete result", async () => {
+  const { client } = chunkClient([{ data: [], hasMore: true }]);
+  await assert.rejects(
+    readItemChunk(client, { space: 1, board: 11 }),
+    (error) => error instanceof PlakyResponseContractError,
+  );
+});
+
+test("legacy materializing exports fail explicitly at the item cap", async () => {
+  const { client } = chunkClient([]);
+  client.items.listAll = async () => [{ id: 1 }, { id: 2 }];
+  await assert.rejects(
+    exportItems(client, { space: 1, board: 11, format: "jsonl", maxItems: 1 }),
+    (error) => error instanceof PlakyMaterializationLimitError && error.limit === "items",
+  );
+});
+
+test("CSV export chunks keep one schema and emit one header", async () => {
+  const { client } = chunkClient([
+    { data: [{ id: 1, title: "A", fields: [{ key: "status", name: "Status", value: "Open" }] }], hasMore: true },
+    { data: [{ id: 2, title: "B", extra: "not a header", fields: [{ key: "status", name: "Status", value: "Done" }] }], hasMore: false },
+  ], [{ key: "status", name: "Status" }]);
+  const chunks = [];
+  for await (const chunk of iterateItemExportChunks(client, { space: 1, board: 11, format: "csv", maxItems: 1 })) chunks.push(chunk);
+  assert.equal(chunks.length, 2);
+  assert.match(chunks[0].body, /Status/);
+  assert.doesNotMatch(chunks[1].body, /extra/);
+  assert.equal(chunks[1].body.split("\n").length, 2);
+  assert.equal(chunks[1].complete, true);
 });

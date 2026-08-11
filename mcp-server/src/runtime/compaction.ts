@@ -1,7 +1,22 @@
-import { redact } from "plaky115";
+import { PlakyResponseContractError, redact, utf8ByteLength } from "plaky115";
+import { assertPagedResult } from "plaky115/runtime/pagination.js";
 import type { CompactKind, McpRespondOptions } from "./types.js";
 
 type Record_ = Record<string, unknown>;
+
+export const MAX_MCP_RAW_BYTES = 128 * 1024;
+export const MAX_MCP_STRUCTURED_BYTES = 1 * 1024 * 1024;
+
+export class McpResponseLimitError extends Error {
+  readonly code = "response-too-large";
+  readonly maximum: number;
+
+  constructor(maximum = MAX_MCP_STRUCTURED_BYTES) {
+    super(`MCP structured response exceeds the ${maximum}-byte limit.`);
+    this.name = "McpResponseLimitError";
+    this.maximum = maximum;
+  }
+}
 
 function asRecord(value: unknown): Record_ {
   return value !== null && typeof value === "object" ? (value as Record_) : {};
@@ -23,7 +38,7 @@ export function compactItem(value: unknown, options: McpRespondOptions = {}): Re
   copyIfPresent(item, out, "title");
   copyIfPresent(item, out, "archived");
   copyIfPresent(item, out, "deleted");
-  if (options.includeRaw === true) out["raw"] = value;
+  addBoundedRaw(out, value, options);
   return out;
 }
 
@@ -34,7 +49,7 @@ export function compactBoard(value: unknown, options: McpRespondOptions = {}): R
   copyIfPresent(board, out, "title");
   out["fieldCount"] = readArray(board, "fields").length;
   out["groupCount"] = readArray(board, "groups").length;
-  if (options.includeRaw === true) out["raw"] = value;
+  addBoundedRaw(out, value, options);
   return out;
 }
 
@@ -43,8 +58,8 @@ export function compactSpace(value: unknown, options: McpRespondOptions = {}): R
   const out: Record_ = {};
   copyIfPresent(space, out, "id");
   copyIfPresent(space, out, "title");
-  out["boards"] = readArray(space, "boards").map((b) => compactBoard(b, options));
-  if (options.includeRaw === true) out["raw"] = value;
+  out["boards"] = readArray(space, "boards").map((b) => compactBoard(b, withoutRaw(options)));
+  addBoundedRaw(out, value, options);
   return out;
 }
 
@@ -59,7 +74,7 @@ export function compactComment(value: unknown, options: McpRespondOptions = {}):
   copyIfPresent(c, out, "createdAt");
   copyIfPresent(c, out, "createdBy");
   copyIfPresent(c, out, "author");
-  if (options.includeRaw === true) out["raw"] = value;
+  addBoundedRaw(out, value, options);
   return out;
 }
 
@@ -67,7 +82,7 @@ export function compactItemGroup(value: unknown, options: McpRespondOptions = {}
   const group = asRecord(value);
   const out: Record_ = {};
   for (const key of ["id", "title", "color", "ranking"]) copyIfPresent(group, out, key);
-  if (options.includeRaw === true) out["raw"] = value;
+  addBoundedRaw(out, value, options);
   return out;
 }
 
@@ -77,7 +92,7 @@ export function compactItemFile(value: unknown, options: McpRespondOptions = {})
   for (const key of ["id", "name", "description", "size", "extension", "fileType", "uploadedBy", "createdAt"]) {
     copyIfPresent(file, out, key);
   }
-  if (options.includeRaw === true) out["raw"] = value;
+  addBoundedRaw(out, value, options);
   return out;
 }
 
@@ -86,22 +101,57 @@ export function compactDownloadLink(value: unknown, options: McpRespondOptions =
   const out: Record_ = {};
   copyIfPresent(link, out, "url");
   copyIfPresent(link, out, "expiresInSeconds");
-  if (options.includeRaw === true) out["raw"] = value;
+  addBoundedRaw(out, value, options);
+  return out;
+}
+
+export function compactWorkspace(value: unknown, options: McpRespondOptions = {}): Record_ {
+  if (!Array.isArray(value)) throw new PlakyResponseContractError("workspaceMap", "/", { cause: value });
+  const spaces = value;
+  const data = spaces.map((spaceValue) => {
+    const space = asRecord(spaceValue);
+    const boards = readArray(space, "boards").map((boardValue) => compactBoard(boardValue, withoutRaw(options)));
+    const summary: Record_ = {};
+    copyIfPresent(space, summary, "id");
+    copyIfPresent(space, summary, "title");
+    summary["boardCount"] = boards.length;
+    summary["boards"] = boards;
+    return summary;
+  });
+  const out: Record_ = { data, complete: true, truncated: false, value: data };
+  Object.assign(out, boundedRaw(value, options));
   return out;
 }
 
 export function compactList(value: unknown, kind: CompactKind, options: McpRespondOptions = {}): Record_ {
-  const r = asRecord(value);
-  const items = readArray(r, "data");
-  const compactItems = items.map((it) => compactByKind(it, kind, withoutRaw(options)));
+  const page = assertPagedResult(value, `mcp.compact.${kind}`);
+  const compactItems = page.data.map((it) => compactByKind(it, kind, withoutRaw(options)));
   return {
     data: compactItems,
-    hasMore: r["hasMore"] === true,
-    ...(options.includeRaw === true ? { raw: value } : {}),
+    hasMore: page.hasMore,
+    ...boundedRaw(value, options),
   };
 }
 
+function compactDetailedList(value: Record_, kind: CompactKind, options: McpRespondOptions): Record_ {
+  if (!Array.isArray(value["data"])) throw new Error(`mcp.compact.${kind}: detailed data must be an array`);
+  if (typeof value["complete"] !== "boolean" || typeof value["truncated"] !== "boolean") {
+    throw new Error(`mcp.compact.${kind}: detailed completeness fields are required`);
+  }
+  const out: Record_ = {
+    data: value["data"].map((item) => compactByKind(item, kind, withoutRaw(options))),
+    scanned: value["scanned"],
+    matched: value["matched"],
+    complete: value["complete"],
+    truncated: value["truncated"],
+  };
+  for (const key of ["continuation", "nextCursor", "nextPage"]) copyIfPresent(value, out, key);
+  Object.assign(out, boundedRaw(value, options));
+  return out;
+}
+
 export function compactByKind(value: unknown, kind: CompactKind, options: McpRespondOptions = {}): unknown {
+  if (kind === "workspace") return compactWorkspace(value, options);
   // Some endpoints (notably listItemComments) return a bare JSON array rather
   // than a { data, hasMore } envelope. Normalize it to the same paged shape so
   // each element is compacted and the result stays a schema-valid object.
@@ -109,10 +159,11 @@ export function compactByKind(value: unknown, kind: CompactKind, options: McpRes
     return {
       data: value.map((it) => compactByKind(it, kind, withoutRaw(options))),
       hasMore: false,
-      ...(options.includeRaw === true ? { raw: value } : {}),
+      ...boundedRaw(value, options),
     };
   }
-  if (value !== null && typeof value === "object" && "data" in value && Array.isArray((value as Record_)["data"])) {
+  if (isDetailedList(value)) return compactDetailedList(value, kind, options);
+  if (isPageLike(value)) {
     return compactList(value, kind, options);
   }
   if (kind === "item") return compactItem(value, options);
@@ -125,12 +176,25 @@ export function compactByKind(value: unknown, kind: CompactKind, options: McpRes
   return value;
 }
 
+function isPageLike(value: unknown): value is Record_ {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  return Object.prototype.hasOwnProperty.call(value, "data") || Object.prototype.hasOwnProperty.call(value, "hasMore");
+}
+
+function isDetailedList(value: unknown): value is Record_ {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  const record = value as Record_;
+  return Array.isArray(record["data"]) && ("complete" in record || "truncated" in record || "scanned" in record);
+}
+
 function withoutRaw(options: McpRespondOptions): McpRespondOptions {
   return options.includeRaw === true ? { ...options, includeRaw: false } : options;
 }
 
 export function serializeForMcp(value: unknown): string {
-  return redact(JSON.stringify(value ?? null));
+  const serialized = redact(JSON.stringify(value ?? null));
+  if (utf8ByteLength(serialized) > MAX_MCP_STRUCTURED_BYTES) throw new McpResponseLimitError();
+  return serialized;
 }
 
 export function structuredForMcp(value: unknown): Record<string, unknown> {
@@ -138,4 +202,14 @@ export function structuredForMcp(value: unknown): Record<string, unknown> {
     ? (value as Record<string, unknown>)
     : { value };
   return JSON.parse(serializeForMcp(structured)) as Record<string, unknown>;
+}
+
+function boundedRaw(value: unknown, options: McpRespondOptions): Record_ {
+  if (options.includeRaw !== true) return {};
+  const serialized = JSON.stringify(value ?? null);
+  return utf8ByteLength(serialized) <= MAX_MCP_RAW_BYTES ? { raw: value } : { rawOmitted: true };
+}
+
+function addBoundedRaw(out: Record_, value: unknown, options: McpRespondOptions): void {
+  Object.assign(out, boundedRaw(value, options));
 }

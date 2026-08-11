@@ -1,6 +1,6 @@
 {
   "name": "plaky115",
-  "version": "1.0.1",
+  "version": "1.0.10",
   "author": "Plaky115",
   "type": "module",
   "main": "./esm/index.js",
@@ -23,6 +23,11 @@
       "types": "./esm/runtime/errors.d.ts",
       "import": "./esm/runtime/errors.js",
       "default": "./esm/runtime/errors.js"
+    },
+    "./runtime/chunks.js": {
+      "types": "./esm/runtime/chunks.d.ts",
+      "import": "./esm/runtime/chunks.js",
+      "default": "./esm/runtime/chunks.js"
     },
     "./runtime/http.js": {
       "types": "./esm/runtime/http.d.ts",
@@ -87,6 +92,7 @@
     "prepack": "npm run build"
   },
   "devDependencies": {
+    "@redocly/openapi-core": "1.34.18",
     "@types/node": "^22.19.19",
     "@typescript/native-preview": "7.0.0-dev.20260302.1",
     "openapi-typescript": "^7.13.0",

@@ -169,14 +169,21 @@ const all = await client.spaces.iterate({ limit: 500 }).toArray();
 ## Search and export workflows
 
 `searchItemsDetailed(client, ...)` scans at most 200 items by default and
-returns `{ data, scanned, matched, truncated, nextPage? }`. `truncated: true`
-means the client hit the scan limit while the server still reported another
-page; the deprecated `searchItems()` compatibility wrapper returns only the
-matched array.
+returns `{ data, scanned, matched, complete, truncated, continuation?, nextPage? }`.
+`complete` and `truncated` are mutually exclusive; pass `continuation` back as
+`cursor` to continue an exact page/index scan. The deprecated `searchItems()`
+compatibility wrapper returns only the matched array.
 
 `exportItems(client, { format: "csv" })` emits deterministic spreadsheet-safe
 CSV by default. Set `csvSafety: "raw"` only for a trusted downstream consumer
 that explicitly needs leading formula characters unchanged.
+
+For bounded exports, use `iterateItemExportChunks` or `readItemExportChunk`.
+Each chunk reports UTF-8 `bytes`, `returned`, `complete`, `truncated`, and an
+exact `nextCursor`; JSONL is emitted one item per line and CSV freezes its
+header from the board schema and one bounded seed page. Legacy `exportItems`
+and `workspaceMap` retain materialization caps of 10,000 records and 16 MiB and
+throw an explicit limit error instead of returning an incomplete result.
 
 ## Retries
 

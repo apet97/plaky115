@@ -8,9 +8,10 @@ const args = z.object({
   spaceId: int64Id.describe("Represents unique space identifier across the system."),
   boardId: int64Id.describe("Represents unique board identifier across the system."),
   itemGroupId: int64Id.describe("Represents unique item group identifier across the system."),
-  body: z.record(z.unknown()).describe("JSON request body for Update an item group."),
-});
+  body: z.record(z.unknown()).superRefine((body, ctx) => { if (!Object.prototype.hasOwnProperty.call(body, "title")) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["title"], message: "required" }); if (!Object.prototype.hasOwnProperty.call(body, "ranking")) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["ranking"], message: "required" }); if (!Object.prototype.hasOwnProperty.call(body, "color")) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["color"], message: "required" }); }).describe("JSON request body for Update an item group."),
+}).strict();
 const output = z.object({}).passthrough();
+const rawOutput = z.object({}).passthrough();
 
 export const updateItemGroupTool: McpToolDefinition = {
   name: "plaky_update_item_group",
@@ -28,12 +29,20 @@ export const updateItemGroupTool: McpToolDefinition = {
   outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
-    const result = await request<Record<string, unknown>>({
-      method: "PUT",
-      path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/item-groups/${encodeURIComponent(String(parsed.itemGroupId))}`,
-      body: parsed.body,
-      operationId: "updateItemGroup",
-    }, ctx.requestOptions);
+    const result = await ctx.attempt.mutate({
+      operation: "updateItemGroup",
+      targetIds: { spaceId: String(parsed.spaceId), boardId: String(parsed.boardId), itemGroupId: String(parsed.itemGroupId) },
+      run: async () => {
+        const result = await request<Record<string, unknown>>({
+          method: "PUT",
+          path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/item-groups/${encodeURIComponent(String(parsed.itemGroupId))}`,
+          body: parsed.body,
+          operationId: "updateItemGroup",
+        }, ctx.requestOptions);
+        rawOutput.parse(result);
+        return result;
+      },
+    });
     return ctx.respond(result, { compactKind: "itemGroup" });
   },
 };

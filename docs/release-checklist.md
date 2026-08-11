@@ -62,40 +62,38 @@ Passes when no generated surface reports stale, missing, or legacy output.
 
 ## Tag And Publish
 
-For the first release of a new unscoped npm package, the package must exist
-before npm permits a trusted publisher to be configured. Bootstrap each package
-from an inspected temporary copy at a prerelease version (for example
-`0.2.0-beta.0`) under the `beta` dist-tag, then configure trusted publishing.
-Never change the tracked stable manifests for this bootstrap and never use a
-long-lived CI token.
+Publishing is tag-only OIDC trusted publishing. There is no manual `npm
+publish` step and no long-lived npm token.
 
 1. Confirm `sdk/package.json` and `mcp-server/package.json` use the same version,
    then run `node scripts/check-release-version.mjs --tag vX.Y.Z --offline`.
-2. Update release notes with curated diff highlights.
-3. Before creating a tag, manually verify that both `plaky115` and
-   `plaky115-mcp` have an npm trusted publisher configured for GitHub repository
-   `apet97/plaky115`, workflow filename `release-npm.yml`, environment
-   `npm-release`, and the `npm publish` permission. This exact external
-   configuration is a blocking prerequisite; npm does not validate it when the
-   publisher is saved.
-4. Confirm the protected GitHub environment `npm-release` has the intended
-   reviewer/tag policy, then create and push one annotated tag:
+2. Run the local release-candidate gate from a clean disposable checkout. The
+   release workflow then builds once, inspects both packages, scans all extracted
+   bytes, installs the exact tarballs into a clean consumer, and writes
+   `.release-artifacts/release-digests.json` with SHA-256, SHA-512/SRI, and file
+   inventory bindings.
+3. Before creating a tag, read back the trusted publisher configuration for both
+   packages and the protected `npm-release` environment. It must identify
+   repository `apet97/plaky115`, workflow `release-npm.yml`, environment
+   `npm-release`, and the `npm publish` permission. Set the reviewed external
+   readback status to `confirmed`; unresolved readback blocks the workflow.
+4. Confirm the protected GitHub environment has the intended reviewer/tag
+   policy, then create and push one annotated tag:
    `git tag -a vX.Y.Z -m "Plaky115 vX.Y.Z" && git push origin vX.Y.Z`.
 5. The tag starts two root workflows. Both check out `github.ref` and require
    checkout `HEAD`, the peeled tag commit, and `GITHUB_SHA` to match.
-   `.github/workflows/release-npm.yml` runs
-   the complete gates, checks both exact versions are absent from npm, then
-   publishes SDK before MCP with OIDC trusted publishing and automatic
-   provenance. `.github/workflows/release-cli.yml` runs GoReleaser from `cli/`
-   and attaches CLI archives to the release.
+   `.github/workflows/release-npm.yml` classifies absent/exact/mismatch/ambiguous registry states,
+   publishes the exact inspected SDK tarball before the exact MCP tarball, and
+   verifies integrity, signature, and immutable provenance after each publish.
+   `.github/workflows/release-cli.yml` runs GoReleaser from `cli/` and attaches CLI archives.
 6. Confirm the CLI workflow produced matching Linux/macOS `.tar.gz` and Windows
    `.zip` archives plus `checksums.txt`. Do not rerun GoReleaser locally against
    the same tag.
 
-Do not store a long-lived npm publishing token. If the SDK succeeds but the MCP
-publish fails, never unpublish the SDK automatically. Diagnose the failure,
-publish the same already-preflighted MCP version, and record the incident and
-recovery evidence.
+If SDK publication succeeds but MCP publication fails, the state machine never
+unpublishes or republishes the SDK. Resume only with the same digest manifest
+after proving SDK registry integrity, package metadata, signature, provenance,
+tag, commit, workflow, and environment.
 
 ## Post-Release Smoke
 

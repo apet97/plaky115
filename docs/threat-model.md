@@ -21,7 +21,13 @@ or ambiguous human-readable entity references.
 - Signed file URLs are bearer capabilities. They are returned only on request
   and are never followed, persisted, logged, or summarized.
 - Installers bind an exact release archive to its exact `checksums.txt`, reject
-  unsafe archive paths, and replace an installed binary only after validation.
+  unsafe/non-regular archive entries, apply bounded redirects and streaming
+  limits, and replace an installed binary only after validation with a
+  recoverable backup.
+- npm release tarballs are inspected before publication: compressed/unpacked
+  sizes, entry paths/types, package snapshots, all-byte secret scans, consumer
+  installation, SHA-256/SHA-512/SRI, and immutable provenance are bound to one
+  digest manifest.
 - npm publication is OIDC-only and tag-bound. Checkout HEAD, peeled tag commit,
   workflow ref, package versions, registry digest, and provenance must agree.
 

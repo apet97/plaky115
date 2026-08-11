@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, beforeEach } from "node:test";
-import { PlakyClient } from "../esm/index.js";
+import { PlakyClient, PlakyResponseContractError } from "../esm/index.js";
 
 const COMMENTS = [
   { id: 10, content: "Looks good", createdAt: "2024-01-01T00:00:00Z", createdBy: 7 },
@@ -39,12 +39,12 @@ test("comments.iterate yields each comment from the bare array", async () => {
   assert.deepEqual(seen, [10, 11]);
 });
 
-test("comments.list still accepts a PagedResult envelope if the API ever returns one", async () => {
+test("comments.list rejects an object root for the bare-array endpoint", async () => {
   const c = clientReturning({ data: COMMENTS, hasMore: false, page: 1, pageSize: 50 });
-  const page = await c.comments.list({ spaceId: 1, boardId: 2, itemId: 3 });
-  assert.equal(page.data.length, 2);
-  assert.equal(page.page, 1);
-  assert.equal(page.pageSize, 50);
+  await assert.rejects(
+    c.comments.list({ spaceId: 1, boardId: 2, itemId: 3 }),
+    PlakyResponseContractError,
+  );
 });
 
 test("comments.listAll returns empty for an empty array", async () => {

@@ -44,8 +44,6 @@ class OperationMetadataTest < Minitest::Test
 
   HTTP_METHODS = %w[get post put patch delete head options trace].freeze
 
-  PAGINATION_QUERY_PARAMS = %w[page pageSize limit offset].freeze
-
   # Uppercase item-field type enum (ItemFieldResponse.type). Example payloads must
   # use these, not lowercase JSON-schema primitive names like "string".
   FIELD_TYPE_ENUM = %w[STRING NUMBER DATE_TIME STATUS TAG PERSON RICH_TEXT LINK TIMELINE].freeze
@@ -79,6 +77,7 @@ class OperationMetadataTest < Minitest::Test
 
   def test_generated_metadata_classifies_operations_for_docs_and_tests
     metadata = JSON.parse(File.read(File.join(ROOT, "openapi/plaky115-operation-metadata.json")))
+    assert_equal 2, metadata.fetch("descriptorVersion")
     operations = metadata.fetch("operations")
 
     assert_equal REQUIRED_OPERATION_IDS.sort, (REQUIRED_OPERATION_IDS & operations.map { |op| op.fetch("operationId") }).sort
@@ -87,7 +86,11 @@ class OperationMetadataTest < Minitest::Test
     assert_equal "GET", list_items.fetch("method")
     assert_equal true, list_items.fetch("list")
     assert_equal ["read"], list_items.fetch("scopes")
-    assert_equal "$.data", list_items.fetch("pagination").fetch("results")
+    assert_equal "pageNumber", list_items.fetch("pagination").fetch("kind")
+    assert_equal "page", list_items.fetch("pagination").fetch("pageParameter")
+    assert_equal "pageSize", list_items.fetch("pagination").fetch("sizeParameter")
+    assert_equal "$.data", list_items.fetch("pagination").fetch("resultsPointer")
+    assert_equal "$.hasMore", list_items.fetch("pagination").fetch("hasMorePointer")
 
     update_fields = operation(operations, "updateItemFields")
     assert_equal "PATCH", update_fields.fetch("method")
@@ -120,10 +123,16 @@ class OperationMetadataTest < Minitest::Test
       "name" => "file", "required" => true, "type" => "string", "format" => "binary",
       "description" => "File to upload"
     }], upload.dig("request", "parts")
-    assert_equal({ "status" => 201, "kind" => "json-object", "mediaType" => "application/json",
-                   "schemaRef" => "#/components/schemas/ItemFileResponse" }, upload.fetch("success"))
+    upload_success = upload.fetch("success")
+    assert_equal 201, upload_success.fetch("status")
+    assert_equal "json-object", upload_success.fetch("kind")
+    assert_equal "object", upload_success.fetch("rootKind")
+    assert_equal [], upload_success.fetch("requiredProperties")
+    assert_equal "$.id", upload_success.fetch("createdIdPointer")
+    assert_equal "#/components/schemas/ItemFileResponse", upload_success.fetch("schemaRef")
 
     assert_equal "json-array", operation(operations, "listItemFiles").dig("success", "kind")
+    assert_equal "array", operation(operations, "listItemFiles").dig("success", "rootKind")
     assert_equal "downloadLink", operation(operations, "getItemFileDownload").fetch("compactKind")
     assert_equal "json", operation(operations, "updateItemFile").dig("request", "kind")
     %w[archiveItemGroup deleteItemGroup deleteItemFile].each do |id|
@@ -144,9 +153,8 @@ class OperationMetadataTest < Minitest::Test
     end
     missing = {}
     each_operation(spec) do |id, _method, operation, path_item|
-      expected = query_param_names(operation, path_item, spec).reject do |name|
-        PAGINATION_QUERY_PARAMS.include?(name)
-      end
+      pagination_names = %w[pageParameter sizeParameter].map { |key| operation.dig("x-plaky115-pagination", key) }.compact
+      expected = query_param_names(operation, path_item, spec).reject { |name| pagination_names.include?(name) }
       absent = expected - generated.fetch(id, [])
       missing[id] = absent unless absent.empty?
     end

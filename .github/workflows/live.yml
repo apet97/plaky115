@@ -46,6 +46,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm --prefix sdk ci
+          npm --prefix sdk run build
           npm --prefix mcp-server ci
       - name: Build live sweep packages
         run: |

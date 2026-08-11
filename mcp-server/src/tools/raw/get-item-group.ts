@@ -8,8 +8,9 @@ const args = z.object({
   spaceId: int64Id.describe("Represents unique space identifier across the system."),
   boardId: int64Id.describe("Represents unique board identifier across the system."),
   itemGroupId: int64Id.describe("Represents unique item group identifier across the system."),
-});
+}).strict();
 const output = z.object({}).passthrough();
+const rawOutput = z.object({}).passthrough();
 
 export const getItemGroupTool: McpToolDefinition = {
   name: "plaky_get_item_group",
@@ -32,6 +33,7 @@ export const getItemGroupTool: McpToolDefinition = {
       path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/item-groups/${encodeURIComponent(String(parsed.itemGroupId))}`,
       operationId: "getItemGroup",
     }, ctx.requestOptions);
+    rawOutput.parse(result);
     return ctx.respond(result, { compactKind: "itemGroup" });
   },
 };

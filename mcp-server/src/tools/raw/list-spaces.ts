@@ -5,10 +5,11 @@ import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
   expand: z.array(z.enum(["board"])).describe("Comma-separated list of relationships to be expanded into full objects.").optional(),
-  page: z.number().int().describe("Page number.").optional(),
-  pageSize: z.number().int().describe("Page size.").optional(),
-});
-const output = z.object({}).passthrough();
+  page: z.number().int().min(1).max(2147483647).describe("Page number.").optional(),
+  pageSize: z.number().int().min(1).describe("Page size.").optional(),
+}).strict();
+const output = z.object({ data: z.array(z.unknown()), hasMore: z.boolean() }).passthrough();
+const rawOutput = z.object({ data: z.array(z.unknown()), hasMore: z.boolean() }).passthrough();
 
 export const listSpacesTool: McpToolDefinition = {
   name: "plaky_list_spaces",
@@ -37,6 +38,7 @@ export const listSpacesTool: McpToolDefinition = {
       query,
       operationId: "listSpaces",
     }, ctx.requestOptions);
+    rawOutput.parse(result);
     return ctx.respond(result, { compactKind: "space" });
   },
 };

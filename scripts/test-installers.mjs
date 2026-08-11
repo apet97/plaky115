@@ -7,6 +7,7 @@ import { test } from "node:test";
 
 const root = new URL("..", import.meta.url).pathname;
 const installer = join(root, "cli/scripts/install.sh");
+const installerLimits = JSON.parse(await readFile(join(root, "scripts/installer-limits.json"), "utf8"));
 
 test("Unix installer verifies the exact checksum before atomically replacing the binary", async () => {
   const fixture = await createFixture();
@@ -28,7 +29,7 @@ test("Unix installer preserves an existing binary on checksum mismatch", async (
 });
 
 test("Unix installer rejects missing binaries, duplicate checksums, and archive traversal", async () => {
-  for (const mode of ["missing", "duplicate", "traversal"]) {
+  for (const mode of ["missing", "duplicate", "traversal", "symlink"]) {
     const fixture = await createFixture({ mode });
     try {
       const result = runInstaller(fixture);
@@ -38,18 +39,40 @@ test("Unix installer rejects missing binaries, duplicate checksums, and archive 
   }
 });
 
+test("Unix installer preserves a recovery backup when restore is deliberately unavailable", async () => {
+  const fixture = await createFixture();
+  try {
+    const result = runInstaller(fixture, { PLAKY115_INSTALL_TEST_FAIL_REPLACE: "1", PLAKY115_INSTALL_TEST_FAIL_RESTORE: "1" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /recovery backup preserved/);
+    const backups = execFileSync("find", [fixture.install, "-maxdepth", "1", "-name", ".plaky115.backup.*", "-print"], { encoding: "utf8" }).trim().split("\n").filter(Boolean);
+    assert.equal(backups.length, 1);
+    assert.equal(await readFile(backups[0], "utf8"), "old binary\n");
+  } finally { await rm(fixture.root, { recursive: true, force: true }); }
+});
+
 test("both installers fail closed on checksum, archive path, and test-URL boundaries", async () => {
   const shell = await readFile(installer, "utf8");
   const powershell = await readFile(join(root, "cli/scripts/install.ps1"), "utf8");
   const ci = await readFile(join(root, ".github/workflows/ci.yml"), "utf8");
   assert.match(shell, /sha256sum|shasum/);
   assert.match(shell, /archive contains an unsafe path/);
+  assert.match(shell, /MAX_REDIRECTS=5/);
+  assert.match(shell, /CONNECT_TIMEOUT=10/);
+  assert.match(shell, /TOTAL_TIMEOUT=120/);
+  assert.match(shell, /ARCHIVE_MAX_BYTES/);
   assert.match(shell, /PLAKY115_INSTALL_TESTING/);
   assert.match(powershell, /Get-FileHash -Algorithm SHA256/);
   assert.match(powershell, /archive contains an unsafe path/);
+  assert.match(powershell, /SocketsHttpHandler/);
+  assert.match(powershell, /AllowAutoRedirect = \$false/);
+  assert.match(powershell, /MaxRedirects = 5/);
+  assert.match(powershell, /Copy-BoundedUrl/);
   assert.match(powershell, /PLAKY115_INSTALL_TESTING/);
-  assert.match(powershell, /PLAKY115_INSTALL_TESTING -eq "1" -and \$env:PLAKY115_INSTALL_TEST_FAIL_REPLACE -eq "1"/);
-  assert.match(powershell, /Remove-Item \$target -Force[\s\S]*Move-Item \$backup \$target/);
+  assert.match(powershell, /PLAKY115_INSTALL_TEST_FAIL_REPLACE/);
+  assert.match(powershell, /PLAKY115_INSTALL_TEST_FAIL_RESTORE/);
+  assert.match(powershell, /Move-Item -LiteralPath \$backup -Destination \$target/);
+  assert.doesNotMatch(powershell, /Invoke-(?:WebRequest|RestMethod)/);
   for (const failure of ["checksum mismatch was not rejected", "archive traversal was not rejected", "replacement failure did not restore existing binary"]) {
     assert.match(ci, new RegExp(failure));
   }
@@ -65,6 +88,26 @@ test("Unix installer rejects non-SemVer tags before download", () => {
     assert.notEqual(result.status, 0, version);
     assert.match(result.stderr, /exact v<semver> tag/i, version);
   }
+});
+
+test("shell and PowerShell installers keep the reviewed shared limits", async () => {
+  const shell = await readFile(installer, "utf8");
+  const powershell = await readFile(join(root, "cli/scripts/install.ps1"), "utf8");
+  assert.deepEqual(installerLimits, {
+    metadataBytes: 1 * 1024 * 1024,
+    archiveBytes: 256 * 1024 * 1024,
+    entryBytes: 256 * 1024 * 1024,
+    entries: 32,
+    connectTimeoutSeconds: 10,
+    totalTimeoutSeconds: 120,
+    maxRedirects: 5,
+  });
+  assert.match(shell, /METADATA_MAX_BYTES=\$\(\(1 \* 1024 \* 1024\)\)/);
+  assert.match(shell, /ARCHIVE_MAX_BYTES=\$\(\(256 \* 1024 \* 1024\)\)/);
+  assert.match(shell, /MAX_ENTRY_BYTES=\$\(\(256 \* 1024 \* 1024\)\)/);
+  assert.match(powershell, /\$MetadataMaxBytes = 1MB/);
+  assert.match(powershell, /\$ArchiveMaxBytes = 256MB/);
+  assert.match(powershell, /\$MaxEntryBytes = 256MB/);
 });
 
 async function createFixture({ checksum, mode } = {}) {
@@ -86,6 +129,10 @@ async function createFixture({ checksum, mode } = {}) {
   } else if (mode === "missing") {
     await writeFile(join(payload, "README.md"), "missing\n");
     execFileSync("tar", ["-czf", archive, "README.md"], { cwd: payload });
+  } else if (mode === "symlink") {
+    await writeFile(join(payload, "plaky115"), "new binary\n");
+    execFileSync("ln", ["-s", "plaky115", join(payload, "link")]);
+    execFileSync("tar", ["-czf", archive, "plaky115", "link"], { cwd: payload });
   } else {
     await writeFile(join(payload, "plaky115"), "new binary\n");
     await chmod(join(payload, "plaky115"), 0o755);
@@ -97,10 +144,10 @@ async function createFixture({ checksum, mode } = {}) {
   return { root: rootDir, releaseRoot: join(rootDir, "releases"), install };
 }
 
-function runInstaller(fixture) {
+function runInstaller(fixture, extraEnv = {}) {
   return spawnSync("bash", [installer], { encoding: "utf8", env: {
     ...process.env, PLAKY115_VERSION: "v0.2.1", PLAKY115_INSTALL_DIR: fixture.install,
-    PLAKY115_INSTALL_TESTING: "1", PLAKY115_INSTALL_TEST_BASE_URL: `file://${fixture.releaseRoot}`,
+    PLAKY115_INSTALL_TESTING: "1", PLAKY115_INSTALL_TEST_BASE_URL: `file://${fixture.releaseRoot}`, ...extraEnv,
   } });
 }
 

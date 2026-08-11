@@ -10,6 +10,9 @@ npx --yes plaky115-mcp --mode curated --scope read
 Set `PLAKY115_API_KEY` in the host environment. Real workspaces are
 account-prefixed; set `PLAKY115_BASE_URL=https://<account>.api.plaky.com` when
 the generic host does not route.
+When both are supplied, `--server-url` takes precedence over
+`PLAKY115_BASE_URL`, which takes precedence over the SDK default. Invalid
+explicit origins fail closed.
 
 With no flags, the server already defaults to `--mode curated --scope read`.
 Mount the full raw/write surface only when the host needs it:
@@ -45,8 +48,10 @@ npx --yes plaky115-mcp --mode all --scope read --scope write --scope destructive
 - "Plan adding a comment to item 789 but do not run it yet."
   -> the assistant calls `plaky_plan_mutation`.
 
-Tool results include redacted JSON text plus a `structuredContent` object. Known
-Plaky API failures return `isError: true` with structured error details.
+Ordinary tool results include redacted JSON text plus a `structuredContent`
+object. Bounded export results use a short summary as text and put the bounded
+chunk in `structuredContent`. Known Plaky API failures return `isError: true`
+with structured error details.
 
 ## Item Group and file raw recipes
 

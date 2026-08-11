@@ -3,6 +3,7 @@
 
 require "json"
 require "optparse"
+require "fileutils"
 require "yaml"
 
 ROOT = File.expand_path("..", __dir__)
@@ -13,9 +14,10 @@ HTTP_METHODS = %w[get post put patch delete head options trace].freeze
 COMPACT_KINDS = %w[raw space board item comment itemGroup itemFile downloadLink].freeze
 CONFIRMATIONS = %w[none destructive].freeze
 
-# Pagination query params are threaded through dedicated codegen branches, so
-# they are excluded from the generic query-param list.
-PAGINATION_QUERY_PARAMS = %w[page pageSize limit offset].freeze
+PARAMETER_SCHEMA_KEYS = %w[
+  type format enum default minimum maximum exclusiveMinimum exclusiveMaximum
+  minLength maxLength pattern minItems maxItems uniqueItems multipleOf
+].freeze
 
 def load_yaml(path)
   YAML.safe_load(File.read(path), aliases: true)
@@ -43,7 +45,17 @@ def success_responses(operation, spec)
   end.sort_by(&:first)
 end
 
-def success_shape(status, response, spec)
+def required_properties(schema, label)
+  required = schema["required"]
+  return [] if required.nil?
+  unless required.is_a?(Array) && required.all? { |property| property.is_a?(String) } && required.uniq == required
+    raise ArgumentError, "#{label} required must be a unique string array"
+  end
+
+  required
+end
+
+def success_shape(status, response, spec, operation)
   return { "status" => status, "kind" => "void" } if [204, 205].include?(status)
 
   content = response.is_a?(Hash) ? response["content"] : nil
@@ -54,13 +66,28 @@ def success_shape(status, response, spec)
   raise ArgumentError, "successful response #{status} schema is required" unless raw_schema.is_a?(Hash)
 
   schema = fetch_ref(raw_schema, spec)
-  {
+  root_kind = schema.is_a?(Hash) ? schema["type"] : nil
+  raise ArgumentError, "successful response #{status} schema type is required" unless root_kind
+  unless %w[object array].include?(root_kind)
+    raise ArgumentError, "successful response #{status} has unsupported root type #{root_kind.inspect}"
+  end
+  kind = root_kind == "array" ? "json-array" : "json-object"
+  kind = "paged-object" if operation.key?("x-plaky115-pagination") && kind == "json-object"
+  output = {
     "status" => status,
-    "kind" => media_type == "application/json" && schema.is_a?(Hash) && schema["type"] == "array" ?
-      "json-array" : "json-object",
+    "kind" => kind,
     "mediaType" => media_type,
     "schemaRef" => raw_schema["$ref"],
+    "rootKind" => root_kind,
   }.compact
+  if root_kind == "object"
+    output["requiredProperties"] = required_properties(schema, "successful response #{status}")
+  end
+  if operation["method"].to_s.casecmp("post").zero? && root_kind == "object" && schema.dig("properties", "id")
+    output["createdIdPointer"] = "$.id"
+  end
+  output["sensitiveLink"] = true if operation["x-plaky115-sensitive-output"] == true
+  output
 end
 
 def success_metadata(operation, spec)
@@ -72,7 +99,7 @@ def success_metadata(operation, spec)
   selected = responses.find { |status, _response| status == selected_status }
   raise ArgumentError, "selected success status is unavailable: #{selected_status}" unless selected
 
-  shapes = responses.map { |status, response| success_shape(status, response, spec) }
+  shapes = responses.map { |status, response| success_shape(status, response, spec, operation) }
   if !operation.key?("x-plaky115-success-status") && shapes.map { |shape| shape["kind"] }.uniq.length > 1
     kinds = shapes.map { |shape| "#{shape['status']}=#{shape['kind']}" }.join(", ")
     raise ArgumentError, "incompatible successful response kinds: #{kinds}"
@@ -185,8 +212,28 @@ def request_metadata(operation, spec)
     "required" => request["required"] == true,
     "mediaType" => selected,
     "schemaRef" => schema_ref,
+    "rootKind" => schema["type"],
   }.compact
+  if schema["type"] == "object"
+    required = required_properties(schema, "#{selected} request")
+    min_properties = schema.fetch("minProperties", 0)
+    unless min_properties.is_a?(Integer) && min_properties >= 0
+      raise ArgumentError, "#{selected} request minProperties must be a non-negative integer"
+    end
+    output["requiredProperties"] = required
+    output["allowEmptyObject"] = required.empty? && min_properties.zero?
+  end
   output["parts"] = multipart_parts(schema, spec) if selected == "multipart/form-data"
+  if operation["x-plaky115-filename-policy"]
+    policy = operation.fetch("x-plaky115-filename-policy")
+    unless policy.is_a?(Hash) && policy["maxUtf8Bytes"].is_a?(Integer) && policy["maxUtf8Bytes"] > 0 && policy["evidence"].is_a?(String)
+      raise ArgumentError, "x-plaky115-filename-policy must include a positive maxUtf8Bytes and evidence"
+    end
+    output["filenamePolicy"] = {
+      "maxUtf8Bytes" => policy.fetch("maxUtf8Bytes"),
+      "evidence" => policy.fetch("evidence"),
+    }
+  end
   output
 end
 
@@ -227,12 +274,24 @@ def merged_parameters(operation, path_item, spec)
   merged = {}
   (Array(path_item["parameters"]) + Array(operation["parameters"])).each do |raw_parameter|
     parameter = fetch_ref(raw_parameter, spec)
-    next unless parameter.is_a?(Hash) && %w[path query].include?(parameter["in"])
+    unless parameter.is_a?(Hash) && parameter["in"].is_a?(String) && parameter["name"].is_a?(String)
+      raise ArgumentError, "operation #{operation.fetch('operationId')} has an invalid parameter"
+    end
+    unless %w[path query].include?(parameter["in"])
+      raise ArgumentError, "operation #{operation.fetch('operationId')} has unsupported parameter location #{parameter['in'].inspect}"
+    end
 
     key = [parameter.fetch("in"), parameter.fetch("name")]
+    if merged.key?(key) && parameter_signature(merged.fetch(key)) != parameter_signature(parameter)
+      raise ArgumentError, "operation #{operation.fetch('operationId')} has contradictory parameter #{key.join(':')}"
+    end
     merged[key] = parameter
   end
   merged.values
+end
+
+def parameter_signature(parameter)
+  parameter.select { |key, _value| %w[name in required style explode schema].include?(key) }
 end
 
 def parameter_schema(schema, spec, parameter_name)
@@ -243,10 +302,10 @@ def parameter_schema(schema, spec, parameter_name)
   supported = %w[string integer number boolean array]
   raise ArgumentError, "unsupported parameter #{parameter_name} schema type #{type.inspect}" unless supported.include?(type)
 
-  output = { "type" => type }
-  output["format"] = resolved["format"] if resolved["format"]
-  output["enum"] = resolved["enum"] if resolved.key?("enum")
-  output["default"] = resolved["default"] if resolved.key?("default")
+  output = {}
+  PARAMETER_SCHEMA_KEYS.each do |key|
+    output[key] = resolved[key] if resolved.key?(key)
+  end
   output["items"] = parameter_schema(resolved["items"], spec, parameter_name) if type == "array"
   output
 end
@@ -278,30 +337,58 @@ def operation_parameter_metadata(operation, path_item, spec)
   merged_parameters(operation, path_item, spec).map { |parameter| parameter_metadata(parameter, spec) }
 end
 
-def generic_parameters(parameters)
-  parameters.reject do |parameter|
-    parameter["in"] == "query" && PAGINATION_QUERY_PARAMS.include?(parameter["name"])
+def pagination_metadata(operation, parameters)
+  raw = operation["x-plaky115-pagination"]
+  return nil unless raw
+  unless raw.is_a?(Hash) && raw["kind"] == "pageNumber"
+    raise ArgumentError, "operation #{operation.fetch('operationId')} pagination must use kind pageNumber"
   end
+  %w[pageParameter sizeParameter resultsPointer hasMorePointer].each do |key|
+    value = raw[key]
+    raise ArgumentError, "operation #{operation.fetch('operationId')} pagination #{key} is required" unless value.is_a?(String) && !value.empty?
+  end
+  if raw.fetch("pageParameter") == raw.fetch("sizeParameter")
+    raise ArgumentError, "operation #{operation.fetch('operationId')} pagination inputs must be distinct"
+  end
+
+  inputs = %w[pageParameter sizeParameter].map do |key|
+    name = raw.fetch(key)
+    matches = parameters.select { |parameter| parameter["in"] == "query" && parameter["name"] == name }
+    raise ArgumentError, "operation #{operation.fetch('operationId')} pagination #{key} does not resolve to one query parameter" unless matches.length == 1
+
+    matches.first
+  end
+  {
+    "kind" => raw.fetch("kind"),
+    "pageParameter" => raw.fetch("pageParameter"),
+    "sizeParameter" => raw.fetch("sizeParameter"),
+    "resultsPointer" => raw.fetch("resultsPointer"),
+    "hasMorePointer" => raw.fetch("hasMorePointer"),
+    "inputs" => inputs,
+  }
 end
 
-def pagination_parameters(parameters)
-  parameters.select do |parameter|
-    parameter["in"] == "query" && PAGINATION_QUERY_PARAMS.include?(parameter["name"])
-  end
+def generic_parameters(parameters, pagination)
+  excluded = Array(pagination && pagination["inputs"]).map { |parameter| [parameter["in"], parameter["name"]] }
+  parameters.reject { |parameter| excluded.include?([parameter["in"], parameter["name"]]) }
 end
 
-def query_parameters(parameters)
+def query_parameters(parameters, pagination)
+  excluded = Array(pagination && pagination["inputs"]).map { |parameter| [parameter["in"], parameter["name"]] }
   parameters
     .select { |parameter| parameter["in"] == "query" }
-    .reject { |parameter| PAGINATION_QUERY_PARAMS.include?(parameter["name"]) }
+    .reject { |parameter| excluded.include?([parameter["in"], parameter["name"]]) }
     .map do |parameter|
       schema = parameter.fetch("schema")
       entry = {
         "name" => parameter.fetch("name"),
+        "required" => parameter.fetch("required"),
         "description" => parameter["description"],
+        "schema" => schema,
+        "style" => parameter.fetch("style"),
+        "explode" => parameter.fetch("explode"),
       }.compact
       entry["array"] = true if schema["type"] == "array"
-      entry["explode"] = false if parameter["explode"] == false
       entry
     end
 end
@@ -316,7 +403,7 @@ def validate_unique_metadata!(operations)
   end
 end
 
-def generate_metadata(source)
+def generate_metadata(source, source_label = nil)
   spec = load_yaml(source)
   operations = []
   examples = {}
@@ -326,11 +413,11 @@ def generate_metadata(source)
       next unless HTTP_METHODS.include?(method)
 
       operation_id = operation.fetch("operationId")
-      pagination = operation["x-plaky115-pagination"]
       usage_example = operation["x-plaky115-usage-example"]
       semantics = operation_semantics(operation)
       parameters = operation_parameter_metadata(operation, path_item, spec)
-      success = success_metadata(operation, spec)
+      pagination = pagination_metadata(operation, parameters)
+      success = success_metadata(operation.merge("method" => method), spec)
 
       entry = {
         "operationId" => operation_id,
@@ -353,18 +440,13 @@ def generate_metadata(source)
         "sensitiveOutput" => semantics["sensitiveOutput"],
       }
 
-      generic = generic_parameters(parameters)
+      generic = generic_parameters(parameters, pagination)
       entry["parameters"] = generic unless generic.empty?
       if pagination
-        entry["pagination"] = {
-          "type" => pagination["type"],
-          "results" => pagination.dig("outputs", "results"),
-          "inputs" => pagination_parameters(parameters),
-        }.compact
-        entry["pagination"].delete("inputs") if entry["pagination"]["inputs"].empty?
+        entry["pagination"] = pagination
       end
 
-      query = query_parameters(parameters)
+      query = query_parameters(parameters, pagination)
       entry["query"] = query unless query.empty?
 
       operations << entry
@@ -374,8 +456,9 @@ def generate_metadata(source)
   validate_unique_metadata!(operations)
 
   {
+    "descriptorVersion" => 2,
     "generatedAt" => "deterministic",
-    "source" => source == SOURCE ? "openapi/plaky115-dx.openapi.yaml" : source,
+    "source" => source_label || (source == SOURCE ? "openapi/plaky115-dx.openapi.yaml" : source),
     "operations" => operations,
     "paths" => operations.map { |operation| operation.slice("method", "path", "operationId") },
     "scopes" => operations.each_with_object({}) { |operation, out| out[operation.fetch("operationId")] = operation.fetch("scopes") },
@@ -387,10 +470,11 @@ def generate_metadata(source)
 end
 
 def parse_options(argv)
-  options = { source: SOURCE, out: OUT }
+  options = { source: SOURCE, out: OUT, source_label: nil }
   OptionParser.new do |parser|
     parser.on("--source PATH") { |path| options[:source] = path }
     parser.on("--out PATH") { |path| options[:out] = path }
+    parser.on("--source-label LABEL") { |label| options[:source_label] = label }
   end.parse!(argv)
   options
 end
@@ -398,8 +482,9 @@ end
 if $PROGRAM_NAME == __FILE__
   begin
     options = parse_options(ARGV)
-    payload = generate_metadata(options.fetch(:source))
+    payload = generate_metadata(options.fetch(:source), options[:source_label])
     formatted = JSON.pretty_generate(payload).gsub(/\[\s*\]/, "[]")
+    FileUtils.mkdir_p(File.dirname(options.fetch(:out)))
     File.write(options.fetch(:out), "#{formatted}\n")
   rescue StandardError => e
     warn "generate-operation-metadata: #{e.message}"

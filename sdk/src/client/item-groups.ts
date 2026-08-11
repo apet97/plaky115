@@ -1,11 +1,12 @@
 import type { PlakyClient } from "./client.js";
 import { idPathSegment } from "./path.js";
-import { paginate, type PaginatedIterator } from "../runtime/pagination.js";
+import { assertPagedResult, paginate, type PaginatedIterator } from "../runtime/pagination.js";
 import { resolveExplicitIdempotencyKey } from "../runtime/idempotency.js";
-import type { PlakyRequestOverrides } from "../runtime/types.js";
+import type { ResourceRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId, ItemGroupId } from "../runtime/ids.js";
-import type { PagedResult, ItemGroupShape } from "./shapes.js";
+import type { StrictPagedResult, ItemGroupShape } from "./shapes.js";
 import type { components } from "../generated/types.js";
+import { normalizeItemGroupCreatePlan, normalizeItemGroupUpdatePlan } from "../workflows/mutation-plans.js";
 
 export type ItemGroupCreateBody = components["schemas"]["ItemGroupCreateRequest"];
 export type ItemGroupUpdateBody = components["schemas"]["ItemGroupUpdateRequest"];
@@ -46,9 +47,9 @@ export type ItemGroupDeleteParams = ItemGroupGetParams & {
 export class ItemGroupsResource {
   constructor(private readonly client: PlakyClient) {}
 
-  list(params: ItemGroupListParams, options?: PlakyRequestOverrides): Promise<PagedResult<ItemGroupShape>> {
+  async list(params: ItemGroupListParams, options?: ResourceRequestOverrides): Promise<StrictPagedResult<ItemGroupShape>> {
     const { spaceId, boardId, ...query } = params;
-    return this.client.request<PagedResult<ItemGroupShape>>(
+    const response = await this.client.request<unknown>(
       {
         method: "GET",
         path: `/v1/public/spaces/${idPathSegment(spaceId)}/boards/${idPathSegment(boardId)}/item-groups`,
@@ -57,17 +58,18 @@ export class ItemGroupsResource {
       },
       options,
     );
+    return assertPagedResult<ItemGroupShape>(response, "listItemGroups");
   }
 
   /** Lazily iterate item groups across pages. */
-  iterate(params: ItemGroupIteratorParams, options?: PlakyRequestOverrides): PaginatedIterator<ItemGroupShape> {
+  iterate(params: ItemGroupIteratorParams, options?: ResourceRequestOverrides): PaginatedIterator<ItemGroupShape> {
     const { limit, pageSize, ...scope } = params;
     return paginate<ItemGroupShape>(
       async ({ page, pageSize }) => {
         const result = await this.list({ ...scope, page, pageSize }, options);
         return {
-          data: (result.data ?? []) as ItemGroupShape[],
-          hasMore: result.hasMore === true,
+          data: result.data,
+          hasMore: result.hasMore,
           raw: result,
         };
       },
@@ -76,13 +78,13 @@ export class ItemGroupsResource {
   }
 
   /** Collect every item group on the board. */
-  async listAll(params: ItemGroupIteratorParams, options?: PlakyRequestOverrides): Promise<ItemGroupShape[]> {
+  async listAll(params: ItemGroupIteratorParams, options?: ResourceRequestOverrides): Promise<ItemGroupShape[]> {
     const groups: ItemGroupShape[] = [];
     for await (const group of this.iterate(params, options)) groups.push(group);
     return groups;
   }
 
-  get(params: ItemGroupGetParams, options?: PlakyRequestOverrides): Promise<ItemGroupShape> {
+  get(params: ItemGroupGetParams, options?: ResourceRequestOverrides): Promise<ItemGroupShape> {
     return this.client.request<ItemGroupShape>(
       {
         method: "GET",
@@ -93,33 +95,35 @@ export class ItemGroupsResource {
     );
   }
 
-  create(params: ItemGroupCreateParams, options?: PlakyRequestOverrides): Promise<ItemGroupShape> {
+  create(params: ItemGroupCreateParams, options?: ResourceRequestOverrides): Promise<ItemGroupShape> {
+    const normalized = normalizeItemGroupCreatePlan(params);
     const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     return this.client.request<ItemGroupShape>(
       {
         method: "POST",
         path: `/v1/public/spaces/${idPathSegment(params.spaceId)}/boards/${idPathSegment(params.boardId)}/item-groups`,
-        body: params.body,
+        body: normalized.body,
         operationId: "createItemGroup",
       },
       { ...options, idempotencyKey },
     );
   }
 
-  update(params: ItemGroupUpdateParams, options?: PlakyRequestOverrides): Promise<ItemGroupShape> {
+  update(params: ItemGroupUpdateParams, options?: ResourceRequestOverrides): Promise<ItemGroupShape> {
+    const normalized = normalizeItemGroupUpdatePlan(params);
     const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     return this.client.request<ItemGroupShape>(
       {
         method: "PUT",
         path: itemGroupPath(params),
-        body: params.body,
+        body: normalized.body,
         operationId: "updateItemGroup",
       },
       { ...options, idempotencyKey },
     );
   }
 
-  async delete(params: ItemGroupDeleteParams, options?: PlakyRequestOverrides): Promise<void> {
+  async delete(params: ItemGroupDeleteParams, options?: ResourceRequestOverrides): Promise<void> {
     const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     await this.client.request<void>(
       {
@@ -132,7 +136,7 @@ export class ItemGroupsResource {
     );
   }
 
-  async archive(params: ItemGroupDeleteParams, options?: PlakyRequestOverrides): Promise<void> {
+  async archive(params: ItemGroupDeleteParams, options?: ResourceRequestOverrides): Promise<void> {
     const idempotencyKey = resolveExplicitIdempotencyKey(params, options);
     await this.client.request<void>(
       {

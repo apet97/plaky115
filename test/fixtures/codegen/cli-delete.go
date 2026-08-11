@@ -10,13 +10,10 @@ func newDeleteWidgetCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete-widget",
 		Short: "deleteWidget fixture",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := getClient(cmd)
-			if err != nil {
-				return err
-			}
 			ctx := cmd.Context()
-			return plakydx.RunDeleteWidget(ctx, cmd, client)
+			return plakydx.RunDeleteWidget(ctx, cmd, getClient)
 		},
 	}
 	cmd.Flags().String("widget-id", "", "Widget identifier. (required)")

@@ -7,8 +7,9 @@ import type { McpToolDefinition } from "../../runtime/types.js";
 const args = z.object({
   spaceId: int64Id.describe("Represents unique space identifier across the system."),
   expand: z.array(z.enum(["board"])).describe("Comma-separated list of relationships to be expanded into full objects.").optional(),
-});
+}).strict();
 const output = z.object({}).passthrough();
+const rawOutput = z.object({}).passthrough();
 
 export const getSpaceTool: McpToolDefinition = {
   name: "plaky_get_space",
@@ -35,6 +36,7 @@ export const getSpaceTool: McpToolDefinition = {
       query,
       operationId: "getSpace",
     }, ctx.requestOptions);
+    rawOutput.parse(result);
     return ctx.respond(result, { compactKind: "space" });
   },
 };

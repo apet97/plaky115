@@ -10,7 +10,7 @@ import (
 )
 
 // RunGetWidget reads raw flags and executes getWidget.
-func RunGetWidget(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
+func RunGetWidget(ctx context.Context, cmd *cobra.Command, getClient func(*cobra.Command) (*plakysdk.Client, error)) error {
 	widgetId, err := requiredStringFlag(cmd, "widget-id")
 	if err != nil {
 		return err
@@ -31,6 +31,10 @@ func RunGetWidget(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) e
 	if err != nil {
 		return err
 	}
+	c, err := getClient(cmd)
+	if err != nil {
+		return err
+	}
 	opts := plakysdk.GetWidgetOptions{
 		WidgetId: widgetId,
 		Status:   status,
@@ -46,12 +50,16 @@ func RunGetWidget(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) e
 }
 
 // RunCreateWidget reads raw flags and executes createWidget.
-func RunCreateWidget(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
+func RunCreateWidget(ctx context.Context, cmd *cobra.Command, getClient func(*cobra.Command) (*plakysdk.Client, error)) error {
 	jsonBody, err := jsonBodyFlag(cmd, true)
 	if err != nil {
 		return err
 	}
 	idempotencyKey, err := optionalStringFlag(cmd, "idempotency-key")
+	if err != nil {
+		return err
+	}
+	c, err := getClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -67,11 +75,15 @@ func RunCreateWidget(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client
 }
 
 // RunArchiveWidget reads raw flags and executes archiveWidget.
-func RunArchiveWidget(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
+func RunArchiveWidget(ctx context.Context, cmd *cobra.Command, getClient func(*cobra.Command) (*plakysdk.Client, error)) error {
 	if err := confirmationFlag(cmd); err != nil {
 		return err
 	}
 	widgetId, err := requiredStringFlag(cmd, "widget-id")
+	if err != nil {
+		return err
+	}
+	c, err := getClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -85,7 +97,7 @@ func RunArchiveWidget(ctx context.Context, cmd *cobra.Command, c *plakysdk.Clien
 }
 
 // RunUploadWidgetFile reads raw flags and executes uploadWidgetFile.
-func RunUploadWidgetFile(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
+func RunUploadWidgetFile(ctx context.Context, cmd *cobra.Command, getClient func(*cobra.Command) (*plakysdk.Client, error)) error {
 	widgetId, err := requiredStringFlag(cmd, "widget-id")
 	if err != nil {
 		return err
@@ -96,6 +108,10 @@ func RunUploadWidgetFile(ctx context.Context, cmd *cobra.Command, c *plakysdk.Cl
 	}
 	defer upload.Close()
 	idempotencyKey, err := optionalStringFlag(cmd, "idempotency-key")
+	if err != nil {
+		return err
+	}
+	c, err := getClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -116,11 +132,15 @@ func RunUploadWidgetFile(ctx context.Context, cmd *cobra.Command, c *plakysdk.Cl
 }
 
 // RunDeleteWidget reads raw flags and executes deleteWidget.
-func RunDeleteWidget(ctx context.Context, cmd *cobra.Command, c *plakysdk.Client) error {
+func RunDeleteWidget(ctx context.Context, cmd *cobra.Command, getClient func(*cobra.Command) (*plakysdk.Client, error)) error {
 	if err := confirmationFlag(cmd); err != nil {
 		return err
 	}
 	widgetId, err := requiredStringFlag(cmd, "widget-id")
+	if err != nil {
+		return err
+	}
+	c, err := getClient(cmd)
 	if err != nil {
 		return err
 	}

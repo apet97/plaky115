@@ -1,6 +1,6 @@
 import { PlakyAbortError, PlakyConnectionError, PlakyDecodeError, PlakyResponseTooLargeError, PlakyTimeoutError, classify } from "./errors.js";
 import { buildHeaders, buildUrl, serializeBody } from "./internal/request-builders.js";
-import { doFetch, getFetch } from "./internal/fetcher.js";
+import { attemptError, createAttemptDeadline, doFetch, getFetch, withAttemptDeadline, type AttemptDeadline } from "./internal/fetcher.js";
 import { getRequestId, parseErrorBody, parseResponse } from "./internal/responses.js";
 import { canRetry, canRetryError, parseRetryAfter, retryDelay, shouldRetryResponse } from "./internal/retry-policy.js";
 import type { Interceptors } from "./interceptors.js";
@@ -91,111 +91,140 @@ export async function requestWithResponse<T>(req: RawRequest, opts: PlakyRequest
   const maxRetries = canRetry(req, opts) ? validated.maxRetries : 0;
 
   for (let attempt = 0; ; attempt++) {
-    const url = buildUrl(validated.serverURL, req.path, req.query);
-    const headers = await buildHeaders(req, opts);
-    const body = serializeBody(req.body, headers);
-    const init: RequestInit = { method: req.method, headers };
-
-    if (body !== undefined) init.body = body;
-    if (opts.signal) init.signal = opts.signal;
-
-    const intercepted = opts.interceptors?.request
-      ? await opts.interceptors.request({ url, init, operationId })
-      : { url, init };
-    assertTrustedRequestURL(validated.serverURL, intercepted.url);
-    const finalInit: RequestInit = { ...intercepted.init, redirect: "manual" };
-
-    // Only the transport call (doFetch) is retry-eligible. Anything that throws
-    // *after* a successful response — JSON decode failures, a throwing response
-    // interceptor — is a deterministic error, so it must propagate as itself and
-    // never be re-wrapped as a connection error or retried.
-    let response: Response;
+    const deadline = createAttemptDeadline(opts.signal, validated.timeoutMs);
     try {
-      response = await doFetch(fetchFn, intercepted.url, finalInit, validated.timeoutMs);
-    } catch (error) {
-      if (error instanceof PlakyAbortError) throw error;
+      const url = buildUrl(validated.serverURL, req.path, req.query);
+      const headers = await withAttemptDeadline(deadline, Promise.resolve().then(() => buildHeaders(req, opts)));
+      const body = serializeBody(req.body, headers);
+      const init: RequestInit = { method: req.method, headers, signal: deadline.signal };
 
-      if (error instanceof PlakyTimeoutError) {
+      if (body !== undefined) init.body = body;
+
+      const intercepted = await withAttemptDeadline(
+        deadline,
+        Promise.resolve().then(() => opts.interceptors?.request
+          ? opts.interceptors.request({ url, init, operationId })
+          : { url, init }),
+      );
+      assertTrustedRequestURL(validated.serverURL, intercepted.url);
+      const finalInit: RequestInit = { ...intercepted.init, signal: deadline.signal, redirect: "manual" };
+
+      // Only the transport call (doFetch) is retry-eligible. Anything that throws
+      // *after* a successful response — JSON decode failures, a throwing response
+      // interceptor — is a deterministic error, so it must propagate as itself and
+      // never be re-wrapped as a connection error or retried.
+      let response: Response;
+      try {
+        response = await doFetch(fetchFn, intercepted.url, finalInit, deadline);
+      } catch (error) {
+        if (error instanceof PlakyAbortError) throw error;
+
+        if (error instanceof PlakyTimeoutError) {
+          if (canRetryError(req, opts, attempt, maxRetries)) {
+            await delay(retryDelay(undefined, attempt), opts.signal);
+            continue;
+          }
+          throw error;
+        }
+
+        const connectionError =
+          error instanceof PlakyConnectionError
+            ? error
+            : new PlakyConnectionError("Connection error while communicating with the Plaky API.", { cause: error });
+
         if (canRetryError(req, opts, attempt, maxRetries)) {
           await delay(retryDelay(undefined, attempt), opts.signal);
           continue;
         }
-        throw error;
+
+        throw connectionError;
       }
 
-      const connectionError =
-        error instanceof PlakyConnectionError
-          ? error
-          : new PlakyConnectionError("Connection error while communicating with the Plaky API.", { cause: error });
+      opts.rateLimitSink?.observe(response.headers);
 
-      if (canRetryError(req, opts, attempt, maxRetries)) {
-        await delay(retryDelay(undefined, attempt), opts.signal);
+      if (shouldRetryResponse(req, opts, response, attempt, maxRetries)) {
+        await cancelRetryBody(response, deadline);
+        await delay(retryDelay(response, attempt), opts.signal);
         continue;
       }
 
-      throw connectionError;
-    }
+      const requestId = getRequestId(response.headers);
+      const responseType = req.responseType ?? opts.responseType ?? "json";
 
-    opts.rateLimitSink?.observe(response.headers);
+      if (!response.ok) {
+        let errorBody: unknown;
+        try {
+          errorBody = await withAttemptDeadline(deadline, parseErrorBody(response, validated.maxResponseBytes, deadline.signal));
+        } catch (error) {
+          if (error instanceof PlakyResponseTooLargeError) throw error;
+          if (deadline.cause() !== undefined) throw attemptError(deadline, error);
+          throw new PlakyDecodeError("Failed to parse the Plaky API error body.", {
+            cause: error,
+            status: response.status,
+            ...(requestId !== undefined ? { requestId } : {}),
+          });
+        }
+        if (opts.interceptors?.response) {
+          await withAttemptDeadline(deadline, Promise.resolve().then(() => opts.interceptors?.response?.({
+            url: intercepted.url,
+            response,
+            body: errorBody,
+            operationId,
+          })));
+        }
 
-    if (shouldRetryResponse(req, opts, response, attempt, maxRetries)) {
-      await delay(retryDelay(response, attempt), opts.signal);
-      continue;
-    }
+        const errorInput = {
+          status: response.status,
+          method: req.method,
+          url: intercepted.url,
+          headers: response.headers,
+          body: errorBody,
+        };
+        const retryAfterMs = parseRetryAfter(response.headers.get("retry-after"));
+        throw classify({
+          ...errorInput,
+          ...(requestId !== undefined ? { requestId } : {}),
+          ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
+        });
+      }
 
-    const requestId = getRequestId(response.headers);
-    const responseType = req.responseType ?? opts.responseType ?? "json";
+      let data: T;
+      try {
+        data = await withAttemptDeadline(deadline, parseResponse<T>(response, responseType, validated.maxResponseBytes, deadline.signal));
+      } catch (error) {
+        if (error instanceof PlakyResponseTooLargeError) throw error;
+        if (deadline.cause() !== undefined) throw attemptError(deadline, error);
+        throw new PlakyDecodeError("Failed to parse the Plaky API response body.", {
+          cause: error,
+          status: response.status,
+          ...(requestId !== undefined ? { requestId } : {}),
+        });
+      }
 
-    if (!response.ok) {
-      const errorBody = await parseErrorBody(response, validated.maxResponseBytes);
-      await opts.interceptors?.response?.({
-        url: intercepted.url,
-        response,
-        body: errorBody,
-        operationId,
-      });
+      if (opts.interceptors?.response) {
+        await withAttemptDeadline(deadline, Promise.resolve().then(() => opts.interceptors?.response?.({
+          url: intercepted.url,
+          response,
+          body: data,
+          operationId,
+        })));
+      }
 
-      const errorInput = {
+      return {
+        data,
         status: response.status,
-        method: req.method,
-        url: intercepted.url,
         headers: response.headers,
-        body: errorBody,
+        ...(requestId !== undefined ? { requestId } : {}),
       };
-      const retryAfterMs = parseRetryAfter(response.headers.get("retry-after"));
-      throw classify({
-        ...errorInput,
-        ...(requestId !== undefined ? { requestId } : {}),
-        ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
-      });
+    } finally {
+      deadline.dispose();
     }
-
-    let data: T;
-    try {
-      data = await parseResponse<T>(response, responseType, validated.maxResponseBytes);
-    } catch (error) {
-      if (error instanceof PlakyResponseTooLargeError) throw error;
-      throw new PlakyDecodeError("Failed to parse the Plaky API response body.", {
-        cause: error,
-        status: response.status,
-        ...(requestId !== undefined ? { requestId } : {}),
-      });
-    }
-
-    await opts.interceptors?.response?.({
-      url: intercepted.url,
-      response,
-      body: data,
-      operationId,
-    });
-
-    return {
-      data,
-      status: response.status,
-      headers: response.headers,
-      ...(requestId !== undefined ? { requestId } : {}),
-    };
   }
+}
+
+async function cancelRetryBody(response: Response, deadline: AttemptDeadline): Promise<void> {
+  if (!response.body) return;
+  await withAttemptDeadline(deadline, response.body.cancel());
 }
 
 function delay(ms: number, signal?: AbortSignal): Promise<void> {

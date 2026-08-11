@@ -2,13 +2,13 @@ import type { ResponseType } from "../types.js";
 import { PlakyResponseTooLargeError } from "../errors.js";
 import { DEFAULT_MAX_RESPONSE_BYTES } from "./validation.js";
 
-export async function parseResponse<T>(response: Response, responseType: ResponseType, limit = DEFAULT_MAX_RESPONSE_BYTES): Promise<T> {
+export async function parseResponse<T>(response: Response, responseType: ResponseType, limit = DEFAULT_MAX_RESPONSE_BYTES, signal?: AbortSignal): Promise<T> {
   if (responseType === "void" || response.status === 204 || response.status === 205) {
     return undefined as T;
   }
 
   if (responseType === "stream") return response.body as T;
-  const bytes = await readBounded(response, limit);
+  const bytes = await readBounded(response, limit, signal);
   if (responseType === "bytes") return bytes as T;
   const text = new TextDecoder().decode(bytes);
   if (responseType === "text") return text as T;
@@ -16,8 +16,8 @@ export async function parseResponse<T>(response: Response, responseType: Respons
   return text ? (parseJSONPreservingInt64(text) as T) : (undefined as T);
 }
 
-export async function parseErrorBody(response: Response, limit = DEFAULT_MAX_RESPONSE_BYTES): Promise<unknown> {
-  const text = new TextDecoder().decode(await readBounded(response, limit));
+export async function parseErrorBody(response: Response, limit = DEFAULT_MAX_RESPONSE_BYTES, signal?: AbortSignal): Promise<unknown> {
+  const text = new TextDecoder().decode(await readBounded(response, limit, signal));
   if (!text) return undefined;
 
   try {
@@ -56,7 +56,7 @@ export function parseJSONPreservingInt64(text: string): unknown {
   return JSON.parse(rewritten);
 }
 
-async function readBounded(response: Response, limit: number): Promise<Uint8Array> {
+async function readBounded(response: Response, limit: number, signal?: AbortSignal): Promise<Uint8Array> {
   const contentLength = response.headers.get("content-length");
   if (contentLength && /^\d+$/.test(contentLength) && Number(contentLength) > limit) {
     await response.body?.cancel();
@@ -69,7 +69,7 @@ async function readBounded(response: Response, limit: number): Promise<Uint8Arra
   let total = 0;
   try {
     while (true) {
-      const { done, value } = await reader.read();
+      const { done, value } = await readChunk(reader, signal);
       if (done) break;
       total += value.byteLength;
       if (total > limit) {
@@ -88,6 +88,41 @@ async function readBounded(response: Response, limit: number): Promise<Uint8Arra
     offset += chunk.byteLength;
   }
   return bytes;
+}
+
+async function readChunk(reader: ReadableStreamDefaultReader<Uint8Array>, signal?: AbortSignal): Promise<ReadableStreamReadResult<Uint8Array>> {
+  if (!signal) return reader.read();
+  if (signal.aborted) {
+    await reader.cancel().catch(() => undefined);
+    throw new DOMException("The response body read was aborted.", "AbortError");
+  }
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const cleanup = () => signal.removeEventListener("abort", onAbort);
+    const onAbort = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      void reader.cancel().catch(() => undefined);
+      reject(new DOMException("The response body read was aborted.", "AbortError"));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    reader.read().then(
+      (result) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(result);
+      },
+      (error: unknown) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(error);
+      },
+    );
+  });
 }
 
 export function getRequestId(headers: Headers): string | undefined {

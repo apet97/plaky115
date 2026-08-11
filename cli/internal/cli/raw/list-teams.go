@@ -10,13 +10,10 @@ func newListTeamsCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list-teams",
 		Short: "List workspace teams",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := getClient(cmd)
-			if err != nil {
-				return err
-			}
 			ctx := cmd.Context()
-			return plakydx.RunListTeams(ctx, cmd, client)
+			return plakydx.RunListTeams(ctx, cmd, getClient)
 		},
 	}
 	cmd.Flags().Int("page", 0, "Page number.")

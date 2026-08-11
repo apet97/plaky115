@@ -22,17 +22,24 @@ api-1.yaml (upstream)
     v
 openapi/plaky115-dx.openapi.yaml
     |
+    +-- openapi-typescript      -> sdk/src/generated/types.ts
+    |
     +-- ruby scripts/generate-operation-metadata.rb
     v
 openapi/plaky115-operation-metadata.json
     |
-    +-- openapi-typescript      -> sdk/src/generated/types.ts
     +-- generate-mcp.mjs        -> mcp-server/src/tools/raw/*.ts + index.ts
     +-- generate-cli.mjs        -> cli/internal/cli/raw/*.go + raw.go
     |                            -> cli/internal/plakysdk/operations.go
     |                            -> cli/internal/plakydx/runners_generated.go
     +-- generate-docs-index.mjs -> mcp-server/src/runtime/docs-index.ts
 ```
+
+`scripts/postgen-dx.mjs` runs last, after the four generators above, in both
+in-place and isolated generation. Unlike them, it does not derive from the
+spec: it reads both `package.json` files directly and normalizes their
+`description`, `license`, `repository`, and `exports` map from a hardcoded
+list of public SDK runtime modules.
 
 ## Scripts
 
@@ -46,7 +53,8 @@ openapi/plaky115-operation-metadata.json
 - `scripts/generate-docs-index.mjs` - corpus of operation, workflow, and guide entries consumed by `plaky_search_docs`.
 - `scripts/apply-overlay.rb` - applies the DX overlay using Ruby standard library YAML support.
 - `scripts/lint-openapi.rb` - validates local OpenAPI files without external CLI dependencies.
-- `scripts/generate-all.mjs` - runs overlay apply, lint, OpenAPI tests, metadata generate/test, every codegen step, then `test:surfaces`.
+- `scripts/generate-all.mjs` - runs overlay apply, lint, OpenAPI tests, metadata generate/test, every codegen step, `postgen-dx.mjs`, then `test:surfaces`.
+- `scripts/postgen-dx.mjs` - normalizes both `package.json` files' description, license, repository, and exports map; the final `generate-all.mjs` step.
 
 ## SDK Resource API
 
@@ -98,7 +106,14 @@ const response = await client.requestWithResponse({
 ## Determinism
 
 Every generator is idempotent. CI and local verification enforce this through
-`npm run generated:drift` and `npm run codegen:test`.
+`npm run generated:drift` and `npm run codegen:test`. `generated:drift` covers
+both `package.json` files, but that coverage compares `postgen-dx.mjs`'s
+output against the same file it read — it does not independently verify that
+every top-level module under `sdk/src/runtime/` (the always-private
+`internal/` subdirectory is out of scope) is a deliberate include-or-exclude
+decision. `scripts/audit-package-artifacts.mjs` (`npm run artifacts:audit`)
+closes that gap: it fails if a runtime module is neither exported in the
+committed `sdk/package.json` nor in its documented private allowlist.
 
 ## Hand-Edited Files
 

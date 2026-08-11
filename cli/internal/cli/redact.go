@@ -13,7 +13,7 @@ func FormatError(err error) string {
 	if err == nil {
 		return ""
 	}
-	return plakysdk.RedactSecrets(err.Error())
+	return plakysdk.SafeErrorText(err.Error())
 }
 
 // PrintError writes a redacted error to w. When asJSON is true it emits a
@@ -34,6 +34,7 @@ func printErrorJSON(w io.Writer, err error) {
 	envelope := map[string]any{"message": FormatError(err)}
 	var apiErr *plakysdk.APIError
 	if errors.As(err, &apiErr) {
+		envelope["category"] = "api"
 		envelope["status"] = apiErr.Status
 		if apiErr.RequestID != "" {
 			envelope["requestId"] = apiErr.RequestID

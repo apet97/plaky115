@@ -11,3 +11,4 @@ docs/superpowers/
 worktrees/
 .contract-candidate/
 .live-artifacts/
+.release-artifacts/

@@ -5,7 +5,7 @@ import type { McpToolDefinition } from "../../runtime/types.js";
 
 const args = z.object({
   widgetId: z.string().describe("Widget identifier."),
-});
+}).strict();
 const output = z.object({ ok: z.boolean() });
 
 export const deleteWidgetTool: McpToolDefinition = {
@@ -24,12 +24,18 @@ export const deleteWidgetTool: McpToolDefinition = {
   outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
-    await request<void>({
-      method: "DELETE",
-      path: `/v1/widgets/${encodeURIComponent(String(parsed.widgetId))}`,
-      responseType: "void",
-      operationId: "deleteWidget",
-    }, ctx.requestOptions);
+    await ctx.attempt.mutate({
+      operation: "deleteWidget",
+      targetIds: { widgetId: String(parsed.widgetId) },
+      run: async () => {
+        await request<void>({
+          method: "DELETE",
+          path: `/v1/widgets/${encodeURIComponent(String(parsed.widgetId))}`,
+          responseType: "void",
+          operationId: "deleteWidget",
+        }, ctx.requestOptions);
+      },
+    });
     return ctx.respond({ ok: true }, { compactKind: "raw" });
   },
 };

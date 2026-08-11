@@ -1,23 +1,47 @@
 import type { PlakyClient } from "../client/client.js";
 import { PlakyAmbiguousMatchError, PlakyNotFoundError } from "../runtime/errors.js";
 import { asSpaceId, asBoardId, asItemId } from "../runtime/ids.js";
-import type { PlakyRequestOverrides } from "../runtime/types.js";
+import type { ResourceRequestOverrides } from "../runtime/types.js";
 
 type WithId = { id?: number | string | undefined; title?: string | undefined; name?: string | undefined; email?: string | undefined };
 
-export type EntityRef = number | string | WithId;
+export type EntitySelector =
+  | { id: number | string }
+  | { title: string }
+  | { name: string }
+  | { email: string };
 
-function asId(ref: EntityRef): { id?: string; needle?: string } {
+/** Exact ID, plain text search, or a field-specific selector. */
+export type EntityRef = number | string | WithId | EntitySelector;
+
+type RefMatch = { id?: string; needle?: string; field?: "title" | "name" | "email" };
+
+function asId(ref: EntityRef): RefMatch {
   if (typeof ref === "number") return { id: canonicalId(ref) };
   if (typeof ref === "string") {
     if (/^\d+$/.test(ref)) return { id: canonicalId(ref) };
     return { needle: ref.toLowerCase() };
   }
-  if (ref && typeof ref === "object" && ref.id !== undefined) return { id: canonicalId(ref.id) };
+  if (ref && typeof ref === "object") {
+    const object = ref as WithId;
+    // Compatibility objects may contain labels alongside an ID. The ID is
+    // authoritative, so no list call is needed and the labels are ignored.
+    if (object.id !== undefined) return { id: canonicalId(object.id) };
+    const selectors = (["title", "name", "email"] as const).filter((field) => object[field] !== undefined);
+    if (selectors.length > 1) {
+      throw new TypeError(`entity reference selectors conflict: ${selectors.join(", ")}`);
+    }
+    const field = selectors[0];
+    if (field !== undefined) {
+      const value = object[field];
+      if (typeof value !== "string" || value.length === 0) throw new TypeError(`${field} selector must be a non-empty string`);
+      return { field, needle: value.toLowerCase() };
+    }
+  }
   return {};
 }
 
-function pick<T extends WithId>(items: T[], match: { id?: string; needle?: string }, label: string): T {
+function pick<T extends WithId>(items: T[], match: RefMatch, label: string): T {
   if (match.id !== undefined) {
     const found = items.find((it) => it.id !== undefined && canonicalId(it.id) === match.id);
     if (!found) throw localNotFound(`${label} not found: id=${match.id}`);
@@ -26,8 +50,8 @@ function pick<T extends WithId>(items: T[], match: { id?: string; needle?: strin
   if (match.needle) {
     const needle = match.needle;
     const candidates = items.filter((it) => {
-      const text = `${it.title ?? it.name ?? it.email ?? ""}`.toLowerCase();
-      return text.includes(needle);
+      const fields = match.field === undefined ? ["title", "name", "email"] as const : [match.field];
+      return fields.some((field) => typeof it[field] === "string" && it[field]!.toLowerCase().includes(needle));
     });
     if (candidates.length === 0) throw localNotFound(`${label} not found: ${needle}`);
     if (candidates.length > 1) throw new PlakyAmbiguousMatchError(`${label} ambiguous: ${needle}`, candidates);
@@ -61,7 +85,7 @@ function localNotFound(message: string): PlakyNotFoundError {
   });
 }
 
-export async function resolveSpace(client: PlakyClient, ref: EntityRef, options?: PlakyRequestOverrides): Promise<WithId> {
+export async function resolveSpace(client: PlakyClient, ref: EntityRef, options?: ResourceRequestOverrides): Promise<WithId> {
   const match = asId(ref);
   if (match.id !== undefined) {
     return getById(() => client.spaces.get(match.id!, options), match.id, "space");
@@ -82,7 +106,7 @@ export async function resolveSpace(client: PlakyClient, ref: EntityRef, options?
 export async function resolveSpaceAndBoard(
   client: PlakyClient,
   params: { space: EntityRef; board: EntityRef },
-  options?: PlakyRequestOverrides,
+  options?: ResourceRequestOverrides,
 ): Promise<{ space: WithId; board: WithId }> {
   const space = await resolveSpace(client, params.space, options);
   const match = asId(params.board);
@@ -100,17 +124,17 @@ export async function resolveSpaceAndBoard(
   return { space, board: pick(boards as WithId[], match, "board") };
 }
 
-export async function resolveBoard(client: PlakyClient, params: { space: EntityRef; board: EntityRef }, options?: PlakyRequestOverrides): Promise<WithId> {
+export async function resolveBoard(client: PlakyClient, params: { space: EntityRef; board: EntityRef }, options?: ResourceRequestOverrides): Promise<WithId> {
   return (await resolveSpaceAndBoard(client, params, options)).board;
 }
 
-export async function resolveUser(client: PlakyClient, ref: EntityRef, options?: PlakyRequestOverrides): Promise<WithId> {
+export async function resolveUser(client: PlakyClient, ref: EntityRef, options?: ResourceRequestOverrides): Promise<WithId> {
   const match = asId(ref);
   const all = await client.users.listAll({}, options);
   return pick(all as WithId[], match, "user");
 }
 
-export async function resolveTeam(client: PlakyClient, ref: EntityRef, options?: PlakyRequestOverrides): Promise<WithId> {
+export async function resolveTeam(client: PlakyClient, ref: EntityRef, options?: ResourceRequestOverrides): Promise<WithId> {
   const match = asId(ref);
   if (match.id !== undefined) {
     return getById(() => client.teams.get(match.id!, options), match.id, "team");
@@ -119,7 +143,7 @@ export async function resolveTeam(client: PlakyClient, ref: EntityRef, options?:
   return pick(all as WithId[], match, "team");
 }
 
-export async function resolveItem(client: PlakyClient, params: { space: EntityRef; board: EntityRef; item: EntityRef }, options?: PlakyRequestOverrides): Promise<WithId> {
+export async function resolveItem(client: PlakyClient, params: { space: EntityRef; board: EntityRef; item: EntityRef }, options?: ResourceRequestOverrides): Promise<WithId> {
   const { space, board } = await resolveSpaceAndBoard(client, { space: params.space, board: params.board }, options);
   const match = asId(params.item);
   if (match.id !== undefined) {
@@ -140,15 +164,15 @@ export async function resolveItem(client: PlakyClient, params: { space: EntityRe
 export async function resolveItemsInBoard(
   client: PlakyClient,
   params: { spaceId: number | string; boardId: number | string; items: EntityRef[] },
-  options?: PlakyRequestOverrides,
+  options?: ResourceRequestOverrides,
 ): Promise<WithId[]> {
   const refs = params.items.map(asId);
-  if (refs.length === 1 && refs[0]?.id !== undefined) {
-    return [await getById(
-      () => client.items.get({ spaceId: asSpaceId(params.spaceId), boardId: asBoardId(params.boardId), itemId: refs[0]!.id! }, options),
-      refs[0].id,
+  if (refs.length > 0 && refs.every((ref) => ref.id !== undefined)) {
+    return Promise.all(refs.map((ref) => getById(
+      () => client.items.get({ spaceId: asSpaceId(params.spaceId), boardId: asBoardId(params.boardId), itemId: ref.id! }, options),
+      ref.id!,
       "item",
-    )];
+    )));
   }
   const items = await client.items.listAll({ spaceId: asSpaceId(params.spaceId), boardId: asBoardId(params.boardId) }, options);
   return refs.map((match) => pick(items as WithId[], match, "item"));
@@ -157,7 +181,7 @@ export async function resolveItemsInBoard(
 export async function resolveItemGroupInBoard(
   client: PlakyClient,
   params: { spaceId: number | string; boardId: number | string; itemGroup: EntityRef },
-  options?: PlakyRequestOverrides,
+  options?: ResourceRequestOverrides,
 ): Promise<WithId> {
   const match = asId(params.itemGroup);
   if (match.id !== undefined) {
@@ -174,7 +198,7 @@ export async function resolveItemGroupInBoard(
 export async function resolveItemFileOnItem(
   client: PlakyClient,
   params: { spaceId: number | string; boardId: number | string; itemId: number | string; itemFile: EntityRef },
-  options?: PlakyRequestOverrides,
+  options?: ResourceRequestOverrides,
 ): Promise<WithId> {
   const match = asId(params.itemFile);
   if (match.id !== undefined) {

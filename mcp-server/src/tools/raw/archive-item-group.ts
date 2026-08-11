@@ -8,7 +8,7 @@ const args = z.object({
   spaceId: int64Id.describe("Represents unique space identifier across the system."),
   boardId: int64Id.describe("Represents unique board identifier across the system."),
   itemGroupId: int64Id.describe("Represents unique item group identifier across the system."),
-});
+}).strict();
 const output = z.object({ ok: z.boolean() });
 
 export const archiveItemGroupTool: McpToolDefinition = {
@@ -27,12 +27,18 @@ export const archiveItemGroupTool: McpToolDefinition = {
   outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
-    await request<void>({
-      method: "PUT",
-      path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/item-groups/${encodeURIComponent(String(parsed.itemGroupId))}/archive`,
-      responseType: "void",
-      operationId: "archiveItemGroup",
-    }, ctx.requestOptions);
+    await ctx.attempt.mutate({
+      operation: "archiveItemGroup",
+      targetIds: { spaceId: String(parsed.spaceId), boardId: String(parsed.boardId), itemGroupId: String(parsed.itemGroupId) },
+      run: async () => {
+        await request<void>({
+          method: "PUT",
+          path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/item-groups/${encodeURIComponent(String(parsed.itemGroupId))}/archive`,
+          responseType: "void",
+          operationId: "archiveItemGroup",
+        }, ctx.requestOptions);
+      },
+    });
     return ctx.respond({ ok: true }, { compactKind: "raw" });
   },
 };

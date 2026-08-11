@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { compactByKind, structuredForMcp } from "../esm/runtime/compaction.js";
+import { compactByKind, structuredForMcp, compactWorkspace, McpResponseLimitError, MAX_MCP_RAW_BYTES } from "../esm/runtime/compaction.js";
+import { PlakyResponseContractError } from "plaky115";
 
 test("compactByKind preserves paged data for typed lists", () => {
   const compacted = compactByKind(
@@ -12,6 +13,20 @@ test("compactByKind preserves paged data for typed lists", () => {
     data: [{ id: 1, title: "A" }],
     hasMore: false,
   });
+});
+
+test("compactByKind rejects malformed paged success envelopes", () => {
+  for (const value of [
+    { data: [], hasMore: true },
+    { data: null, hasMore: false },
+    { data: [] },
+    { data: [], hasMore: "false" },
+  ]) {
+    assert.throws(
+      () => compactByKind(value, "item"),
+      (error) => error instanceof PlakyResponseContractError,
+    );
+  }
 });
 
 test("compactByKind keeps the comment body and author id (content/createdBy)", () => {
@@ -121,4 +136,39 @@ test("new compactors tolerate missing fields and centralized serialization redac
   assert.deepEqual(compactByKind(null, "itemFile"), {});
   assert.deepEqual(compactByKind({}, "downloadLink"), {});
   assert.deepEqual(structuredForMcp({ file: compactByKind({ name: token }, "itemFile") }), { file: { name: "[REDACTED_PLAKY_API_KEY]" } });
+});
+
+test("workspace compaction keeps IDs, titles, and board counts without raw payloads", () => {
+  assert.deepEqual(compactWorkspace([
+    { id: 1, title: "Ops", boards: [{ id: 11, title: "Roadmap", fields: [{ key: "secret" }] }] },
+  ]), {
+    data: [{ id: 1, title: "Ops", boardCount: 1, boards: [{ id: 11, title: "Roadmap", fieldCount: 1, groupCount: 0 }] }],
+    complete: true,
+    truncated: false,
+    value: [{ id: 1, title: "Ops", boardCount: 1, boards: [{ id: 11, title: "Roadmap", fieldCount: 1, groupCount: 0 }] }],
+  });
+});
+
+test("detailed compacted lists preserve completeness and exact continuation", () => {
+  assert.deepEqual(compactByKind({
+    data: [{ id: 1, title: "A", ignored: true }],
+    scanned: 1,
+    matched: 1,
+    complete: false,
+    truncated: true,
+    continuation: { page: 2, index: 0 },
+  }, "item"), {
+    data: [{ id: 1, title: "A" }],
+    scanned: 1,
+    matched: 1,
+    complete: false,
+    truncated: true,
+    continuation: { page: 2, index: 0 },
+  });
+});
+
+test("raw and structured MCP response bounds fail closed", () => {
+  const raw = { payload: "x".repeat(MAX_MCP_RAW_BYTES + 1) };
+  assert.deepEqual(compactByKind(raw, "item", { includeRaw: true }), { rawOmitted: true });
+  assert.throws(() => structuredForMcp({ payload: "x".repeat(1_048_577) }), (error) => error instanceof McpResponseLimitError);
 });

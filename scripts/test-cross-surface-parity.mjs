@@ -176,6 +176,8 @@ function describeOperation(op) {
     requestKind,
     successKind,
     successStatus: op.success.status,
+    createdIdPointer: op.success.createdIdPointer,
+    sensitiveLink: op.success.sensitiveLink === true,
     jsonBody,
     sdkQuery,
     mcpInput,
@@ -301,8 +303,16 @@ function responseStub(method, url) {
   if (!operation) throw new Error(`no parity metadata for ${method} ${pathname}`);
   const status = operation.successStatus;
   if (operation.successKind === "void") return new Response(null, { status });
-  const body = operation.successKind === "json-array" ? "[]" : "{}";
+  const body = JSON.stringify(responseBody(operation));
   return new Response(body, { status, headers: { "content-type": "application/json" } });
+}
+
+function responseBody(operation) {
+  if (operation.successKind === "json-array") return [];
+  if (operation.successKind === "paged-object") return { data: [], hasMore: false };
+  if (operation.sensitiveLink) return { url: "https://download.example.test/parity", expiresInSeconds: 60 };
+  if (operation.createdIdPointer === "$.id") return { id: 1 };
+  return {};
 }
 
 // Always rebuild the esm before importing it: validating a stale build against
@@ -392,7 +402,7 @@ before(async () => {
           res.end();
         } else {
           res.setHeader("content-type", "application/json");
-          res.end(operation.successKind === "json-array" ? "[]" : "{}");
+          res.end(JSON.stringify(responseBody(operation)));
         }
       } catch {
         res.statusCode = 500;

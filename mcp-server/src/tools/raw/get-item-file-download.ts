@@ -9,8 +9,9 @@ const args = z.object({
   boardId: int64Id.describe("Represents unique board identifier across the system."),
   itemId: int64Id.describe("Represents unique item identifier across the system."),
   itemFileId: int64Id.describe("Represents unique item file identifier across the system."),
-});
-const output = z.object({}).passthrough();
+}).strict();
+const output = z.object({ url: z.string().url().refine((value) => value.startsWith("https://"), "must use HTTPS"), expiresInSeconds: z.number().int().nonnegative().optional() }).passthrough();
+const rawOutput = z.object({ url: z.string().url().refine((value) => value.startsWith("https://"), "must use HTTPS"), expiresInSeconds: z.number().int().nonnegative().optional() }).passthrough();
 
 export const getItemFileDownloadTool: McpToolDefinition = {
   name: "plaky_get_item_file_download",
@@ -33,6 +34,7 @@ export const getItemFileDownloadTool: McpToolDefinition = {
       path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/files/${encodeURIComponent(String(parsed.itemFileId))}/download`,
       operationId: "getItemFileDownload",
     }, ctx.requestOptions);
+    rawOutput.parse(result);
     return ctx.respond(result, { compactKind: "downloadLink" });
   },
 };

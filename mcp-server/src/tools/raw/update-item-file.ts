@@ -9,9 +9,10 @@ const args = z.object({
   boardId: int64Id.describe("Represents unique board identifier across the system."),
   itemId: int64Id.describe("Represents unique item identifier across the system."),
   itemFileId: int64Id.describe("Represents unique item file identifier across the system."),
-  body: z.record(z.unknown()).describe("JSON request body for Update an item file."),
-});
+  body: z.record(z.unknown()).superRefine((body, ctx) => { if (!Object.prototype.hasOwnProperty.call(body, "name")) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["name"], message: "required" }); }).describe("JSON request body for Update an item file."),
+}).strict();
 const output = z.object({}).passthrough();
+const rawOutput = z.object({}).passthrough();
 
 export const updateItemFileTool: McpToolDefinition = {
   name: "plaky_update_item_file",
@@ -29,12 +30,20 @@ export const updateItemFileTool: McpToolDefinition = {
   outputSchema: output,
   async handler(input, ctx) {
     const parsed = args.parse(input);
-    const result = await request<Record<string, unknown>>({
-      method: "PUT",
-      path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/files/${encodeURIComponent(String(parsed.itemFileId))}`,
-      body: parsed.body,
-      operationId: "updateItemFile",
-    }, ctx.requestOptions);
+    const result = await ctx.attempt.mutate({
+      operation: "updateItemFile",
+      targetIds: { spaceId: String(parsed.spaceId), boardId: String(parsed.boardId), itemId: String(parsed.itemId), itemFileId: String(parsed.itemFileId) },
+      run: async () => {
+        const result = await request<Record<string, unknown>>({
+          method: "PUT",
+          path: `/v1/public/spaces/${encodeURIComponent(String(parsed.spaceId))}/boards/${encodeURIComponent(String(parsed.boardId))}/items/${encodeURIComponent(String(parsed.itemId))}/files/${encodeURIComponent(String(parsed.itemFileId))}`,
+          body: parsed.body,
+          operationId: "updateItemFile",
+        }, ctx.requestOptions);
+        rawOutput.parse(result);
+        return result;
+      },
+    });
     return ctx.respond(result, { compactKind: "itemFile" });
   },
 };

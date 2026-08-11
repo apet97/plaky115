@@ -42,6 +42,37 @@ func TestRequiredJSONBodyRejectsNonObjectRoots(t *testing.T) {
 	}
 }
 
+func TestParseBodyRejectsDuplicateKeysAtJSONPointer(t *testing.T) {
+	cmd := helperCommand()
+	_, err := ParseBody(cmd, `{"nested":{"value":1,"value":2}}`)
+	if err == nil || !strings.Contains(err.Error(), "/nested/value") {
+		t.Fatalf("duplicate key error = %v", err)
+	}
+	if strings.Contains(err.Error(), "2") {
+		t.Fatalf("duplicate key error echoed body content: %v", err)
+	}
+}
+
+func TestParseBodyRejectsTrailingValuesDepthAndOverflow(t *testing.T) {
+	cmd := helperCommand()
+	if _, err := ParseBody(cmd, "{} {}\n"); err == nil || !strings.Contains(err.Error(), "multiple JSON values") {
+		t.Fatalf("trailing value error = %v", err)
+	}
+
+	deep := strings.Repeat("[", MaxJSONDepth+1) + "0" + strings.Repeat("]", MaxJSONDepth+1)
+	if _, err := ParseBody(cmd, deep); err == nil || !strings.Contains(err.Error(), "maximum nesting depth") {
+		t.Fatalf("depth error = %v", err)
+	}
+
+	oversized := strings.Repeat("x", MaxJSONBytes+1)
+	if _, err := ParseBody(cmd, oversized); err == nil || !strings.Contains(err.Error(), "byte limit") {
+		t.Fatalf("overflow error = %v", err)
+	}
+	if _, err := ParseBody(cmd, `{}`); err != nil {
+		t.Fatalf("valid empty object error = %v", err)
+	}
+}
+
 func TestOpenUploadFlagStreamsFileAndDefaultsFilename(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "fixture.bin")
 	if err := os.WriteFile(path, []byte("fixture"), 0o600); err != nil {
@@ -92,6 +123,34 @@ func TestOpenUploadFlagRequiresStdinFilenameAndDoesNotCloseStdin(t *testing.T) {
 	}
 	if stdin.closed {
 		t.Fatal("stdin was closed")
+	}
+}
+
+func TestValidateUploadMetadataMatchesUploadPolicy(t *testing.T) {
+	got, err := ValidateUploadMetadata(strings.Repeat("a", MaxUploadFilenameBytes), "TEXT/PLAIN; CHARSET=utf-8")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "text/plain; charset=utf-8" {
+		t.Fatalf("normalized media type = %q", got)
+	}
+
+	for _, test := range []struct {
+		name     string
+		fileName string
+		media    string
+	}{
+		{name: "filename too long", fileName: strings.Repeat("a", MaxUploadFilenameBytes+1), media: "text/plain"},
+		{name: "multibyte filename too long", fileName: strings.Repeat("é", 128), media: "text/plain"},
+		{name: "path separator", fileName: "dir/file.txt", media: "text/plain"},
+		{name: "control character", fileName: "line\nfeed.txt", media: "text/plain"},
+		{name: "invalid media type", fileName: "file.txt", media: "text/plain\r\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := ValidateUploadMetadata(test.fileName, test.media); err == nil {
+				t.Fatal("metadata unexpectedly accepted")
+			}
+		})
 	}
 }
 

@@ -1,9 +1,9 @@
 import type { PlakyClient } from "./client.js";
 import { idPathSegment } from "./path.js";
-import { paginate, type PaginatedIterator } from "../runtime/pagination.js";
-import type { PlakyRequestOverrides } from "../runtime/types.js";
+import { assertPagedResult, paginate, type PaginatedIterator } from "../runtime/pagination.js";
+import type { ResourceRequestOverrides } from "../runtime/types.js";
 import type { SpaceId, BoardId } from "../runtime/ids.js";
-import type { PagedResult, BoardShape } from "./shapes.js";
+import type { StrictPagedResult, BoardShape } from "./shapes.js";
 
 /** Boards resource. Access via `client.boards`. */
 export class BoardsResource {
@@ -17,9 +17,9 @@ export class BoardsResource {
    * @returns A page of boards with `data` and `hasMore`.
    * @throws {import("../runtime/errors.js").PlakyApiError} On API errors.
    */
-  list(params: { spaceId: SpaceId | string | number; page?: number; pageSize?: number }, options?: PlakyRequestOverrides): Promise<PagedResult<BoardShape>> {
+  async list(params: { spaceId: SpaceId | string | number; page?: number; pageSize?: number }, options?: ResourceRequestOverrides): Promise<StrictPagedResult<BoardShape>> {
     const { spaceId, ...query } = params;
-    return this.client.request<PagedResult<BoardShape>>(
+    const response = await this.client.request<unknown>(
       {
         method: "GET",
         path: `/v1/public/spaces/${idPathSegment(spaceId)}/boards`,
@@ -28,6 +28,7 @@ export class BoardsResource {
       },
       options,
     );
+    return assertPagedResult<BoardShape>(response, "listBoards");
   }
 
   /**
@@ -38,7 +39,7 @@ export class BoardsResource {
    * @returns The board.
    * @throws {import("../runtime/errors.js").PlakyNotFoundError} If the board does not exist.
    */
-  get(params: { spaceId: SpaceId | string | number; boardId: BoardId | string | number }, options?: PlakyRequestOverrides): Promise<BoardShape> {
+  get(params: { spaceId: SpaceId | string | number; boardId: BoardId | string | number }, options?: ResourceRequestOverrides): Promise<BoardShape> {
     return this.client.request<BoardShape>(
       {
         method: "GET",
@@ -56,11 +57,11 @@ export class BoardsResource {
    * @param options - Per-request overrides applied to every page request.
    * @returns An async iterator with `firstPage()` and `toArray()` helpers.
    */
-  iterate(params: { spaceId: SpaceId; pageSize?: number; limit?: number }, options?: PlakyRequestOverrides): PaginatedIterator<BoardShape> {
+  iterate(params: { spaceId: SpaceId; pageSize?: number; limit?: number }, options?: ResourceRequestOverrides): PaginatedIterator<BoardShape> {
     return paginate<BoardShape>(
       async ({ page, pageSize }) => {
         const res = await this.list({ spaceId: params.spaceId, page, pageSize }, options);
-        return { data: (res.data ?? []) as BoardShape[], hasMore: res.hasMore === true, raw: res };
+        return { data: res.data, hasMore: res.hasMore, raw: res };
       },
       { pageSize: params.pageSize, limit: params.limit },
     );
@@ -73,7 +74,7 @@ export class BoardsResource {
    * @param options - Per-request overrides applied to every page request.
    * @returns Every board in the space.
    */
-  async listAll(params: { spaceId: SpaceId; pageSize?: number; limit?: number }, options?: PlakyRequestOverrides): Promise<BoardShape[]> {
+  async listAll(params: { spaceId: SpaceId; pageSize?: number; limit?: number }, options?: ResourceRequestOverrides): Promise<BoardShape[]> {
     const out: BoardShape[] = [];
     for await (const b of this.iterate(params, options)) out.push(b);
     return out;

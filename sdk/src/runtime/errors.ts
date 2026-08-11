@@ -1,14 +1,25 @@
+import { redact, redactRecord } from "./redact.js";
+
 /**
  * Base class for every error thrown by the SDK. `name` is set to the concrete
  * subclass name. Use `instanceof` to branch on specific cases.
  */
+const MAX_PRESENTATION_MESSAGE_LENGTH = 1_024;
+
 export class PlakyError extends Error {
   override readonly name: string;
 
   constructor(message: string, options?: { cause?: unknown }) {
     super(message);
     this.name = new.target.name;
-    if (options?.cause !== undefined) this.cause = options.cause;
+    if (options?.cause !== undefined) {
+      Object.defineProperty(this, "cause", {
+        configurable: true,
+        enumerable: false,
+        value: options.cause,
+        writable: true,
+      });
+    }
   }
 }
 
@@ -49,6 +60,18 @@ export class PlakyDecodeError extends PlakyError {
   }
 }
 
+/** Thrown when a successful response violates its documented root contract. */
+export class PlakyResponseContractError extends PlakyDecodeError {
+  readonly operationId: string;
+  readonly pointer: string;
+
+  constructor(operationId: string, pointer: string, options?: { cause?: unknown; status?: number; requestId?: string }) {
+    super(`Invalid ${operationId} response at ${pointer}.`, options);
+    this.operationId = operationId;
+    this.pointer = pointer;
+  }
+}
+
 /** Thrown before a non-streaming response body can exceed its configured limit. */
 export class PlakyResponseTooLargeError extends PlakyError {
   constructor(readonly limit: number) {
@@ -56,12 +79,32 @@ export class PlakyResponseTooLargeError extends PlakyError {
   }
 }
 
+export type NormalizedProblemFamily = "validation" | "legacy" | "rfc7807" | "unknown";
+
+/** A safe, additive view of the API's observed error-envelope families. */
+export type NormalizedProblem = {
+  readonly family: NormalizedProblemFamily;
+  readonly status: number;
+  readonly message: string;
+  readonly code?: string | number;
+  readonly label?: string;
+  readonly title?: string;
+  readonly detail?: string;
+  readonly instance?: string;
+  readonly type?: string;
+  readonly violations?: readonly unknown[];
+};
+
+/** Compatibility alias for callers that prefer the Plaky-prefixed name. */
+export type PlakyProblem = NormalizedProblem;
+
 export type ApiErrorInput = {
   status: number;
   method: string;
   url: string;
   headers: Headers;
   body?: unknown;
+  problem?: NormalizedProblem | undefined;
   requestId?: string | undefined;
   retryAfterMs?: number | undefined;
 };
@@ -78,8 +121,10 @@ export class PlakyApiError extends PlakyError {
   readonly url: string;
   readonly headers: Headers;
   readonly body?: unknown;
+  /** Normalized, redacted presentation view; {@link body} remains the raw bounded body. */
+  readonly problem?: NormalizedProblem;
   readonly requestId?: string;
-  readonly code?: string;
+  readonly code?: string | number;
   readonly retryAfterMs?: number;
 
   constructor(message: string, input: ApiErrorInput) {
@@ -89,6 +134,7 @@ export class PlakyApiError extends PlakyError {
     this.url = input.url;
     this.headers = input.headers;
     if (input.body !== undefined) this.body = input.body;
+    if (input.problem !== undefined) this.problem = input.problem;
     if (input.requestId !== undefined) this.requestId = input.requestId;
     if (input.retryAfterMs !== undefined) this.retryAfterMs = input.retryAfterMs;
 
@@ -119,8 +165,14 @@ export class PlakyServerError extends PlakyApiError {}
  * `candidates` holds the ambiguous matches.
  */
 export class PlakyAmbiguousMatchError extends PlakyError {
-  constructor(message: string, readonly candidates: unknown[]) {
+  readonly candidates: readonly unknown[];
+  readonly candidateCount: number;
+
+  constructor(message: string, candidates: readonly unknown[]) {
     super(message);
+    this.candidates = Object.freeze([...candidates]);
+    this.candidateCount = this.candidates.length;
+    Object.defineProperty(this, "candidates", { enumerable: false });
   }
 }
 
@@ -132,49 +184,97 @@ export class PlakyAmbiguousMatchError extends PlakyError {
  * @returns A status-specific error instance (falls back to {@link PlakyApiError}).
  */
 export function classify(input: ApiErrorInput): PlakyApiError {
-  const message = readErrorMessage(input.body) ?? `HTTP ${input.status}`;
+  const problem = input.problem ?? normalizeProblem(input.body, input.status);
+  const message = problem.message;
+  const errorInput = { ...input, problem };
 
-  if (input.status === 401) return new PlakyAuthError(message, input);
-  if (input.status === 403) return new PlakyPermissionError(message, input);
-  if (input.status === 404) return new PlakyNotFoundError(message, input);
-  if (input.status === 409) return new PlakyConflictError(message, input);
-  if (input.status === 400) return new PlakyValidationError(message, input);
-  if (input.status === 422) return new PlakyUnprocessableEntityError(message, input);
-  if (input.status === 429) return new PlakyRateLimitError(message, input);
-  if (input.status >= 500 && input.status <= 599) return new PlakyServerError(message, input);
+  if (input.status === 401) return new PlakyAuthError(message, errorInput);
+  if (input.status === 403) return new PlakyPermissionError(message, errorInput);
+  if (input.status === 404) return new PlakyNotFoundError(message, errorInput);
+  if (input.status === 409) return new PlakyConflictError(message, errorInput);
+  if (input.status === 400) return new PlakyValidationError(message, errorInput);
+  if (input.status === 422) return new PlakyUnprocessableEntityError(message, errorInput);
+  if (input.status === 429) return new PlakyRateLimitError(message, errorInput);
+  if (input.status >= 500 && input.status <= 599) return new PlakyServerError(message, errorInput);
 
-  return new PlakyApiError(message, input);
+  return new PlakyApiError(message, errorInput);
 }
 
-function readErrorMessage(body: unknown): string | undefined {
-  if (typeof body === "string") return body;
-  if (!body || typeof body !== "object") return undefined;
+export function normalizeProblem(body: unknown, status: number): NormalizedProblem {
+  if (typeof body === "string") {
+    return { family: "unknown", status, message: presentationText(body) };
+  }
 
-  const value = body as {
-    message?: unknown;
-    error?: {
-      message?: unknown;
-    };
+  const value = asRecord(body);
+  const nested = asRecord(value?.["error"]);
+  const detail = stringValue(value?.["detail"]);
+  const topMessage = stringValue(value?.["message"]);
+  const nestedMessage = stringValue(nested?.["message"]) ?? (typeof value?.["error"] === "string" ? value["error"] : undefined);
+  const title = stringValue(value?.["title"]);
+  const label = stringValue(value?.["errorLabel"]);
+  const code = readErrorCode(body);
+  const instance = stringValue(value?.["instance"]);
+  const type = stringValue(value?.["type"]);
+  const violations = Array.isArray(value?.["violations"]) ? value["violations"].slice(0, 100) : undefined;
+  const message = detail ?? topMessage ?? nestedMessage ?? title ?? label ?? `HTTP ${status}`;
+  const problem: NormalizedProblem = {
+    family: problemFamily(value),
+    status,
+    message: presentationText(message),
+    ...(code !== undefined ? { code } : {}),
+    ...(label !== undefined ? { label: presentationText(label) } : {}),
+    ...(title !== undefined ? { title: presentationText(title) } : {}),
+    ...(detail !== undefined ? { detail: presentationText(detail) } : {}),
+    ...(instance !== undefined ? { instance: presentationText(instance) } : {}),
+    ...(type !== undefined ? { type: presentationText(type) } : {}),
+    ...(violations !== undefined ? { violations: redactRecord(violations) } : {}),
   };
-
-  if (typeof value.error?.message === "string") return value.error.message;
-  if (typeof value.message === "string") return value.message;
-
-  return undefined;
+  return problem;
 }
 
-function readErrorCode(body: unknown): string | undefined {
+function problemFamily(value: Record<string, unknown> | undefined): NormalizedProblemFamily {
+  if (!value) return "unknown";
+  if (hasAny(value, "detail", "title", "type", "instance")) return "rfc7807";
+  if (hasAny(value, "errorCode", "errorLabel", "violations")) return "validation";
+  if (hasAny(value, "message", "error")) return "legacy";
+  return "unknown";
+}
+
+function readErrorCode(body: unknown): string | number | undefined {
   if (!body || typeof body !== "object") return undefined;
 
   const value = body as {
     code?: unknown;
+    errorCode?: unknown;
     error?: {
       code?: unknown;
     };
   };
 
-  if (typeof value.error?.code === "string") return value.error.code;
-  if (typeof value.code === "string") return value.code;
+  if (typeof value.errorCode === "string" || typeof value.errorCode === "number") return value.errorCode;
+  if (typeof value.error?.code === "string" || typeof value.error?.code === "number") return value.error.code;
+  if (typeof value.code === "string" || typeof value.code === "number") return value.code;
 
   return undefined;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : undefined;
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function hasAny(value: Record<string, unknown>, ...keys: string[]): boolean {
+  return keys.some((key) => Object.prototype.hasOwnProperty.call(value, key));
+}
+
+function presentationText(value: string): string {
+  const safe = redact(value);
+  return safe.length <= MAX_PRESENTATION_MESSAGE_LENGTH
+    ? safe
+    : `${safe.slice(0, MAX_PRESENTATION_MESSAGE_LENGTH - 1)}…`;
 }

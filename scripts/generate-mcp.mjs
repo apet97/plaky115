@@ -5,13 +5,15 @@ import { fileURLToPath } from "node:url";
 import { slug } from "./lib/codegen-common.mjs";
 import { buildRawToolModule, buildRawToolIndex } from "./lib/codegen-mcp.mjs";
 import { loadOperationMetadata } from "./lib/operation-metadata.mjs";
+import { metadataPath, parseGenerationOptions } from "./lib/generation-options.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
-const generatedRoot = process.env.PLAKY115_GENERATED_ROOT || root;
+const options = parseGenerationOptions(process.argv.slice(2), root);
+const generatedRoot = options.outputRoot;
 const outDir = join(generatedRoot, "mcp-server/src/tools/raw");
 mkdirSync(outDir, { recursive: true });
 
-const metadata = loadOperationMetadata(root);
+const metadata = loadOperationMetadata(options.sourceRoot, metadataPath(generatedRoot));
 const ops = metadata.operations;
 
 const expected = new Set([...ops.map((o) => `${slug(o.operationId)}.ts`), "index.ts"]);

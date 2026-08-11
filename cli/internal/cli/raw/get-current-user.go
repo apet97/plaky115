@@ -10,13 +10,10 @@ func newGetCurrentUserCmd(getClient ClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get-current-user",
 		Short: "Retrieve current user",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := getClient(cmd)
-			if err != nil {
-				return err
-			}
 			ctx := cmd.Context()
-			return plakydx.RunGetCurrentUser(ctx, cmd, client)
+			return plakydx.RunGetCurrentUser(ctx, cmd, getClient)
 		},
 	}
 	return cmd

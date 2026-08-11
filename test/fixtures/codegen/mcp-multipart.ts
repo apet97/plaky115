@@ -9,8 +9,9 @@ const args = z.object({
   fileBase64: z.string().describe("Canonical base64 file content; decoded size is bounded before upload."),
   fileName: z.string().min(1).describe("File name sent in the multipart upload."),
   contentType: z.string().describe("Optional file media type, such as application/pdf.").optional(),
-});
+}).strict();
 const output = z.object({}).passthrough();
+const rawOutput = z.object({}).passthrough();
 
 export const uploadWidgetFileTool: McpToolDefinition = {
   name: "plaky_upload_widget_file",
@@ -33,12 +34,20 @@ export const uploadWidgetFileTool: McpToolDefinition = {
       fileName: parsed.fileName,
       ...(parsed.contentType !== undefined ? { contentType: parsed.contentType } : {}),
     });
-    const result = await request<Record<string, unknown>>({
-      method: "POST",
-      path: `/v1/widgets/${encodeURIComponent(String(parsed.widgetId))}/files`,
-      body,
-      operationId: "uploadWidgetFile",
-    }, ctx.requestOptions);
+    const result = await ctx.attempt.mutate({
+      operation: "uploadWidgetFile",
+      targetIds: { widgetId: String(parsed.widgetId) },
+      run: async () => {
+        const result = await request<Record<string, unknown>>({
+          method: "POST",
+          path: `/v1/widgets/${encodeURIComponent(String(parsed.widgetId))}/files`,
+          body,
+          operationId: "uploadWidgetFile",
+        }, ctx.requestOptions);
+        rawOutput.parse(result);
+        return result;
+      },
+    });
     return ctx.respond(result, { compactKind: "itemFile" });
   },
 };

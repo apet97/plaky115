@@ -6,7 +6,7 @@ test("request interceptor can rewrite URL before fetch", async () => {
   let lastUrl;
   globalThis.fetch = async (url) => {
     lastUrl = url.toString();
-    return new Response(JSON.stringify({ ok: true }), {
+    return new Response(JSON.stringify({ data: [], hasMore: false }), {
       status: 200,
       headers: { "content-type": "application/json" },
     });
@@ -26,7 +26,7 @@ test("request interceptor can rewrite URL before fetch", async () => {
 
 test("response interceptor sees status code and body", async () => {
   globalThis.fetch = async () =>
-    new Response(JSON.stringify({ payload: 42 }), {
+    new Response(JSON.stringify({ data: [{ payload: 42 }], hasMore: false }), {
       status: 200,
       headers: { "content-type": "application/json" },
     });
@@ -42,6 +42,6 @@ test("response interceptor sees status code and body", async () => {
   });
   await client.spaces.list();
   assert.equal(observed.status, 200);
-  assert.deepEqual(observed.body, { payload: 42 });
+  assert.deepEqual(observed.body, { data: [{ payload: 42 }], hasMore: false });
   assert.equal(observed.operationId, "listSpaces");
 });

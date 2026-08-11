@@ -76,12 +76,11 @@ configurable:
 ### Bounded item search
 
 `searchItemsDetailed(client, { space, board, query, limit })` defaults to a
-200-item scan cap and returns `data`, `scanned`, `matched`, `truncated`, and an
-optional `nextPage`. When `truncated` is true, the cap was reached while the
-server still reported another page; the result must not be presented as a
-complete match set. The deprecated `searchItems()` wrapper preserves its array
-return for compatibility. CLI `find --type item` uses the same default and
-completeness fields.
+200-item scan cap and returns `data`, `scanned`, `matched`, `complete`,
+`truncated`, and an exact page/index `continuation` when more records remain.
+`complete` and `truncated` are mutually exclusive. The deprecated
+`searchItems()` wrapper preserves its array return for compatibility. CLI
+`find --type item` uses the same default scan bound.
 
 ## Expand serialization
 
@@ -125,6 +124,15 @@ the original string begins with tab, carriage return, or line feed. Numbers,
 booleans, and null are not rewritten. Callers that need unmodified string cells
 can set SDK `csvSafety:"raw"` or CLI `--csv-safety raw`; raw CSV must not be
 opened in a spreadsheet unless its source is trusted.
+
+Bounded SDK export iterators count serialized UTF-8 bytes before adding each
+item and return a page/index cursor when an item or byte cap is reached. CSV
+streaming freezes the header from board field definitions and one bounded seed
+page. The legacy materializing SDK workflows cap results at 10,000 records and
+16 MiB and throw a limit error rather than reporting a partial result as
+complete. CLI `items-export` applies the same 16 MiB default output cap and
+streams pages directly to stdout; it supports `--max-items`, `--max-bytes`,
+`--page`, and `--page-index` for bounded continuation.
 
 ## Comments listing
 

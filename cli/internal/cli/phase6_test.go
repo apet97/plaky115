@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -148,6 +149,22 @@ func TestPrintErrorTextModeUnchanged(t *testing.T) {
 	}
 }
 
+func TestPrintErrorPresentationIsControlSafeAndBounded(t *testing.T) {
+	var buf bytes.Buffer
+	PrintError(&buf, errors.New("prefix\x00\x1b[31m"+strings.Repeat("x", 10_000)), false)
+	out := buf.String()
+	line := strings.TrimSuffix(out, "\n")
+	if strings.ContainsAny(line, "\x00\x1b\n\r") {
+		t.Fatalf("text output contains raw terminal controls: %q", out)
+	}
+	if len(out) > plakysdk.MaxErrorDisplayBytes+1 { // newline added by Fprintln
+		t.Fatalf("text output exceeded cap: %d", len(out))
+	}
+	if !strings.Contains(out, `\u0000`) || !strings.Contains(out, `\u001B`) {
+		t.Fatalf("text output did not escape controls: %q", out[:min(len(out), 100)])
+	}
+}
+
 func TestItemGroupsListDrainsPages(t *testing.T) {
 	requests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -208,7 +225,7 @@ func TestItemGroupsCreateDryRunAndWrite(t *testing.T) {
 		defer server.Close()
 		out, err := executeRoot(t,
 			"--api-key", "from-flag", "--server-url", server.URL,
-			"item-groups-create", "--space-id", "1", "--board-id", "2", "--title", "Backlog", "--idempotency-key", "create-group-1",
+			"item-groups-create", "--space-id", "1", "--board-id", "2", "--title", "Backlog", "--color", "#123456", "--idempotency-key", "create-group-1",
 		)
 		if err != nil {
 			t.Fatal(err)
@@ -216,7 +233,7 @@ func TestItemGroupsCreateDryRunAndWrite(t *testing.T) {
 		if rec.method != http.MethodPost || rec.escapedPath != "/v1/public/spaces/1/boards/2/item-groups" {
 			t.Fatalf("request = %s %s", rec.method, rec.escapedPath)
 		}
-		if rec.body["title"] != "Backlog" || len(rec.body) != 1 || rec.idempotency != "create-group-1" {
+		if rec.body["title"] != "Backlog" || rec.body["color"] != "#123456" || len(rec.body) != 2 || rec.idempotency != "create-group-1" {
 			t.Fatalf("body/header = %#v / %q", rec.body, rec.idempotency)
 		}
 		if !json.Valid([]byte(out)) {
