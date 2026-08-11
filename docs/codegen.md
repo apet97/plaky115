@@ -32,7 +32,14 @@ openapi/plaky115-operation-metadata.json
     |                            -> cli/internal/plakysdk/operations.go
     |                            -> cli/internal/plakydx/runners_generated.go
     +-- generate-docs-index.mjs -> mcp-server/src/runtime/docs-index.ts
+    |
+    +-- postgen-dx.mjs          -> sdk/package.json, mcp-server/package.json
 ```
+
+`postgen-dx.mjs` runs last, in both in-place and isolated generation. It
+normalizes `description`, `license`, `repository`, and the `exports` map of
+both `package.json` files from a hardcoded list of public SDK runtime
+modules.
 
 ## Scripts
 
@@ -46,7 +53,8 @@ openapi/plaky115-operation-metadata.json
 - `scripts/generate-docs-index.mjs` - corpus of operation, workflow, and guide entries consumed by `plaky_search_docs`.
 - `scripts/apply-overlay.rb` - applies the DX overlay using Ruby standard library YAML support.
 - `scripts/lint-openapi.rb` - validates local OpenAPI files without external CLI dependencies.
-- `scripts/generate-all.mjs` - runs overlay apply, lint, OpenAPI tests, metadata generate/test, every codegen step, then `test:surfaces`.
+- `scripts/generate-all.mjs` - runs overlay apply, lint, OpenAPI tests, metadata generate/test, every codegen step, `postgen-dx.mjs`, then `test:surfaces`.
+- `scripts/postgen-dx.mjs` - normalizes both `package.json` files' description, license, repository, and exports map; the final `generate-all.mjs` step.
 
 ## SDK Resource API
 
@@ -98,7 +106,14 @@ const response = await client.requestWithResponse({
 ## Determinism
 
 Every generator is idempotent. CI and local verification enforce this through
-`npm run generated:drift` and `npm run codegen:test`.
+`npm run generated:drift` and `npm run codegen:test`. `generated:drift` covers
+both `package.json` files, but that coverage compares `postgen-dx.mjs`'s
+output against the same file it read — it does not independently verify that
+every top-level module under `sdk/src/runtime/` (the always-private
+`internal/` subdirectory is out of scope) is a deliberate include-or-exclude
+decision. `scripts/audit-package-artifacts.mjs` (`npm run artifacts:audit`)
+closes that gap: it fails if a runtime module is neither exported in the
+committed `sdk/package.json` nor in its documented private allowlist.
 
 ## Hand-Edited Files
 

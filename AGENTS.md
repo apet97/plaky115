@@ -39,8 +39,9 @@ npm --prefix mcp-server ci
 - Change generators or metadata, then run `npm run generate:all`.
 - `scripts/lib/codegen-common.mjs` owns the normalized operation descriptor;
   Go and Zod formatting stays in the target generator.
-- `scripts/postgen-dx.mjs` owns package metadata and SDK runtime exports; it runs
-  as the final step of `generate:all`.
+- `scripts/postgen-dx.mjs` owns package metadata and SDK runtime exports; it is
+  the last generator `generate:all` runs, before the post-generation
+  `test:surfaces` check.
 - SDK transport is public at `sdk/src/runtime/http.ts`; helpers under
   `sdk/src/runtime/internal/` remain private package paths.
 - Raw CLI writes require `--body`; raw deletes require `--confirm`.

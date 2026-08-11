@@ -47,6 +47,28 @@ if (privateExports.length > 0) {
   console.log(`sdk: private package exports present: ${privateExports.join(", ")}`);
   bad = true;
 }
+// Every top-level module under sdk/src/runtime/ (not the always-private
+// sdk/src/runtime/internal/, already covered by privateExportPrefixes above)
+// must be a deliberate decision: either exported in the committed
+// sdk/package.json, or named below as intentionally private. Without this
+// check, a hand-added runtime module that nobody exported would pass
+// artifact checks silently, because postgen-dx.mjs only ever rebuilds
+// exports from its own hardcoded publicRuntimeModules list, never from the
+// filesystem, so it can't notice a module it doesn't already know about.
+const intentionallyPrivateRuntimeModules = ["mutations", "upload"];
+const runtimeDir = join(root, "sdk", "src", "runtime");
+const runtimeModules = existsSync(runtimeDir)
+  ? readdirSync(runtimeDir, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".ts") && !entry.name.endsWith(".d.ts"))
+      .map((entry) => entry.name.replace(/\.ts$/, ""))
+  : [];
+const undeclaredRuntimeModules = runtimeModules.filter((name) =>
+  !sdkPackage.exports?.[`./runtime/${name}.js`] && !intentionallyPrivateRuntimeModules.includes(name)
+);
+if (undeclaredRuntimeModules.length > 0) {
+  console.log(`sdk: undeclared runtime modules — add each to publicRuntimeModules in scripts/postgen-dx.mjs and run generate:all (public), or to intentionallyPrivateRuntimeModules in this script (private): ${undeclaredRuntimeModules.join(", ")}`);
+  bad = true;
+}
 for (const resource of ["item-groups", "item-files"]) {
   for (const extension of ["js", "d.ts"]) {
     const artifact = join(root, "sdk", "esm", "client", `${resource}.${extension}`);
