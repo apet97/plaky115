@@ -11,7 +11,7 @@ shape is breaking.
 | --- | --- |
 | SDK and MCP | Node.js 22.12.0, 24, and 26 |
 | MCP executable build | Bun 1.2.17 |
-| CLI | Go 1.26.5; Linux, macOS, and Windows on amd64/arm64 |
+| CLI | Go 1.26.6; Linux, macOS, and Windows on amd64/arm64 |
 | Generation | Ruby 3.3 and npm 11.16.0 on the release path |
 | MCP protocol library | `@modelcontextprotocol/sdk` 1.30.0 |
 

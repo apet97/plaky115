@@ -46,11 +46,24 @@ function run(command, args) {
 }
 
 test("generate-types is deterministic", () => {
-  const target = join(root, "sdk/src/generated/types.ts");
-  run("node", ["scripts/generate-types.mjs"]);
-  const first = snapshot([target]);
-  run("node", ["scripts/generate-types.mjs"]);
-  assert.equal(snapshot([target]), first);
+  withGeneratedRoot((generatedRoot) => {
+    const openapiDirectory = join(generatedRoot, "openapi");
+    mkdirSync(openapiDirectory, { recursive: true });
+    copyFileSync(
+      join(root, "openapi/plaky115-dx.openapi.yaml"),
+      join(openapiDirectory, "plaky115-dx.openapi.yaml"),
+    );
+    const target = join(generatedRoot, "sdk/src/generated/types.ts");
+    const args = [
+      "scripts/generate-types.mjs",
+      "--source-root", root,
+      "--output-root", generatedRoot,
+    ];
+    run("node", args);
+    const first = snapshot([target]);
+    run("node", args);
+    assert.equal(snapshot([target]), first);
+  });
 });
 
 test("generate-mcp deletes only marked stale files and is deterministic", () => {
@@ -96,11 +109,19 @@ test("generate-cli deletes only marked stale files, owns runners, and is determi
 });
 
 test("generate-docs-index is deterministic", () => {
-  const target = join(root, "mcp-server/src/runtime/docs-index.ts");
-  run("node", ["scripts/generate-docs-index.mjs"]);
-  const first = snapshot([target]);
-  run("node", ["scripts/generate-docs-index.mjs"]);
-  assert.equal(snapshot([target]), first);
+  withGeneratedRoot((generatedRoot) => {
+    seedMetadata(generatedRoot);
+    const target = join(generatedRoot, "mcp-server/src/runtime/docs-index.ts");
+    const args = [
+      "scripts/generate-docs-index.mjs",
+      "--source-root", root,
+      "--output-root", generatedRoot,
+    ];
+    run("node", args);
+    const first = snapshot([target]);
+    run("node", args);
+    assert.equal(snapshot([target]), first);
+  });
 });
 
 test("metadata operations are unique, generated as one exact set, and remain within the intentional target manifest", () => {

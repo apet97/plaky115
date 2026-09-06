@@ -20,7 +20,7 @@
     "secret:scan": "node scripts/secret-scan.mjs",
     "secret:scan:test": "node --test scripts/test-secret-scan.mjs sdk/test/redact.test.mjs",
     "goreleaser:check": "cd cli && goreleaser check --config .goreleaser.yaml",
-    "govulncheck": "cd cli && GOTOOLCHAIN=go1.26.5 go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...",
+    "govulncheck": "cd cli && GOTOOLCHAIN=go1.26.6 go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...",
     "installer:test": "node --test scripts/test-installers.mjs",
     "audit:production": "npm --prefix sdk audit --omit=dev --audit-level=high && npm --prefix mcp-server audit --omit=dev --audit-level=high",
     "audit:all": "npm --prefix sdk audit --audit-level=high && npm --prefix mcp-server audit --audit-level=high",

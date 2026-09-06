@@ -1,6 +1,6 @@
 {
   "name": "plaky115-mcp",
-  "version": "1.0.11",
+  "version": "1.0.14",
   "description": "Hand-crafted MCP server for the Plaky public API. Unofficial.",
   "license": "MIT",
   "author": "Plaky115",
@@ -23,7 +23,7 @@
   "sideEffects": false,
   "scripts": {
     "lint": "oxlint --max-warnings=0 --deny-warnings src/**/*.ts",
-    "build:bin": "bun src/server/build.mts",
+    "build:bin": "node ../scripts/run-bun.mjs src/server/build.mts",
     "build": "node ../scripts/clean-package-builds.mjs mcp-server && tsgo && npm run build:bin",
     "test": "npm run build && node --test test/*.test.mjs",
     "prepublishOnly": "npm run build"
@@ -42,10 +42,12 @@
     "zod": "^3.25.0 || ^4.0.0"
   },
   "overrides": {
-    "hono": "4.12.34"
+    "fast-uri": "3.1.7",
+    "hono": "4.12.34",
+    "qs": "6.16.0"
   },
   "peerDependencies": {
-    "plaky115": "1.0.11"
+    "plaky115": "1.0.14"
   },
   "repository": {
     "type": "git",

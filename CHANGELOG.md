@@ -3,6 +3,22 @@
 All notable user-visible changes are recorded here. The project follows
 semantic versioning from `0.2.0` onward.
 
+## [1.0.14] - 2026-09-06
+
+- Isolate generator determinism tests from tracked output files so concurrent
+  Node test workers cannot create platform-specific release-gate races.
+
+## [1.0.13] - 2026-09-06
+
+- Update the CLI build toolchain to Go 1.26.6 to include current standard-library
+  security fixes.
+- Refresh MCP transitive dependency overrides for `qs` and `fast-uri`; both
+  published packages pass the production dependency audit.
+- Make MCP builds and docs generation skip empty optional Bun shims and use an
+  installed Bun binary.
+- Refresh the upstream OpenAPI provenance after confirming the live source and
+  supplied document retain the same complete 32-operation contract.
+
 ## [1.0.1] - 2026-08-03
 
 Maintenance release for the SDK, CLI, MCP server, and release tooling.
@@ -97,6 +113,8 @@ First complete public release of the hand-crafted Plaky toolkit.
 - Added UUID-scoped sacrificial live proof across API, SDK, CLI, and MCP with
   exact-ID cleanup and a single mutation-attempt budget.
 
+[1.0.14]: https://github.com/apet97/plaky115/releases/tag/v1.0.14
+[1.0.13]: https://github.com/apet97/plaky115/releases/tag/v1.0.13
 [1.0.1]: https://github.com/apet97/plaky115/releases/tag/v1.0.1
 [1.0.0]: https://github.com/apet97/plaky115/releases/tag/v1.0.0
 [0.2.0]: https://github.com/apet97/plaky115/releases/tag/v0.2.0
