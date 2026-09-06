@@ -3,6 +3,11 @@
 All notable user-visible changes are recorded here. The project follows
 semantic versioning from `0.2.0` onward.
 
+## [1.0.14] - 2026-09-06
+
+- Isolate generator determinism tests from tracked output files so concurrent
+  Node test workers cannot create platform-specific release-gate races.
+
 ## [1.0.13] - 2026-09-06
 
 - Update the CLI build toolchain to Go 1.26.6 to include current standard-library
@@ -108,6 +113,7 @@ First complete public release of the hand-crafted Plaky toolkit.
 - Added UUID-scoped sacrificial live proof across API, SDK, CLI, and MCP with
   exact-ID cleanup and a single mutation-attempt budget.
 
+[1.0.14]: https://github.com/apet97/plaky115/releases/tag/v1.0.14
 [1.0.13]: https://github.com/apet97/plaky115/releases/tag/v1.0.13
 [1.0.1]: https://github.com/apet97/plaky115/releases/tag/v1.0.1
 [1.0.0]: https://github.com/apet97/plaky115/releases/tag/v1.0.0

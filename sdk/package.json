@@ -1,6 +1,6 @@
 {
   "name": "plaky115",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "author": "Plaky115",
   "type": "module",
   "main": "./esm/index.js",
