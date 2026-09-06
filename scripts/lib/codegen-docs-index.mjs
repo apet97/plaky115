@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { bunCommand } from "./bun-command.mjs";
 
 export function buildDocsIndex(root, metadata) {
   const entries = [];
@@ -67,8 +68,7 @@ export function emitDocsIndex(entries) {
 function loadWorkflowRegistry(root) {
   const registryPath = join(root, "mcp-server/src/tools/curated/workflow-registry.ts");
   const registryUrl = pathToFileURL(registryPath).href;
-  const localBun = join(root, "mcp-server/node_modules/.bin/bun");
-  const command = existsSync(localBun) ? localBun : "bun";
+  const command = bunCommand(join(root, "mcp-server"));
   const script = [
     `import { workflowRegistry } from ${JSON.stringify(registryUrl)};`,
     "process.stdout.write(JSON.stringify(workflowRegistry));",

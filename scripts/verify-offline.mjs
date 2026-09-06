@@ -139,7 +139,7 @@ async function resolveToolVersions(cwd, signal) {
     ["node", ["--version"]],
     [npmCommand(), ["--version"]],
     ["ruby", ["--version"]],
-    ["go", ["version"], { env: { GOTOOLCHAIN: "go1.26.5" } }],
+    ["go", ["version"], { env: { GOTOOLCHAIN: "go1.26.6" } }],
     ["bun", ["--version"]],
     ["goreleaser", ["--version"]],
   ];

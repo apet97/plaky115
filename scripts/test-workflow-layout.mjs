@@ -36,7 +36,7 @@ test("CLI release workflow resolves the nested Go module and dist directory cons
   const steps = workflow.jobs.release.steps;
   const setupGo = findAction(steps, "actions/setup-go");
   assert.ok(setupGo, "missing actions/setup-go");
-  assert.equal(setupGo.with["go-version"], "1.26.5");
+  assert.equal(setupGo.with["go-version"], "1.26.6");
   assert.equal(setupGo.with["cache-dependency-path"], "cli/go.sum");
 
   const release = steps.find((step) => String(step.uses ?? "").startsWith("goreleaser/goreleaser-action@") && step.with?.args);
