@@ -43,11 +43,11 @@ export const verificationPlan = Object.freeze([
   commandGate("mcp-build", "npm", ["--prefix", "mcp-server", "run", "build"], { phase: "build" }),
   commandGate("mcp-lint", "npm", ["--prefix", "mcp-server", "run", "lint"]),
   commandGate("mcp-tests", "npm", ["--prefix", "mcp-server", "test"]),
-  commandGate("cli-tests", "go", ["test", "./..."], { cwd: "cli", env: { GOTOOLCHAIN: "go1.26.5" } }),
+  commandGate("cli-tests", "go", ["test", "./..."], { cwd: "cli", env: { GOTOOLCHAIN: "go1.26.6" } }),
   commandGate("cli-build", "go", ["build", "-o", "{cliBinary}", "./cmd/plaky115"], {
     cwd: "cli",
     phase: "build",
-    env: { GOTOOLCHAIN: "go1.26.5" },
+    env: { GOTOOLCHAIN: "go1.26.6" },
   }),
   commandGate("cli-help", "{cliBinary}", ["--help"]),
   commandGate("cli-raw-help", "{cliBinary}", ["raw", "--help"]),

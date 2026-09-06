@@ -25,7 +25,7 @@ public contracts unless a breaking change is explicitly requested:
 
 - Node.js `>=22.12`; CI tests `22.12.0`, `24`, and `26`.
 - Bun `1.2.17` from `mcp-server/node_modules/.bin/bun`.
-- Go `1.26.5`, Ruby `3.3`, and GoReleaser `2.15.2`.
+- Go `1.26.6`, Ruby `3.3`, and GoReleaser `2.15.2`.
 
 ```bash
 npm --prefix sdk ci

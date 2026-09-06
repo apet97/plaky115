@@ -32,7 +32,7 @@ test("release job installs the complete toolchain and exact trusted-publishing n
   assert.ok(findAction(steps, "ruby/setup-ruby"));
   assert.ok(findAction(steps, "goreleaser/goreleaser-action"));
   assert.ok(steps.some((step) => step.run === "npm install --global npm@11.16.0"));
-  assert.equal(findAction(steps, "actions/setup-go")?.with?.["go-version"], "1.26.5");
+  assert.equal(findAction(steps, "actions/setup-go")?.with?.["go-version"], "1.26.6");
   assert.equal(findAction(steps, "goreleaser/goreleaser-action")?.with?.version, "v2.15.2");
 });
 

@@ -21,7 +21,7 @@ jobs:
           node-version: "24"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.5"
+          go-version: "1.26.6"
           cache-dependency-path: cli/go.sum
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -83,7 +83,7 @@ jobs:
           node-version: "24"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.5"
+          go-version: "1.26.6"
       - run: cd cli && go test ./... && go build -o "$RUNNER_TEMP/plaky115" ./cmd/plaky115 && "$RUNNER_TEMP/plaky115" --help >/dev/null
       - run: npm run installer:test
 
@@ -96,7 +96,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.5"
+          go-version: "1.26.6"
       - shell: pwsh
         run: |
           cd cli
