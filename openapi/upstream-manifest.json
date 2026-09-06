@@ -3,7 +3,7 @@
   "requestedUrl": "https://docs.plaky.com/",
   "finalUrl": "https://docs.plaky.com/",
   "redirectChain": [],
-  "fetchedAt": "2026-07-26T22:46:49.352Z",
+  "fetchedAt": "2026-09-06T08:15:06.584Z",
   "httpStatus": 200,
   "contentType": "text/html; charset=utf-8",
   "rawSha256": "e03c50ed74fcf994d670ff1eb9167f3fe437e2e83935def5bc1798f73c06984f",
@@ -47,6 +47,6 @@
     "PUT /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/comments/{itemCommentId}/reactions",
     "PUT /v1/public/spaces/{spaceId}/boards/{boardId}/items/{itemId}/files/{itemFileId}"
   ],
-  "acceptedAt": "2026-07-26T22:57:08.072Z",
+  "acceptedAt": "2026-09-06T08:16:11.142Z",
   "acceptedSha256": "fe3e5bac33564ecd11e4d4d7c8172904883abd967b56500e946db3df2415c1b7"
 }

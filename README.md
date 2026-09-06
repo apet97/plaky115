@@ -68,7 +68,7 @@ uploads, typed IDs, interceptors, and workflow helpers.
 macOS or Linux:
 
 ```bash
-version=v1.0.1
+version=v1.0.12
 curl -fsSLo install-plaky115.sh "https://raw.githubusercontent.com/apet97/plaky115/${version}/cli/scripts/install.sh"
 less install-plaky115.sh
 PLAKY115_VERSION="$version" bash install-plaky115.sh
@@ -79,7 +79,7 @@ rm install-plaky115.sh
 <summary>Windows PowerShell</summary>
 
 ```powershell
-$version = "v1.0.1"
+$version = "v1.0.12"
 Invoke-WebRequest "https://raw.githubusercontent.com/apet97/plaky115/$version/cli/scripts/install.ps1" -OutFile install-plaky115.ps1
 Get-Content install-plaky115.ps1
 $env:PLAKY115_VERSION = $version
